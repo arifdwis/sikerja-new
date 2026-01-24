@@ -1,0 +1,576 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@source "../node_modules/flowbite";
+@custom-variant dark (&:where(.dark, .dark *));
+@plugin "flowbite/plugin";
+
+/* Atur ukuran font dasar */
+html {
+	font-size: 14px;
+}
+
+html,
+body {
+	height: 100%;
+}
+
+
+/* Styling untuk Vue Toastification */
+.Vue-Toastification__toast {
+	padding: 10px 15px !important;
+	min-height: 15px !important;
+	font-size: 0.8rem !important;
+	border-radius: 0.5rem !important;
+}
+
+.Vue-Toastification__toast-body {
+	font-size: 1rem !important;
+}
+
+@media only screen and (min-width: 600px) {
+
+	.Vue-Toastification__container.top-right,
+	.Vue-Toastification__container.bottom-right {
+		right: 1em !important;
+	}
+}
+
+@media only screen and (min-width: 600px) {
+
+	.Vue-Toastification__container.top-left,
+	.Vue-Toastification__container.top-right,
+	.Vue-Toastification__container.top-center {
+		top: 5em !important;
+	}
+}
+
+.multiselect.multiselect--active input {
+	display: block;
+}
+
+.multiselect input {
+	display: none;
+}
+
+.multiselect__single {
+	padding: 0 0 0 5px !important;
+	margin-bottom: 0px !important;
+}
+
+.multiselect__input,
+.multiselect__single {
+	min-height: 10px !important;
+	line-height: 10px !important;
+}
+
+
+.multiselect__tags {
+	min-height: 10px !important;
+	display: block !important;
+	padding: 0.625rem 0.625rem 0.425rem 0.925rem !important;
+	border-radius: 5px !important;
+	border: 1px solid #e8e8e8 !important;
+	background: rgb(249 250 251 / 1) !important;
+	font-size: 1rem !important;
+}
+
+.multiselect__placeholder {
+	margin-bottom: 0px !important;
+	padding-top: 0px !important;
+}
+
+span.multiselect__single {
+	font-size: 1rem !important;
+	line-height: 1.25rem !important;
+}
+
+input.multiselect__input {
+	padding: 0.5rem 1rem !important;
+	border-radius: 0.375rem !important;
+	border: 1px solid #d1d5db !important;
+	font-size: 1rem !important;
+	font-weight: 400 !important;
+	color: #4b5563 !important;
+	background-color: transparent !important;
+	transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+input.multiselect__input:focus {
+	outline: none !important;
+	border-color: #3b82f6 !important;
+	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4) !important;
+}
+
+input.multiselect__input::placeholder {
+	color: #6b7280 !important;
+	opacity: 1 !important;
+}
+
+.multiselect__input,
+.multiselect__single {
+	background: transparent !important;
+}
+
+.p-datatable-column-title {
+	font-weight: 600 !important;
+	text-transform: uppercase;
+	font-size: 0.875rem;
+}
+
+.p-fileupload-file-thumbnail {
+	display: none !important;
+}
+
+.p-fileupload-file-badge {
+	/*    display: none;*/
+}
+
+.p-fileupload-file {
+	padding: 5px !important;
+}
+
+.p-fileupload-file-info {
+	gap: 0px !important;
+	font-size: 0.95em !important;
+}
+
+.p-fileupload-file-name {
+	font-weight: 600 !important;
+}
+
+.p-fileupload-file-size {
+	text-color: #e5e7eb !important;
+}
+
+.p-badge-warn {
+	/*    background: #000000 !important;*/
+}
+
+.pdf-container {
+	width: 100%;
+	height: 80vh;
+	/* Agar tinggi menyesuaikan */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: auto;
+}
+
+.p-dialog-header {
+	padding: 0.8rem 1.5rem !important;
+}
+
+
+.p-divider-content {
+	background-color: var(--p-gray-100) !important;
+}
+
+.dark .p-divider-content {
+	background-color: var(--p-gray-900) !important;
+}
+
+.p-togglebutton.p-togglebutton-checked {
+	background: #101827 !important;
+	border-color: #101827 !important;
+	color: #ffffff !important;
+}
+
+.dark .p-togglebutton.p-togglebutton-checked {
+	background: #ffffff !important;
+	border-color: #ffffff !important;
+	color: #101827 !important;
+}
+
+.vel-modal {
+	background: rgba(0, 0, 0, .8) !important;
+}
+
+.vel-img {
+	background-color: rgba(0, 0, 0, 0) !important;
+	box-shadow: none !important;
+	-webkit-filter: drop-shadow(5px 25px 25px rgba(0, 0, 0, .7));
+	filter: drop-shadow(5px 25px 25px rgba(0, 0, 0, .7));
+	/*  0 5px 20px 2px rgba(0, 0, 0, 0)*/
+}
+
+.p-datatable-column-header-content {
+	display: block !important;
+}
+
+.filepond--credits {
+	opacity: 0.1 !important;
+}
+
+.filepond--root,
+.filepond--browser,
+.filepond--root .filepond--drop-label,
+.filepond--drop-label {
+	min-height: 200px !important;
+}
+
+
+.filepond--panel-root {
+	background-color: var(--p-gray-50) !important;
+}
+
+.filepond--drop-label label {
+	color: var(--p-gray-800) !important;
+	font-size: 0.9rem !important;
+}
+
+.dark .filepond--panel-root {
+	background-color: var(--p-gray-800) !important;
+}
+
+.dark .filepond--drop-label label {
+	color: var(--p-gray-50) !important;
+}
+
+/*slide-left*/
+
+.slide-left-enter-active,
+.slide-left-leave-active {
+	transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+.slide-left-enter-from {
+	transform: translateX(90px);
+	opacity: 0;
+}
+
+.slide-left-leave-to {
+	transform: translateX(-90px);
+	opacity: 0;
+}
+
+
+/*slide*/
+.slide-enter-active,
+.slide-leave-active {
+	transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+.slide-enter-from {
+	transform: translateY(-20px);
+	opacity: 0;
+}
+
+.slide-leave-to {
+	transform: translateY(-20px);
+	opacity: 0;
+}
+
+/*scale*/
+.scale-enter-active,
+.scale-leave-active {
+	transition: transform 0.4s ease-out, opacity 0.4s ease-out;
+}
+
+.scale-enter-from,
+.scale-leave-to {
+	transform: scale(0.9);
+	opacity: 0;
+}
+
+/*bounce*/
+
+.bounce-enter-active {
+	animation: bounce-in 0.6s ease;
+}
+
+.bounce-leave-active {
+	animation: bounce-out 0.6s ease;
+}
+
+@keyframes bounce-in {
+	0% {
+		transform: scale(0.8);
+		opacity: 0;
+	}
+
+	50% {
+		transform: scale(1.1);
+		opacity: 1;
+	}
+
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes bounce-out {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+
+	50% {
+		transform: scale(1.1);
+	}
+
+	100% {
+		transform: scale(0.8);
+		opacity: 0;
+	}
+}
+
+/* Slide dari kiri dengan efek smooth */
+.slide-left-enter-active,
+.slide-left-leave-active {
+	transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.7s ease;
+}
+
+.slide-left-enter-from {
+	transform: translateX(-100px);
+	opacity: 0;
+}
+
+.slide-left-leave-to {
+	transform: translateX(-100px);
+	opacity: 0;
+}
+
+/* Slide dari kanan */
+.slide-right-enter-active,
+.slide-right-leave-active {
+	transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.7s ease;
+}
+
+.slide-right-enter-from {
+	transform: translateX(100px);
+	opacity: 0;
+}
+
+.slide-right-leave-to {
+	transform: translateX(100px);
+	opacity: 0;
+}
+
+/* Slide dari atas dengan efek lembut */
+.slide-down-enter-active,
+.slide-down-leave-active {
+	transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+}
+
+.slide-down-enter-from {
+	transform: translateY(-90px);
+	opacity: 0;
+}
+
+.slide-down-leave-to {
+	transform: translateY(-90px);
+	opacity: 0;
+}
+
+/* Slide dari bawah */
+.slide-up-enter-active,
+.slide-up-leave-active {
+	transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+}
+
+.slide-up-enter-from {
+	transform: translateY(90px);
+	opacity: 0;
+}
+
+.slide-up-leave-to {
+	transform: translateY(90px);
+	opacity: 0;
+}
+
+/* Zoom dengan efek smooth */
+.zoom-enter-active,
+.zoom-leave-active {
+	transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+}
+
+.zoom-enter-from,
+.zoom-leave-to {
+	transform: scale(0.8);
+	opacity: 0;
+}
+
+/* Fade in dan fade out */
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.6s ease-in-out;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+	opacity: 0;
+}
+
+/* Flip efek seperti kartu berputar */
+.flip-enter-active,
+.flip-leave-active {
+	transition: transform 0.7s ease-in-out, opacity 0.7s ease-in-out;
+}
+
+.flip-enter-from {
+	transform: rotateY(90deg);
+	opacity: 0;
+}
+
+.flip-leave-to {
+	transform: rotateY(-90deg);
+	opacity: 0;
+}
+
+/* Bounce masuk lebih smooth */
+.bounce-enter-active {
+	animation: bounce-in 0.8s ease-in-out;
+}
+
+.bounce-leave-active {
+	animation: bounce-out 0.8s ease-in-out;
+}
+
+@keyframes bounce-in {
+	0% {
+		transform: scale(0.7);
+		opacity: 0;
+	}
+
+	50% {
+		transform: scale(1.1);
+		opacity: 1;
+	}
+
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes bounce-out {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+
+	50% {
+		transform: scale(1.05);
+	}
+
+	100% {
+		transform: scale(0.7);
+		opacity: 0;
+	}
+}
+
+/* Rotate dengan efek smooth */
+.rotate-enter-active,
+.rotate-leave-active {
+	transition: transform 0.8s ease-in-out, opacity 0.8s ease-in-out;
+}
+
+.rotate-enter-from {
+	transform: rotate(-90deg);
+	opacity: 0;
+}
+
+.rotate-leave-to {
+	transform: rotate(90deg);
+	opacity: 0;
+}
+
+.img-background-login:before {
+	background: url(/png/ilustrasi.png) repeat-x bottom left;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 100%;
+	position: fixed;
+	z-index: -1;
+	content: "";
+	width: 40%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	transform: scaleX(-1);
+	opacity: 0.1;
+
+}
+
+.img-background-login:after {
+	background: url(/png/ilustrasi.png) repeat-x bottom right;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 100%;
+	position: fixed;
+	z-index: -1;
+	content: "";
+	width: 40%;
+	height: 100%;
+	top: 0;
+	right: 0;
+	transform: scaleX(1);
+	opacity: 0.1;
+}
+
+.p-editor .p-editor-toolbar {
+	background: transparent !important;
+}
+
+.shake {
+	animation: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+	transform: translate3d(0, 0, 0);
+}
+
+@keyframes shake {
+
+	10%,
+	90% {
+		transform: translate3d(-1px, 0, 0);
+	}
+
+	20%,
+	80% {
+		transform: translate3d(2px, 0, 0);
+	}
+
+	30%,
+	50%,
+	70% {
+		transform: translate3d(-4px, 0, 0);
+	}
+
+	40%,
+	60% {
+		transform: translate3d(4px, 0, 0);
+	}
+}
+
+
+.st0 {
+	fill: #0acf83
+}
+
+.st1 {
+	fill: #a259ff
+}
+
+.st2 {
+	fill: #f24e1e
+}
+
+.st3 {
+	fill: #ff7262
+}
+
+.st4 {
+	fill: #1abcfe
+}
+
+.p-dialog-title {
+	font-weight: 600 !important;
+	font-size: 1rem !important;
+}
+
+.font-monsterbold {
+	font-weight: 900 !important;
+}
+
+.kaushan-script-regular {
+	font-family: "Kaushan Script", cursive;
+}
