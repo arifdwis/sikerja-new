@@ -110,7 +110,7 @@ const histories = computed(() => {
 
         <!-- Full History List Toggle or Footer -->
         <div class="mt-8 pt-4 border-t border-gray-100 dark:border-gray-700">
-             <h5 class="font-semibold text-sm mb-3">Riwayatt Aktivitas Lengkap</h5>
+             <h5 class="font-semibold text-sm mb-3">Riwayat Aktivitas Lengkap</h5>
              <div class="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                 <div v-for="log in histories" :key="log.id" class="flex gap-3 text-sm">
                     <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></div>

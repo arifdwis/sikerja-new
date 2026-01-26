@@ -56,10 +56,48 @@ class DashboardController extends Controller
             ->toArray();
 
         // Chart data: Trend per bulan (Last Year)
+        // Chart data: Trend per bulan (Last Year)
         $trendLastYear = Permohonan::whereYear('created_at', $tahun - 1);
         if ($isPemohon) {
             $trendLastYear->where('id_pemohon_0', $user->id);
         }
+
+        // Expiring Agreements Alert (e.g., expiring in 30 days)
+        $alerts = [];
+        if ($isPemohon) {
+            $expiringSoon = Permohonan::where('id_pemohon_0', $user->id)
+                ->where('status', Permohonan::STATUS_SELESAI) // Assuming only active ones matter
+                ->whereNotNull('tanggal_berakhir')
+                ->where('tanggal_berakhir', '>', now())
+                ->where('tanggal_berakhir', '<=', now()->addDays(30))
+                ->get();
+
+            foreach ($expiringSoon as $item) {
+                $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($item->tanggal_berakhir));
+                $alerts[] = [
+                    'type' => 'warning',
+                    'message' => "Kerjasama '{$item->label}' akan berakhir dalam {$daysLeft} hari lagi ({$item->tanggal_berakhir}).",
+                    'link' => route('permohonan.show', $item->uuid)
+                ];
+            }
+
+            // Check for Expired but not renewed?
+            $expired = Permohonan::where('id_pemohon_0', $user->id)
+                ->where('status', Permohonan::STATUS_SELESAI)
+                ->whereNotNull('tanggal_berakhir')
+                ->where('tanggal_berakhir', '<', now())
+                ->limit(3)
+                ->get();
+
+            foreach ($expired as $item) {
+                $alerts[] = [
+                    'type' => 'error',
+                    'message' => "Kerjasama '{$item->label}' telah berakhir pada {$item->tanggal_berakhir}.",
+                    'link' => route('permohonan.show', $item->uuid)
+                ];
+            }
+        }
+
         $trendLastYear = $trendLastYear
             ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
             ->groupBy('bulan')
@@ -231,6 +269,27 @@ class DashboardController extends Controller
         }
 
         $filterCategories = Kategori::select('id', 'label')->orderBy('label')->get();
+
+        if ($isPemohon) {
+            $kategoris = Kategori::all();
+            $provinsis = \App\Models\Provinsi::all();
+            $pemohon = $user->pemohon;
+            $corporate = $user->corporate;
+            $pemohonanList = Permohonan::where('id_pemohon_0', $user->id) // Or logic to get available signers
+                ->orWhere('id_pemohon_1', $user->id)
+                ->get(); // Simplified for now, refine as needed for PPKSD-2
+
+            return Inertia::render('Backend/DashboardPemohon', [
+                'stats' => $stats,
+                'permohonanTerbaru' => $permohonanTerbaru,
+                'kategoris' => $kategoris,
+                'provinsis' => $provinsis,
+                'pemohon' => $pemohon,
+                'corporate' => $corporate,
+                'pemohonanList' => $pemohonanList,
+                'alerts' => $alerts,
+            ]);
+        }
 
         return Inertia::render('Backend/Dashboard', [
             'stats' => $stats,

@@ -16,7 +16,7 @@ class LandingController extends Controller
 {
     public function home()
     {
-        $sliders = Slider::latest()->get();
+        $sliders = Slider::where('is_active', true)->latest()->get();
         if ($sliders->isEmpty()) {
             $sliders = collect([]);
         }

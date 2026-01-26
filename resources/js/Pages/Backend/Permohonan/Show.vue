@@ -42,6 +42,7 @@ const statusColors = {
                             {{ statusLabels[permohonan.status]?.label }}
                         </span>
                         <Link 
+                            v-if="permohonan.status == 0"
                             :href="route('permohonan.edit', permohonan.uuid)" 
                             class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium rounded-lg transition"
                         >
@@ -158,6 +159,26 @@ const statusColors = {
                                 <div>
                                     <p class="text-gray-500 dark:text-gray-400 font-medium mb-1">Ruang Lingkup</p>
                                     <div class="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300" v-html="permohonan.ruang_lingkup || '-'"></div>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 dark:text-gray-400 font-medium mb-1">Jangka Waktu</p>
+                                    <div class="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+                                        {{ permohonan.jangka_waktu || '-' }}
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-gray-500 dark:text-gray-400 font-medium mb-1">Tanggal Mulai</p>
+                                        <div class="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+                                            {{ permohonan.tanggal_mulai ? $formatDate(permohonan.tanggal_mulai) : '-' }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500 dark:text-gray-400 font-medium mb-1">Tanggal Berakhir</p>
+                                        <div class="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+                                            {{ permohonan.tanggal_berakhir ? $formatDate(permohonan.tanggal_berakhir) : '-' }}
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
                                     <p class="text-gray-500 dark:text-gray-400 font-medium mb-1">Manfaat</p>

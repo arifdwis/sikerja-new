@@ -34,12 +34,32 @@ Route::controller(\App\Http\Controllers\LandingController::class)->group(functio
     Route::get('/page/{slug}', 'page')->name('landing.page');
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+// API Routes (Public)
+Route::get('/api/kotas-all', function () {
+    $provinsis = \App\Models\Provinsi::with('kotas')->orderBy('name')->get();
+    return response()->json($provinsis->map(function ($p) {
+        return [
+            'provinsi' => $p->name,
+            'kotas' => $p->kotas->map(function ($k) {
+                return [
+                    'id' => $k->id,
+                    'name' => $k->type . ' ' . $k->name
+                ];
+            })
+        ];
+    }));
+})->name('api.kotas.all');
 
-Route::middleware('auth')->group(function () {
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified', 'pemohon.profile'])->name('dashboard');
+
+Route::middleware(['auth', 'pemohon.profile'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::put('/profile/biodata', [ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
+    Route::put('/profile/corporate', [ProfileController::class, 'updateCorporate'])->name('profile.corporate.update');
+
+
 
     // Master Data
     Route::prefix('master')->name('master.')->group(function () {
@@ -54,10 +74,15 @@ Route::middleware('auth')->group(function () {
     // Permohonan (Pemohon)
     Route::get('/riwayat', [PermohonanController::class, 'riwayat'])->name('riwayat.index');
     Route::get('permohonan/selesai', [PermohonanController::class, 'index'])->name('permohonan.selesai');
+    Route::get('api/kotas/{provinsi}', [PermohonanController::class, 'getKotas'])->name('api.kotas');
     Route::resource('permohonan', PermohonanController::class);
     Route::post('permohonan/{permohonan}/upload', [PermohonanController::class, 'uploadFile'])->name('permohonan.upload');
     Route::delete('permohonan/{permohonan}/file/{file}', [PermohonanController::class, 'deleteFile'])->name('permohonan.file.destroy');
     Route::put('permohonan/{permohonan}/submit', [PermohonanController::class, 'submit'])->name('permohonan.submit');
+    Route::get('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'getFileDiskusi'])->name('permohonan.file.diskusi.index');
+    Route::post('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'storeFileDiskusi'])->name('permohonan.file.diskusi.store');
+    Route::put('permohonan/file/{uuid}/review', [PermohonanController::class, 'reviewFile'])->name('permohonan.file.review');
+    Route::post('permohonan/file/{uuid}/revision', [PermohonanController::class, 'uploadFileRevision'])->name('permohonan.file.revision');
 
     // Penjadwalan
     Route::resource('penjadwalan', PenjadwalanController::class)->only(['store', 'update', 'destroy']);

@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Permohonan;
+use App\Models\User;
 use App\Models\Kategori;
 use App\Models\Provinsi;
 use App\Models\Kota;
 use App\Models\Pemohon;
 use App\Models\Corporate;
+use App\Models\PermohonanFile;
 use App\Models\PermohonanHistori;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Services\WhatsappService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -166,7 +169,7 @@ class PermohonanController extends Controller implements HasMiddleware
             $query->where('id_pemohon_0', Auth::id());
         }
 
-        $query->where('status', Permohonan::STATUS_SELESAI);
+        $query->whereIn('status', [Permohonan::STATUS_SELESAI, Permohonan::STATUS_DITOLAK]);
 
         // Search
         if ($request->has('search') && $request->search) {
@@ -178,10 +181,12 @@ class PermohonanController extends Controller implements HasMiddleware
             });
         }
 
-        $datas = $query->latest()->paginate(15)->withQueryString();
+        $permohonan = $query->latest()->paginate(15)->withQueryString();
+        $statusLabels = Permohonan::statusLabels();
 
         return Inertia::render("Riwayat/Index", [
-            'datas' => $datas,
+            'permohonan' => $permohonan,
+            'statusLabels' => $statusLabels,
             'filters' => $request->only(['search']),
             'share' => [
                 'title' => $pageTitle,
@@ -205,8 +210,8 @@ class PermohonanController extends Controller implements HasMiddleware
         $pemohonanList = [];
 
         if ($user->hasRole('pemohon')) {
-            $pemohon = Pemohon::where('id_operator', $user->id)->first();
-            $corporate = Corporate::where('id_operator', $user->id)->first();
+            $pemohon = Pemohon::where('id_operator', $user->id)->with('kotaRef')->first();
+            $corporate = Corporate::where('id_operator', $user->id)->with('kotaRef')->first();
         }
 
         // Load all pemohon for PPKSD-2 dropdown
@@ -244,6 +249,8 @@ class PermohonanController extends Controller implements HasMiddleware
             'lokasi_kerjasama' => 'nullable|string',
             'ruang_lingkup' => 'required|string',
             'jangka_waktu' => 'nullable|string|max:255',
+            'tanggal_mulai' => 'nullable|date',
+            'tanggal_berakhir' => 'nullable|date|after_or_equal:tanggal_mulai',
             'manfaat' => 'nullable|string',
             'analisis_dampak' => 'nullable|string',
             'pembiayaan' => 'nullable|string',
@@ -314,6 +321,11 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
+        if ($permohonan->status != Permohonan::STATUS_PERMOHONAN) {
+            return redirect()->route("$this->prefix.show", $permohonan->uuid)
+                ->with('error', 'Permohonan tidak dapat diedit karena sudah diproses.');
+        }
+
         $kategoris = Kategori::all();
         $provinsis = Provinsi::all();
         $kotas = Kota::where('province_id', $permohonan->id_provinsi)->get();
@@ -338,6 +350,12 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
+        // Restrict edit if already validated (status != 0)
+        if ($permohonan->status != Permohonan::STATUS_PERMOHONAN) {
+            return redirect()->route("$this->prefix.show", $permohonan->uuid)
+                ->with('error', 'Permohonan tidak dapat diedit karena sudah diproses.');
+        }
+
         $validated = $request->validate([
             'id_kategori' => 'required|exists:kategori,id',
             'label' => 'required|string|max:255',
@@ -351,7 +369,9 @@ class PermohonanController extends Controller implements HasMiddleware
             'latar_belakang' => 'required|string',
             'maksud_tujuan' => 'required|string',
             'ruang_lingkup' => 'required|string',
-            'jangka_waktu' => 'nullable|string|max:100',
+            'jangka_waktu' => 'nullable|string|max:255',
+            'tanggal_mulai' => 'nullable|date',
+            'tanggal_berakhir' => 'nullable|date|after_or_equal:tanggal_mulai',
             'manfaat' => 'nullable|string',
             'analisis_dampak' => 'nullable|string',
             'pembiayaan' => 'nullable|string',
@@ -451,12 +471,63 @@ class PermohonanController extends Controller implements HasMiddleware
             'komentar' => $validated['keterangan'] ?? null,
         ]);
 
+        // Send WhatsApp Notification
+        try {
+            $wa = app(WhatsappService::class);
+
+            // 1. Notify User (Pemohon) - FORMAL
+            $formalMsg = "*SIKERJA - PEMBARUAN STATUS*\n\n" .
+                "Yth. Pemohon Kerja Sama,\n" .
+                "Berikut kami sampaikan status terbaru permohonan Anda:\n\n" .
+                "Instansi: *{$permohonan->nama_instansi}*\n" .
+                "Perihal: {$permohonan->label}\n" .
+                "Status: *{$newLabel}*\n" .
+                "Catatan: " . ($validated['keterangan'] ?? '-') . "\n\n" .
+                "Terima kasih.\n" .
+                "_Pemerintah Kota Samarinda_";
+
+            // Try getting phone from User first, then Pemohon profile
+            $targetPhone = null;
+            $user = User::find($permohonan->id_pemohon_0);
+            if ($user && !empty($user->phone)) {
+                $targetPhone = $user->phone;
+            } else {
+                $pemohonProfile = $permohonan->pemohon1;
+                if ($pemohonProfile && !empty($pemohonProfile->phone)) {
+                    $targetPhone = $pemohonProfile->phone;
+                }
+            }
+
+            if ($targetPhone) {
+                $name = $user ? $user->name : ($pemohonProfile ? $pemohonProfile->name : 'Pemohon');
+                $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
+                $wa->sendMessage($targetPhone, $personalMsg);
+            }
+
+            // 2. Notify Group (Admin) - INTERNAL / INFO
+            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
+                "Update Status Permohonan\n\n" .
+                "Instansi: {$permohonan->nama_instansi}\n" .
+                "Perihal: {$permohonan->label}\n" .
+                "Status Baru: *{$newLabel}*\n" .
+                "Oleh: " . Auth::user()->name . "\n" .
+                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
+                "_Mohon monitor dashboard._";
+
+            $group = env('WA_GROUP_ID', '120363189423910876@g.us');
+            if ($group) {
+                $wa->sendMessage($group, $adminMsg);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Failed to send WA Notification: " . $e->getMessage());
+        }
+
         return redirect()->back()->with('success', 'Status berhasil diperbarui.');
     }
     /**
      * Upload cooperation documents (after validation).
      */
-    public function uploadFiles(Request $request, string $uuid)
+    public function uploadFile(Request $request, string $uuid)
     {
         \Log::info('Upload files request received', [
             'uuid' => $uuid,
@@ -503,12 +574,14 @@ class PermohonanController extends Controller implements HasMiddleware
 
                 \Log::info("File saved: $field", ['path' => $path]);
 
-                \App\Models\PermohonanFile::create([
+                PermohonanFile::create([
                     'id_permohonan' => $permohonan->id,
                     'label' => $label,
                     'file' => 'storage/' . $path,
+                    'file_path' => $path,
+                    'file_name' => $file->getClientOriginalName(),
                     'deskripsi' => 'Dokumen ' . $label . ' untuk permohonan ' . $permohonan->kode,
-                    'status' => \App\Models\PermohonanFile::STATUS_DIPROSES,
+                    'status' => PermohonanFile::STATUS_DIPROSES,
                 ]);
             }
         }
@@ -520,9 +593,161 @@ class PermohonanController extends Controller implements HasMiddleware
             'deskripsi' => 'Dokumen kerjasama telah diupload.',
         ]);
 
-        \Log::info('Upload completed successfully');
+        // Send WhatsApp Notification to Admin Group
+        try {
+            $wa = app(WhatsappService::class);
+
+            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
+                "Berkas Baru Diupload\n\n" .
+                "Instansi: {$permohonan->nama_instansi}\n" .
+                "Perihal: {$permohonan->label}\n" .
+                "Keterangan: Berkas telah diupload dan siap untuk dilakukan pembahasan.\n" .
+                "Oleh: " . Auth::user()->name . "\n" .
+                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
+                "_Mohon segera diperiksa._";
+
+            $group = env('WA_GROUP_ID', '120363189423910876@g.us');
+            if ($group) {
+                $wa->sendMessage($group, $adminMsg);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Failed to send WA Notification: " . $e->getMessage());
+        }
 
         return redirect()->route("$this->prefix.index")
             ->with('success', 'Dokumen berhasil diupload. Permohonan akan segera diproses.');
+    }
+    /**
+     * Get discussion history for a specific file.
+     */
+    public function getFileDiskusi(string $uuid)
+    {
+        $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
+
+        // Ensure user has access
+        $permohonan = $file->permohonan;
+        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+            abort(403);
+        }
+
+        $histori = PermohonanHistori::where('id_file', $file->id)
+            ->with(['operator'])
+            ->orderBy('created_at')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'operator' => $item->operator,
+                    'komentar' => $item->komentar ?? $item->deskripsi,
+                    'created_at' => $item->created_at,
+                    'formatted_time' => $item->created_at->format('d M Y H:i'),
+                    'is_me' => $item->id_operator === Auth::id(),
+                ];
+            });
+
+        return response()->json($histori);
+    }
+
+    /**
+     * Store a discussion message for a file.
+     */
+    public function storeFileDiskusi(Request $request, string $uuid)
+    {
+        $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
+
+        $request->validate(['message' => 'required|string']);
+
+        $histori = PermohonanHistori::create([
+            'id_permohonan' => $file->id_permohonan,
+            'id_operator' => Auth::id(),
+            'id_file' => $file->id,
+            'deskripsi' => 'Komentar baru.',
+            'komentar' => $request->message,
+        ]);
+
+        return response()->json([
+            'id' => $histori->id,
+            'operator' => Auth::user(),
+            'komentar' => $histori->komentar,
+            'formatted_time' => $histori->created_at->format('d M Y H:i'),
+            'is_me' => true,
+        ]);
+    }
+
+    /**
+     * Review a file (Approve/Reject) - Admin only.
+     */
+    public function reviewFile(Request $request, string $uuid)
+    {
+        $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
+
+        // Ensure user is admin/verifier
+        // Ensure user is admin/verifier
+        if (!Auth::user()->hasRole(['administrator', 'superadmin', 'verifikator', 'tkksd'])) {
+            abort(403, 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|integer|in:1,2', // 1=Approved, 2=Rejected
+            'komentar' => 'nullable|string',
+        ]);
+
+        $file->update([
+            'status' => $validated['status'],
+            'komentar' => $validated['komentar'] ?? null,
+            'reviewer_id' => Auth::id(),
+            'reviewed_at' => now(),
+        ]);
+
+        $statusLabel = $validated['status'] == 1 ? 'Disetujui' : 'Ditolak';
+
+        PermohonanHistori::create([
+            'id_permohonan' => $file->id_permohonan,
+            'id_operator' => Auth::id(),
+            'id_file' => $file->id,
+            'deskripsi' => "Dokumen {$file->label} telah {$statusLabel}.",
+            'komentar' => $validated['komentar'] ?? null,
+        ]);
+
+        return response()->json(['message' => 'Success', 'file' => $file]);
+    }
+
+    /**
+     * Upload a revision for a rejected file.
+     */
+    public function uploadFileRevision(Request $request, string $uuid)
+    {
+        $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
+
+        // Ensure strictly for Rejected files
+        if ($file->status != PermohonanFile::STATUS_DITOLAK) {
+            abort(400, 'File is not in rejected status.');
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
+        ]);
+
+        // Upload new file
+        $newFile = $request->file('file');
+        $filename = time() . '_REVISION_' . $file->label . '.' . $newFile->getClientOriginalExtension();
+        $path = $newFile->storeAs('uploads/permohonan/' . $file->id_permohonan, $filename, 'public');
+
+        $file->update([
+            'file' => 'storage/' . $path,
+            'file_path' => $path,
+            'file_name' => $newFile->getClientOriginalName(),
+            'status' => PermohonanFile::STATUS_DIPROSES, // Reset to Pending
+            'komentar' => null, // Clear rejection comment
+        ]);
+
+        PermohonanHistori::create([
+            'id_permohonan' => $file->id_permohonan,
+            'id_operator' => Auth::id(),
+            'id_file' => $file->id,
+            'deskripsi' => "Revisi dokumen {$file->label} diupload.",
+        ]);
+
+        return response()->json(['message' => 'Revision uploaded', 'file' => $file]);
     }
 }

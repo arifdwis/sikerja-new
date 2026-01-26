@@ -17,7 +17,7 @@ const loadingKotas = ref(true);
 
 const form = useForm({
     name: corporate?.name || '',
-    kota_id: corporate?.kota_id || null,
+    kota_id: corporate?.kota_id ? Number(corporate.kota_id) : null,
     postal_code: corporate?.postal_code || '',
     address: corporate?.address || '',
     phone: corporate?.phone || '',

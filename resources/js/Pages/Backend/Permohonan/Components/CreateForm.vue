@@ -2,6 +2,7 @@
 import { useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { Icon } from '@iconify/vue';
+import SearchSelect from '@/Components/SearchSelect.vue';
 
 const props = defineProps({
     kategoris: Array,
@@ -9,33 +10,50 @@ const props = defineProps({
     pemohon: Object,
     corporate: Object,
     pemohonanList: Array,
+    mode: {
+        type: String,
+        default: 'create' // 'create' or 'edit'
+    },
+    initialData: {
+        type: Object,
+        default: () => ({})
+    }
 });
 
 const emit = defineEmits(['close', 'success']);
 
 const page = usePage();
 
-// Auto-fill from corporate
+// Helper to safely access nested properties
+const getInitialValue = (key, fallback = '') => {
+    return props.initialData?.[key] !== undefined && props.initialData?.[key] !== null ? props.initialData[key] : fallback;
+};
+
+// Initialize form
 const form = useForm({
-    id_kategori: '',
-    label: '',
-    nama_instansi: props.corporate?.name || '',
-    id_provinsi: '',
-    id_kota: props.corporate?.kota_id || '',
-    kode_pos: props.corporate?.postal_code || '',
-    alamat: props.corporate?.address || '',
-    email: props.corporate?.email || '',
-    telepon: props.corporate?.phone || '',
-    website: props.corporate?.website || '',
-    id_pemohon_1: '',  // PPKSD-2 selection
-    latar_belakang: '',
-    maksud_tujuan: '',
-    lokasi_kerjasama: '',
-    ruang_lingkup: '',
-    jangka_waktu: '',
-    manfaat: '',
-    analisis_dampak: '',
-    pembiayaan: '',
+    id: props.initialData?.id || null, // For update route
+    uuid: props.initialData?.uuid || null,
+    id_kategori: getInitialValue('id_kategori'),
+    label: getInitialValue('label'),
+    nama_instansi: props.mode === 'edit' ? getInitialValue('nama_instansi') : (props.corporate?.name || ''),
+    id_provinsi: props.mode === 'edit' ? getInitialValue('id_provinsi') : (props.pemohon?.kota_ref?.province_id || props.corporate?.kota_ref?.province_id || ''),
+    id_kota: props.mode === 'edit' ? getInitialValue('id_kota') : (props.pemohon?.kota_id || props.corporate?.kota_id || ''),
+    kode_pos: props.mode === 'edit' ? getInitialValue('kode_pos') : (props.corporate?.postal_code || ''),
+    alamat: props.mode === 'edit' ? getInitialValue('alamat') : (props.corporate?.address || ''),
+    email: props.mode === 'edit' ? getInitialValue('email') : (props.corporate?.email || ''),
+    telepon: props.mode === 'edit' ? getInitialValue('telepon') : (props.corporate?.phone || ''),
+    website: props.mode === 'edit' ? getInitialValue('website') : (props.corporate?.website || ''),
+    id_pemohon_1: props.mode === 'edit' ? getInitialValue('id_pemohon_1') : '', 
+    latar_belakang: getInitialValue('latar_belakang'),
+    maksud_tujuan: getInitialValue('maksud_tujuan'),
+    lokasi_kerjasama: getInitialValue('lokasi_kerjasama'),
+    ruang_lingkup: getInitialValue('ruang_lingkup'),
+    jangka_waktu: getInitialValue('jangka_waktu'),
+    tanggal_mulai: getInitialValue('tanggal_mulai'),
+    tanggal_berakhir: getInitialValue('tanggal_berakhir'),
+    manfaat: getInitialValue('manfaat'),
+    analisis_dampak: getInitialValue('analisis_dampak'),
+    pembiayaan: getInitialValue('pembiayaan'),
 });
 
 const kotas = ref([]);
@@ -52,23 +70,50 @@ watch(() => form.id_provinsi, async (provinsiId, oldProvinsiId) => {
             console.error('Failed to load kotas:', error);
         }
         loadingKotas.value = false;
-        // Only reset kota if provinsi actually changed
-        if (oldProvinsiId && oldProvinsiId !== provinsiId) {
-            form.id_kota = null;
+        
+        // Only reset kota if strictly changing selection manually, not during initial load
+        if (oldProvinsiId !== undefined && oldProvinsiId !== provinsiId) {
+             // In edit mode, if we just loaded the form and the provinsi matches initial, don't reset.
+             const isInitialLoad = props.mode === 'edit' && provinsiId == props.initialData?.id_provinsi && oldProvinsiId === '';
+             if (!isInitialLoad) {
+                 form.id_kota = null;
+             }
         }
     } else {
         kotas.value = [];
         form.id_kota = null;
     }
-});
+}, { immediate: true });
+
+
+import { useToast } from "vue-toastification";
+const toast = useToast();
 
 const submit = () => {
-    form.post(route('permohonan.store'), {
-        onSuccess: () => {
-            emit('success');
-            form.reset();
-        }
-    });
+    if (props.mode === 'edit') {
+        form.put(route('permohonan.update', form.uuid), {
+            onSuccess: () => {
+                toast.success('Permohonan berhasil diperbarui');
+                emit('success');
+            },
+            onError: (errors) => {
+                 const firstError = Object.values(errors)[0];
+                 toast.error(firstError || "Gagal memperbarui permohonan");
+            }
+        });
+    } else {
+        form.post(route('permohonan.store'), {
+            onSuccess: () => {
+                toast.success('Permohonan berhasil dibuat');
+                emit('success');
+                form.reset();
+            },
+            onError: (errors) => {
+                 const firstError = Object.values(errors)[0];
+                 toast.error(firstError || "Mohon lengkapi data wajib");
+            }
+        });
+    }
 };
 
 // Current step for wizard
@@ -82,6 +127,12 @@ const nextStep = () => {
 const prevStep = () => {
     if (currentStep.value > 1) currentStep.value--;
 };
+
+// Mapped Options for SearchSelect
+const kategoriOptions = computed(() => props.kategoris.map(k => ({ value: k.id, name: k.label })));
+const provinsiOptions = computed(() => props.provinsis.map(p => ({ value: p.id, name: p.name })));
+const kotaOptions = computed(() => kotas.value.map(k => ({ value: k.id, name: k.name })));
+const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id, name: `${p.name} — ${p.jabatan}` })));
 </script>
 
 <template>
@@ -125,10 +176,11 @@ const prevStep = () => {
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Urusan/Kategori <span class="text-red-500">*</span>
                             </label>
-                            <select v-model="form.id_kategori" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                                <option value="">-- Pilih Salah Satu --</option>
-                                <option v-for="kategori in kategoris" :key="kategori.id" :value="kategori.id">{{ kategori.label }}</option>
-                            </select>
+                            <SearchSelect 
+                                v-model="form.id_kategori" 
+                                :options="kategoriOptions" 
+                                placeholder="-- Pilih Salah Satu --"
+                            />
                         </div>
                         
                         <div>
@@ -142,24 +194,23 @@ const prevStep = () => {
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Provinsi <span class="text-red-500">*</span>
                             </label>
-                            <select v-model="form.id_provinsi" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                                <option value="">-- Pilih Provinsi --</option>
-                                <option v-for="provinsi in provinsis" :key="provinsi.id" :value="provinsi.id">
-                                    {{ provinsi.name }}
-                                </option>
-                            </select>
+                            <SearchSelect 
+                                v-model="form.id_provinsi" 
+                                :options="provinsiOptions" 
+                                placeholder="-- Pilih Provinsi --"
+                            />
                         </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Kabupaten/Kota <span class="text-red-500">*</span>
                             </label>
-                            <select v-model="form.id_kota" :disabled="loadingKotas || !kotas.length" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white disabled:opacity-50">
-                                <option value="">{{ loadingKotas ? 'Loading...' : '-- Pilih Kota --' }}</option>
-                                <option v-for="kota in kotas" :key="kota.id" :value="kota.id">
-                                    {{ kota.name }}
-                                </option>
-                            </select>
+                            <SearchSelect 
+                                v-model="form.id_kota" 
+                                :options="kotaOptions" 
+                                :disabled="loadingKotas || !kotas.length"
+                                placeholder="-- Pilih Kota --"
+                            />
                         </div>
                         
                         <div>
@@ -294,15 +345,11 @@ const prevStep = () => {
                         </label>
                         
                         <div class="relative">
-                            <select v-model="form.id_pemohon_1" class="w-full pl-5 pr-12 py-4 rounded-xl border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 text-gray-900 dark:text-white transition-all appearance-none cursor-pointer">
-                                <option value="">-- Pilih Pejabat --</option>
-                                <option v-for="p in pemohonanList" :key="p.id" :value="p.id">
-                                    {{ p.name }} — {{ p.jabatan }}
-                                </option>
-                            </select>
-                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
-                                <Icon icon="solar:alt-arrow-down-bold" class="w-5 h-5" />
-                            </div>
+                            <SearchSelect 
+                                v-model="form.id_pemohon_1" 
+                                :options="ppksdOptions" 
+                                placeholder="-- Pilih Pejabat --"
+                            />
                         </div>
 
                          <div v-if="form.id_pemohon_1" class="mt-6 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-emerald-100 dark:border-emerald-800/30 flex items-start gap-4 animate-fade-in-up">
@@ -370,6 +417,21 @@ const prevStep = () => {
                             </label>
                             <textarea v-model="form.jangka_waktu" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan jangka waktu kerjasama..."></textarea>
                         </div>
+
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Tanggal Mulai <span class="text-red-500">*</span>
+                                </label>
+                                <input v-model="form.tanggal_mulai" type="date" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Tanggal Berakhir <span class="text-red-500">*</span>
+                                </label>
+                                <input v-model="form.tanggal_berakhir" type="date" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                            </div>
+                        </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -414,7 +476,7 @@ const prevStep = () => {
                 <button v-else type="submit" @click="submit" :disabled="form.processing" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center disabled:opacity-50">
                     <Icon v-if="form.processing" icon="solar:refresh-circle-line-duotone" class="w-5 h-5 mr-2 animate-spin" />
                     <Icon v-else icon="solar:send-bold" class="w-5 h-5 mr-2" />
-                    Submit Data
+                    {{ mode === 'edit' ? 'Simpan Perubahan' : 'Submit Data' }}
                 </button>
              </div>
         </div>

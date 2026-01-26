@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     item: Object,
@@ -49,7 +50,9 @@ const getUploadButtonLabel = (item) => {
 
 const canManageFiles = (item) => {
     if (props.isAdmin) return false;
-    return item.status !== 4 && item.status !== 9;
+    // Status 0: Menunggu Validasi (No Upload)
+    // Use loose comparison because status might be string
+    return item.status != 0 && item.status != 4 && item.status != 9;
 };
 </script>
 
@@ -62,11 +65,11 @@ const canManageFiles = (item) => {
         <div class="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/20 blur-2xl pointer-events-none"></div>
         
         <div class="p-4 flex flex-col h-full relative z-10" :class="getStatusColor(item.status).text">
-            <div class="flex justify-between items-center mb-3">
-                <span class="bg-white/80 px-2 py-1 text-xs font-bold rounded border border-white/50 uppercase tracking-wide">
+            <div class="flex justify-between items-start gap-2 mb-3">
+                <span class="bg-white/80 px-2 py-1 text-xs font-bold rounded border border-white/50 uppercase tracking-wide flex-1">
                     {{ item.kategori?.label || 'Kerjasama' }}
                 </span>
-                <span class="font-bold uppercase text-sm">
+                <span class="font-bold uppercase text-sm whitespace-nowrap shrink-0 text-right">
                     {{ formatDate(item.created_at) }}
                 </span>
             </div>
@@ -111,6 +114,16 @@ const canManageFiles = (item) => {
                 </div>
 
                 <div class="w-full grid grid-cols-2 gap-2 mt-2">
+                    <!-- Edit Button (Only for Status 0 & Not Admin) -->
+                     <button 
+                        v-if="!isAdmin && item.status == 0"
+                        @click.stop="$emit('edit', item)" 
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-white text-yellow-600 hover:bg-yellow-50 col-span-2 shadow-sm"
+                    >
+                        <Icon icon="solar:pen-bold" class="w-3.5 h-3.5" />
+                        <span>Edit Pengajuan</span>
+                    </button>
+
                     <button 
                         v-if="!isAdmin && item.status == 2 && (!item.penjadwalans || item.penjadwalans.length === 0 || item.penjadwalans[0].status === 2)"
                         @click.stop="$emit('schedule', item)" 
@@ -123,7 +136,6 @@ const canManageFiles = (item) => {
                     <button 
                         @click.stop="$emit('detail', item)" 
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all bg-gray-900 text-white"
-                        :class="{'col-span-2': !canManageFiles(item) && !(!isAdmin && item.status == 2 && (!item.penjadwalans || item.penjadwalans.length === 0 || item.penjadwalans[0].status === 2))}"
                     >
                         <span>Detail</span>
                         <Icon icon="solar:alt-arrow-right-bold" class="w-3.5 h-3.5" />

@@ -64,7 +64,7 @@ const submit = () => {
         mou: form.draft_mou
     });
     
-    form.post(route('permohonan.upload-files', props.permohonan.uuid), {
+    form.post(route('permohonan.upload', props.permohonan.uuid), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {

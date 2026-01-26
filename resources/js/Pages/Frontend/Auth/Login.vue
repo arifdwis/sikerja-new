@@ -5,8 +5,47 @@
     import InputError from '@/Components/InputError.vue';
     import { Head, Link, useForm } from '@inertiajs/vue3';
     import { useToast } from 'vue-toastification';
+    import { auth } from '@/utils/firebase';
+    import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+    import { router } from '@inertiajs/vue3';
 
     const toast = useToast();
+
+    const isGoogleLoading = ref(false);
+
+    const loginWithGoogle = async () => {
+        if (isGoogleLoading.value) return;
+        isGoogleLoading.value = true;
+        const provider = new GoogleAuthProvider();
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            // Send user info to backend
+            router.post(route('google.callback'), {
+                email: user.email,
+                name: user.displayName,
+                uid: user.uid
+            }, {
+                onFinish: () => { isGoogleLoading.value = false; },
+                onError: (errors) => {
+                    toast.error("Gagal login dengan Google.");
+                    console.error(errors);
+                    isGoogleLoading.value = false;
+                }
+            });
+        } catch (error) {
+            console.error("Firebase Auth Error:", error);
+            if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+                 toast.info("Login dibatalkan.");
+            } else if (error.code === 'auth/popup-blocked') {
+                 toast.error("Popup login diblokir oleh browser. Izinkan popup untuk melanjutkan.");
+            } else {
+                 toast.error("Terjadi kesalahan: " + error.message);
+            }
+            isGoogleLoading.value = false;
+        }
+    };
 
     defineProps({
         status: String,
@@ -76,60 +115,22 @@
                                 Login dengan SSO Samarinda
                             </a>
                         </div>
-
-                        <div class="relative my-6">
-                            <div class="absolute inset-0 flex items-center">
-                                <div class="w-full border-t border-gray-300 dark:border-gray-700"></div>
-                            </div>
-                            <div class="relative flex justify-center text-sm">
-                                <span class="px-4 bg-white dark:bg-gray-900 text-gray-500">atau login manual</span>
-                            </div>
+                        
+                        <!-- Google Login Button -->
+                        <div class="mb-6">
+                            <button 
+                                type="button"
+                                @click="loginWithGoogle"
+                                :disabled="isGoogleLoading"
+                                class="w-full flex items-center justify-center px-6 py-3 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Icon v-if="isGoogleLoading" icon="svg-spinners:ring-resize" class="w-5 h-5 mr-3" />
+                                <Icon v-else icon="flat-color-icons:google" class="w-5 h-5 mr-3" />
+                                {{ isGoogleLoading ? 'Menghubungkan...' : 'Login dengan Google' }}
+                            </button>
                         </div>
 
-                        <form @submit.prevent="submit">
-                            <div>
-                                <label for="email" class="block text-gray-900 dark:text-surface-0 text-sm font-medium mb-2">Email</label>
-                                <input 
-                                    id="email" 
-                                    type="email"
-                                    :class="['w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent dark:bg-gray-800 dark:text-white transition', form.errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
-                                    placeholder="Email address" 
-                                    v-model="form.email" 
-                                    required 
-                                    autofocus 
-                                    autocomplete="username" 
-                                    @keyup="clearEmailError" 
-                                />
-                                <InputError class="mt-2 font-bold" :message="form.errors.email" />
-                            </div>
-                            <div class="mt-4">
-                                <label for="password" class="block text-gray-900 dark:text-surface-0 font-medium text-sm mb-2">Password</label>
-                                <input 
-                                    id="password" 
-                                    type="password"
-                                    :class="['w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent dark:bg-gray-800 dark:text-white transition', form.errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600']"
-                                    placeholder="Password" 
-                                    v-model="form.password" 
-                                    required 
-                                    @keyup="clearPasswordError" 
-                                />
-                                <InputError class="mt-2 font-bold" :message="form.errors.password" />
-                            </div>
-                            <div class="flex items-center justify-between mt-4 mb-6 gap-8">
-                                <div class="flex items-center">
-                                    <Checkbox v-model:checked="form.remember" id="rememberme" class="mr-2"></Checkbox>
-                                    <label for="rememberme" class="text-gray-600 dark:text-gray-400 text-sm">Remember me</label>
-                                </div>
-                            </div>
-                            <button 
-                                type="submit" 
-                                class="w-full py-3 bg-gray-900 dark:bg-white dark:text-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
-                                :class="{'opacity-25': form.processing}" 
-                                :disabled="form.processing"
-                            >
-                                Sign In
-                            </button>
-                        </form>
+
 
                         <!-- Register Link -->
                         <div class="mt-6 text-center">

@@ -1,4 +1,7 @@
 <script setup>
+import { Link } from '@inertiajs/vue3';
+import { Icon } from '@iconify/vue';
+
 const props = defineProps({
     item: Object
 });
@@ -34,6 +37,14 @@ const getStatusColor = (status) => {
             </div>
         </div>
         <div class="flex items-center gap-2">
+            <button 
+                 v-if="item.status == 0"
+                 @click="$emit('edit', item)"
+                class="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 flex items-center gap-1"
+            >
+                <Icon icon="solar:pen-bold" class="w-4 h-4" />
+                Edit
+            </button>
             <button @click="$emit('detail', item)" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                 Detail
             </button>

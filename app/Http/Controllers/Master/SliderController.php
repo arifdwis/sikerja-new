@@ -81,8 +81,10 @@ class SliderController extends Controller implements HasMiddleware
 
         $this->data::create([
             'label' => $validated['label'],
+            'desc' => $request->desc,
             'file' => $imagePath,
             'kategori' => 'slider',
+            'is_active' => $request->boolean('is_active', true),
             'id_operator' => auth()->id() ?? 0,
         ]);
 
@@ -111,6 +113,8 @@ class SliderController extends Controller implements HasMiddleware
 
         $dataToUpdate = [
             'label' => $validated['label'],
+            'desc' => $request->desc,
+            'is_active' => $request->boolean('is_active'),
         ];
 
         if ($request->hasFile('image')) {

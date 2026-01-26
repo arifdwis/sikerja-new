@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Permohonan;
+use App\Models\User;
+use App\Services\WhatsappService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Routing\Controllers\HasMiddleware;
@@ -90,6 +93,57 @@ class PembahasanController extends Controller implements HasMiddleware
         $permohonan->update([
             'status' => Permohonan::STATUS_PENJADWALAN, // Status 2: Menunggu Penjadwalan
         ]);
+
+        // Send WhatsApp Notification
+        try {
+            $wa = app(WhatsappService::class);
+
+            // 1. Notify User (Pemohon) - FORMAL
+            $formalMsg = "*SIKERJA - PEMBARUAN STATUS*\n\n" .
+                "Yth. Pemohon Kerja Sama,\n" .
+                "Berikut kami sampaikan status terbaru permohonan Anda:\n\n" .
+                "Instansi: *{$permohonan->nama_instansi}*\n" .
+                "Perihal: {$permohonan->label}\n" .
+                "Status: *Menunggu Penjadwalan*\n" .
+                "Catatan: Pembahasan selesai. Silakan buat jadwal pertemuan.\n\n" .
+                "Terima kasih.\n" .
+                "_Pemerintah Kota Samarinda_";
+
+            // Try getting phone from User first, then Pemohon profile
+            $targetPhone = null;
+            $user = User::find($permohonan->id_pemohon_0);
+            if ($user && !empty($user->phone)) {
+                $targetPhone = $user->phone;
+            } else {
+                $pemohonProfile = $permohonan->pemohon1;
+                if ($pemohonProfile && !empty($pemohonProfile->phone)) {
+                    $targetPhone = $pemohonProfile->phone;
+                }
+            }
+
+            if ($targetPhone) {
+                $name = $user ? $user->name : ($pemohonProfile ? $pemohonProfile->name : 'Pemohon');
+                $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
+                $wa->sendMessage($targetPhone, $personalMsg);
+            }
+
+            // 2. Notify Group (Admin) - INTERNAL
+            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
+                "Pembahasan Selesai\n\n" .
+                "Instansi: {$permohonan->nama_instansi}\n" .
+                "Perihal: {$permohonan->label}\n" .
+                "Status: *Menunggu Penjadwalan*\n" .
+                "Operator: " . Auth::user()->name . "\n" .
+                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
+                "_Mohon monitor dashboard._";
+
+            $group = env('WA_GROUP_ID', '120363189423910876@g.us');
+            if ($group) {
+                $wa->sendMessage($group, $adminMsg);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Failed to send WA Notification: " . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Pembahasan selesai. Pemohon dapat membuat jadwal pertemuan.');
     }

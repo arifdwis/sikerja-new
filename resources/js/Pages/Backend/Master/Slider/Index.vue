@@ -212,7 +212,7 @@ const confirmDelete = (item) => {
 
                         <Column header="Gambar" class="w-24 text-center">
                             <template #body="{ data }">
-                                <img v-if="data.image" :src="'/storage/' + data.image" alt="Slider Image" class="w-16 h-10 object-cover rounded shadow-sm" />
+                                <img v-if="data.file" :src="'/storage/' + data.file" alt="Slider Image" class="w-16 h-10 object-cover rounded shadow-sm" />
                                 <span v-else class="text-gray-400 text-xs">No Image</span>
                             </template>
                         </Column>

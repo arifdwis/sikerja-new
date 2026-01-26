@@ -70,6 +70,7 @@ watch(groupBy, (newVal) => {
 });
 
 const createDialog = ref(false);
+const editDialog = ref(false);
 const trackingSidebar = ref(false);
 const detailDialog = ref(false);
 const uploadDialog = ref(false);
@@ -96,8 +97,19 @@ const handleFileStatusUpdate = (updatedFile) => {
 const openCreateModal = () => createDialog.value = true;
 const closeCreateModal = () => createDialog.value = false;
 
+const openEditModal = (item) => {
+    selectedItem.value = item; // Re-use selectedItem for edit too
+    editDialog.value = true;
+};
+const closeEditModal = () => editDialog.value = false;
+
 const handleCreateSuccess = () => {
     closeCreateModal();
+    router.reload({ only: ['permohonan'] });
+};
+
+const handleEditSuccess = () => {
+    closeEditModal();
     router.reload({ only: ['permohonan'] });
 };
 
@@ -121,6 +133,10 @@ const openDetailModal = async (item) => {
 };
 
 const openUploadDialog = (item) => {
+    if (item.status == 0) {
+        toast.error('Mohon tunggu validasi admin sebelum mengupload berkas.');
+        return;
+    }
     selectedItem.value = item;
     uploadDialog.value = true;
 };
@@ -137,7 +153,8 @@ const goToDetail = (item) => {
 
 const isAdmin = computed(() => {
     const userRole = page.props.auth?.user?.roles?.[0]?.name;
-    return ['admin', 'super-admin', 'verifikator', 'tkksd'].includes(userRole);
+    // Update role names to match DB (administrator, superadmin) + keep compatibility
+    return ['administrator', 'admin', 'superadmin', 'super-admin', 'verifikator', 'tkksd'].includes(userRole);
 });
 
 const groupedData = computed(() => {
@@ -238,6 +255,7 @@ const groupedData = computed(() => {
                             :item="item"
                             :isAdmin="isAdmin"
                             @detail="goToDetail"
+                            @edit="openEditModal"
                             @schedule="openJadwalForm"
                             @tracking="openTrackingSidebar"
                             @upload="openUploadDialog"
@@ -250,6 +268,7 @@ const groupedData = computed(() => {
                             :key="item.id" 
                             :item="item"
                             @detail="goToDetail"
+                            @edit="openEditModal"
                             @tracking="openTrackingSidebar"
                         />
                     </div>
@@ -266,6 +285,22 @@ const groupedData = computed(() => {
                     :corporate="props.corporate"
                     :pemohonanList="props.pemohonanList"
                     @success="handleCreateSuccess" 
+                />
+            </div>
+        </Dialog>
+
+        <Dialog v-model:visible="editDialog" modal header="Edit Permohonan Kerjasama" :style="{ width: '1000px' }" :breakpoints="{ '960px': '95vw' }" class="p-0 overflow-hidden">
+            <div class="h-[80vh] flex flex-col">
+                <CreateForm 
+                    v-if="selectedItem"
+                    mode="edit"
+                    :initialData="selectedItem"
+                    :kategoris="props.kategoris || []" 
+                    :provinsis="props.provinsis" 
+                    :pemohon="props.pemohon"
+                    :corporate="props.corporate"
+                    :pemohonanList="props.pemohonanList"
+                    @success="handleEditSuccess" 
                 />
             </div>
         </Dialog>

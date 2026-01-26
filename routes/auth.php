@@ -25,6 +25,9 @@ Route::prefix('oauth/sso')->group(function () {
     Route::get('logout', [SSOController::class, 'logout'])->name('sso.logout');
 });
 
+// Google Firebase Auth
+Route::post('oauth/google/callback', [\App\Http\Controllers\Auth\GoogleController::class, 'callback'])->name('google.callback');
+
 Route::middleware('guest')->group(function () {
     // Register (optional - bisa disable jika hanya SSO)
     Route::get('register', [RegisteredUserController::class, 'create'])

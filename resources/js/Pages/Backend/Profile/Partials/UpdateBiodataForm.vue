@@ -23,7 +23,7 @@ const form = useForm({
     gender: pemohon?.gender || 'L',
     phone: pemohon?.phone || '',
     email: pemohon?.email || page.props.auth?.user?.email || '',
-    kota_id: pemohon?.kota_id || null,
+    kota_id: pemohon?.kota_id ? Number(pemohon.kota_id) : null,
     address: pemohon?.address || '',
     unit_kerja: pemohon?.unit_kerja || '',
     nip: pemohon?.nip || '',

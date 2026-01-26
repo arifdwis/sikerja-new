@@ -116,9 +116,9 @@ class LaporanController extends Controller
             'laporan' => $grouped,
             'summary' => [
                 'total' => $data->count(),
-                'active' => $grouped['berlangsung']->count(),
-                'warning' => $grouped['segera_berakhir']->count(),
-                'expired' => $grouped['berakhir']->count(),
+                'berlangsung' => $grouped['berlangsung']->count(),
+                'segera_berakhir' => $grouped['segera_berakhir']->count(),
+                'berakhir' => $grouped['berakhir']->count(),
             ],
             'filters' => $request->only(['search', 'tahun', 'bulan', 'kategori_id']),
             'availableYears' => $availableYears,

@@ -147,7 +147,7 @@ const getSeverity = (alertLevel) => {
                             <div class="flex justify-between items-start">
                                 <div class="text-left">
                                     <h1 class="text-3xl font-bold tracking-tight text-white/90">
-                                        {{ summary?.total || 0 }}
+                                        {{ summary?.berakhir || 0 }}
                                     </h1>
                                     <p class="mt-2 text-xs uppercase font-semibold text-white/80">
                                         Telah Berakhir

@@ -31,22 +31,29 @@ class WhatsappService
         }
 
         try {
-            // Normalize number if it looks like a phone number and not a Group ID (@g.us)
-            if (strpos($target, '@g.us') === false) {
-                $target = self::normalizePhone($target);
+            // Normalize & Suffix handling (Matching Old App Logic)
+            if (strpos($target, '@g.us') !== false) {
+                // It's a group, keep as is
+            } else {
+                // Must be an individual, normalize and append suffix
+                $normalized = self::normalizePhone($target);
+                if (!$normalized) {
+                    Log::warning("Invalid WA Target: $target");
+                    return false;
+                }
+                $target = $normalized . '@s.whatsapp.net';
             }
 
-            if (!$target) {
-                Log::warning("Invalid WA API Target: null or empty");
-                return false;
-            }
-
-            $response = Http::post($url, [
-                'user' => $user,
-                'pass' => $pass,
-                'id' => $target, // The API expects 'id'
-                'pesan' => $message
-            ]);
+            // Using Laravel Http Facade with Basic Auth (Matching Old App Guzzle Auth)
+            $response = Http::withBasicAuth($user, $pass)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])
+                ->post($url, [
+                    'number' => $target,
+                    'message' => $message,
+                ]);
 
             if ($response->successful()) {
                 Log::info("WA Message sent to $target");
@@ -71,16 +78,28 @@ class WhatsappService
         if (empty($phone))
             return null;
 
+        $phone = trim($phone);
         $phone = preg_replace('/[^0-9]/', '', $phone);
 
         if (empty($phone))
             return null;
 
+        // Handle generic 62 prefix first
         if (substr($phone, 0, 2) === '62') {
+            // Check for double prefix like 6208...
+            if (substr($phone, 0, 3) === '620') {
+                return '62' . substr($phone, 3);
+            }
             return $phone;
-        } elseif (substr($phone, 0, 1) === '0') {
+        }
+
+        // Handle standard local 08 or 0 prefix
+        if (substr($phone, 0, 1) === '0') {
             return '62' . substr($phone, 1);
-        } elseif (substr($phone, 0, 1) === '8') {
+        }
+
+        // Handle number starting without 0 (e.g. 812...)
+        if (substr($phone, 0, 1) === '8') {
             return '62' . $phone;
         }
 
