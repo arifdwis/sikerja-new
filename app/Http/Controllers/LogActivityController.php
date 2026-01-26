@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Spatie\Activitylog\Models\Activity;
+use App\Models\UserActivity;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 
@@ -16,7 +16,7 @@ class LogActivityController extends Controller implements HasMiddleware
     protected $data;
     protected $share;
 
-    public function __construct(Activity $data)
+    public function __construct(UserActivity $data)
     {
         $this->title = 'Log Activity';
         $this->view = 'Backend/Settings/LogActivity';
@@ -50,7 +50,9 @@ class LogActivityController extends Controller implements HasMiddleware
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'like', "%{$search}%")
-                    ->orWhere('log_name', 'like', "%{$search}%");
+                    ->orWhere('log_name', 'like', "%{$search}%")
+                    ->orWhere('method', 'like', "%{$search}%")
+                    ->orWhere('path', 'like', "%{$search}%");
             });
         }
 

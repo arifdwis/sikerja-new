@@ -101,27 +101,35 @@ const getSubjectName = (data) => {
                 
                 <div class="max-w-full w-full bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6 dark:text-gray-100">
                     <!-- Filters -->
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                        <div class="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                            <!-- Search -->
-                            <div class="relative w-full md:w-64">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <i class="pi pi-search text-gray-400"></i>
-                                </span>
-                                <InputText 
-                                    v-model="searchQuery" 
-                                    placeholder="Search logs..." 
-                                    class="pl-10 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                                />
-                            </div>
-
-                            <!-- Log Name Filter -->
+                    <!-- Search and Filters -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 md:gap-0">
+                        <div class="flex flex-col sm:flex-row gap-2 md:gap-4 w-full md:w-auto">
                             <Dropdown 
                                 v-model="selectedLogName" 
                                 :options="logNames" 
                                 showClear
-                                placeholder="Filter by Type" 
-                                class="w-full md:w-56"
+                                placeholder="Tipe Log" 
+                                size="small"
+                                class="w-full md:w-48"
+                            />
+                            <InputText 
+                                size="small" 
+                                v-model="searchQuery" 
+                                placeholder="Cari log..." 
+                                class="border block rounded w-full sm:w-64 dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                            />
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 md:gap-4 items-start sm:items-center">
+                            <!-- Paginator Top -->
+                            <Paginator 
+                                size="small" 
+                                :totalRecords="datas.total" 
+                                :rows="perPage" 
+                                :first="(currentPage - 1) * perPage"
+                                :rowsPerPageOptions="rowsPerPageOptions" 
+                                @page="onPageChange" 
+                                template="RowsPerPageDropdown PrevPageLink CurrentPageReport NextPageLink"
+                                currentPageReportTemplate="{first} - {last} dari {totalRecords}" 
                             />
                         </div>
                     </div>
