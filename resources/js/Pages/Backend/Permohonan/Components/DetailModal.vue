@@ -144,19 +144,22 @@ const handleUpdateVisible = (val) => {
                                     </h3>
 
                                     <div class="space-y-4">
-                                    <div>
-                                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Unit Kerja Mitra</p>
-                                        <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">
-                                            {{ data.pemohon2?.unit_kerja || data.pemohon2?.name || 'Pemerintah Kota Samarinda' }}
-                                        </p>
-                                    </div>
-                                        <div v-if="data.pemohon2?.jabatan">
-                                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Jabatan</p>
-                                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ data.pemohon2?.jabatan }}</p>
-                                    </div>
-                                    <div v-else>
-                                        <p class="text-sm text-gray-500 italic">Mitra spesifik belum ditentukan / General.</p>
-                                    </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Nama Pejabat</p>
+                                            <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">
+                                                {{ data.pemohon2?.name || '-' }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Jabatan</p>
+                                            <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ data.pemohon2?.jabatan || '-' }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Unit Kerja Mitra</p>
+                                            <p class="text-sm text-gray-700 dark:text-gray-300">
+                                                {{ data.pemohon2?.unit_kerja || 'Pemerintah Kota Samarinda' }}
+                                            </p>
+                                        </div>
                                     </div>
                             </div>
                         </div>
@@ -187,7 +190,11 @@ const handleUpdateVisible = (val) => {
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                     <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                                         <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Jangka Waktu</h4>
-                                        <p class="text-sm font-medium">{{ data.jangka_waktu || '-' }}</p>
+                                        <p class="text-sm font-medium mb-2">{{ data.jangka_waktu || '-' }}</p>
+                                        <div v-if="data.tanggal_mulai && data.tanggal_berakhir" class="text-xs text-gray-500 border-t border-gray-200 mt-2 pt-2 flex justify-between">
+                                            <span>Mulai: <b class="text-gray-700 dark:text-gray-300">{{ formatDate(data.tanggal_mulai) }}</b></span>
+                                            <span>S.d: <b class="text-gray-700 dark:text-gray-300">{{ formatDate(data.tanggal_berakhir) }}</b></span>
+                                        </div>
                                     </div>
                                     <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg">
                                         <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Lokasi Kerjasama</h4>
@@ -201,7 +208,7 @@ const handleUpdateVisible = (val) => {
                                         <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Analisis Dampak</h4>
                                         <p class="text-sm text-gray-700 dark:text-gray-300">{{ data.analisis_dampak }}</p>
                                     </div>
-                                        <div v-if="data.pembiayaan" class="col-span-1 md:col-span-2">
+                                    <div v-if="data.pembiayaan" class="col-span-1 md:col-span-2">
                                         <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Pembiayaan</h4>
                                         <p class="text-sm text-gray-700 dark:text-gray-300">{{ data.pembiayaan }}</p>
                                     </div>

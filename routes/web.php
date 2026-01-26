@@ -53,71 +53,16 @@ Route::get('/api/kotas-all', function () {
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified', 'pemohon.profile'])->name('dashboard');
 
 Route::middleware(['auth', 'pemohon.profile'])->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::put('/profile/biodata', [ProfileController::class, 'updateBiodata'])->name('profile.biodata.update');
-    Route::put('/profile/corporate', [ProfileController::class, 'updateCorporate'])->name('profile.corporate.update');
 
+    // PEMOHON Routings
+    require __DIR__ . '/pemohon.php';
 
+    // TKKSD Routings
+    require __DIR__ . '/tkksd.php';
 
-    // Master Data
-    Route::prefix('master')->name('master.')->group(function () {
-        Route::resource('kategori', KategoriController::class);
-        // Route::resource('corporate', CorporateController::class);
-        Route::resource('pemohon', \App\Http\Controllers\Master\PemohonController::class);
-        Route::resource('slider', \App\Http\Controllers\Master\SliderController::class);
-        Route::resource('faq', \App\Http\Controllers\Master\FaqController::class);
-        Route::resource('laman', \App\Http\Controllers\Master\LamanController::class);
-    });
+    // ADMIN Routings
+    require __DIR__ . '/admin.php';
 
-    // Permohonan (Pemohon)
-    Route::get('/riwayat', [PermohonanController::class, 'riwayat'])->name('riwayat.index');
-    Route::get('permohonan/selesai', [PermohonanController::class, 'index'])->name('permohonan.selesai');
-    Route::get('api/kotas/{provinsi}', [PermohonanController::class, 'getKotas'])->name('api.kotas');
-    Route::resource('permohonan', PermohonanController::class);
-    Route::post('permohonan/{permohonan}/upload', [PermohonanController::class, 'uploadFile'])->name('permohonan.upload');
-    Route::delete('permohonan/{permohonan}/file/{file}', [PermohonanController::class, 'deleteFile'])->name('permohonan.file.destroy');
-    Route::put('permohonan/{permohonan}/submit', [PermohonanController::class, 'submit'])->name('permohonan.submit');
-    Route::get('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'getFileDiskusi'])->name('permohonan.file.diskusi.index');
-    Route::post('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'storeFileDiskusi'])->name('permohonan.file.diskusi.store');
-    Route::put('permohonan/file/{uuid}/review', [PermohonanController::class, 'reviewFile'])->name('permohonan.file.review');
-    Route::post('permohonan/file/{uuid}/revision', [PermohonanController::class, 'uploadFileRevision'])->name('permohonan.file.revision');
-
-    // Penjadwalan
-    Route::resource('penjadwalan', PenjadwalanController::class)->only(['store', 'update', 'destroy']);
-    Route::put('penjadwalan/{penjadwalan}/review', [PenjadwalanController::class, 'review'])->name('penjadwalan.review');
-
-    // Persetujuan (Admin)
-    Route::resource('persetujuan', PersetujuanController::class)->only(['index', 'show', 'update']);
-
-    // Validasi (Admin)
-    Route::resource('validasi', ValidasiController::class)->only(['index', 'show', 'update']);
-
-    // Pembahasan
-    Route::resource('pembahasan', PembahasanController::class);
-
-    // Laporan
-    Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
-
-    // Settings (Admin)
-    Route::get('pengaturan', function () {
-        return redirect()->route('settings.users.index');
-    })->name('pengaturan');
-
-    Route::prefix('settings')->name('settings.')->group(function () {
-        Route::resource('users', App\Http\Controllers\UserController::class);
-        Route::resource('roles', App\Http\Controllers\RoleController::class);
-
-        // Roles Permission
-        Route::get('roles/{role}/permission', [App\Http\Controllers\RoleController::class, 'permission'])->name('roles.permission');
-        Route::put('roles/{role}/permission', [App\Http\Controllers\RoleController::class, 'updatePermission'])->name('roles.permission.update');
-
-        Route::resource('permissions', App\Http\Controllers\PermissionController::class);
-        Route::resource('menu', App\Http\Controllers\MenuController::class);
-        Route::post('menu/reorder', [App\Http\Controllers\MenuController::class, 'reorder'])->name('menu.reorder');
-        Route::resource('log-activity', App\Http\Controllers\LogActivityController::class)->only(['index', 'show', 'destroy']);
-    });
 });
 
 

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { Head, router, Link } from '@inertiajs/vue3';
+import { Head, router, Link, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
 import { useConfirm } from 'primevue/useconfirm';
@@ -12,6 +12,7 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import ConfirmDialog from 'primevue/confirmdialog';
 import Paginator from 'primevue/paginator';
+import Dialog from 'primevue/dialog';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -26,6 +27,63 @@ const searchQuery = ref(props.filters?.search || '');
 const currentPage = ref(props.datas.current_page);
 const perPage = ref(props.datas.per_page);
 const rowsPerPageOptions = [10, 25, 50, 100];
+
+// Modal State
+const displayModal = ref(false);
+const modalTitle = ref('');
+const isEdit = ref(false);
+const editingId = ref(null);
+
+const form = useForm({
+    name: '',
+    guard_name: 'web',
+});
+
+const openCreateModal = () => {
+    isEdit.value = false;
+    modalTitle.value = 'Tambah Permission';
+    form.reset();
+    form.guard_name = 'web';
+    form.clearErrors();
+    displayModal.value = true;
+};
+
+const openEditModal = (data) => {
+    isEdit.value = true;
+    modalTitle.value = 'Edit Permission';
+    editingId.value = data.id;
+    form.reset();
+    form.clearErrors();
+    form.name = data.name;
+    form.guard_name = data.guard_name;
+    displayModal.value = true;
+};
+
+const closeModal = () => {
+    displayModal.value = false;
+    form.reset();
+    editingId.value = null;
+};
+
+const submitForm = () => {
+    if (isEdit.value) {
+        form.put(route(props.share.prefix + '.update', editingId.value), {
+            onSuccess: () => {
+                toast.success('Permission berhasil diperbarui');
+                closeModal();
+            },
+            onError: () => toast.error('Gagal memperbarui permission'),
+        });
+    } else {
+        form.post(route(props.share.prefix + '.store'), {
+            onSuccess: () => {
+                toast.success('Permission berhasil ditambahkan');
+                closeModal();
+            },
+            onError: () => toast.error('Gagal menambahkan permission'),
+        });
+    }
+};
 
 const applyFilters = () => {
     router.visit(route(props.share.prefix + '.index'), {
@@ -73,10 +131,6 @@ const deleteData = (id) => {
     });
 };
 
-const editData = (id) => {
-    router.visit(route(props.share.prefix + '.edit', id));
-};
-
 const size = ref({ label: 'Small', value: 'small' });
 
 </script>
@@ -114,9 +168,13 @@ const size = ref({ label: 'Small', value: 'small' });
                                 currentPageReportTemplate="{first} - {last} dari {totalRecords}" 
                             />
                             
-                            <Link :href="route(share.prefix + '.create')" class="text-white dark:text-gray-900 bg-gray-900 dark:bg-gray-100 font-semibold rounded-lg text-sm px-4 py-2.5 inline-flex items-center">
-                                <Icon icon="solar:add-square-broken" class="w-5 h-5 me-2 -ms-1" /> Tambah
-                            </Link>
+                            <Button 
+                                label="Tambah" 
+                                icon="pi pi-plus" 
+                                size="small"
+                                class="p-button-primary"
+                                @click="openCreateModal"
+                            />
                         </div>
                     </div>
 
@@ -141,11 +199,10 @@ const size = ref({ label: 'Small', value: 'small' });
                             </template>
                         </Column>
                         
-                        <!-- Dummy Guard Column to match User's 'old style' screenshot if needed, but keeping it meaningful -->
                         <Column header="GUARD" class="w-32 !text-center">
-                             <template #body>
+                             <template #body="{ data }">
                                 <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                                    web
+                                    {{ data.guard_name || 'web' }}
                                 </span>
                             </template>
                         </Column>
@@ -171,7 +228,7 @@ const size = ref({ label: 'Small', value: 'small' });
                                         outlined
                                         size="small"
                                         icon="pi pi-pencil" 
-                                        @click="editData(data.id)" 
+                                        @click="openEditModal(data)" 
                                         v-tooltip.top="'Edit'" 
                                         class="!w-8 !h-8 !p-0 bg-white"
                                     />
@@ -203,6 +260,31 @@ const size = ref({ label: 'Small', value: 'small' });
                 </div>
             </div>
         </div>
+
+        <!-- Modal Create/Edit -->
+        <Dialog v-model:visible="displayModal" :header="modalTitle" modal class="w-full md:w-1/3">
+            <div class="flex flex-col gap-4 mt-2">
+                 <div class="flex flex-col gap-2">
+                    <label for="name" class="text-sm font-medium text-gray-700 dark:text-gray-300">Nama Permission</label>
+                    <InputText id="name" v-model="form.name" class="w-full" placeholder="Contoh: users.create" autofocus />
+                    <small class="text-xs text-gray-500">Format: <code>resource.action</code></small>
+                    <small v-if="form.errors.name" class="text-red-500">{{ form.errors.name }}</small>
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <label for="guard_name" class="text-sm font-medium text-gray-700 dark:text-gray-300">Guard Name</label>
+                    <InputText id="guard_name" v-model="form.guard_name" class="w-full" placeholder="web" />
+                    <small class="text-xs text-gray-500">Default: <code>web</code></small>
+                    <small v-if="form.errors.guard_name" class="text-red-500">{{ form.errors.guard_name }}</small>
+                </div>
+            </div>
+            <template #footer>
+                <div class="flex justify-end gap-2 pt-4">
+                    <Button label="Batal" icon="pi pi-times" text @click="closeModal" severity="secondary" />
+                    <Button label="Simpan" icon="pi pi-check" @click="submitForm" :loading="form.processing" />
+                </div>
+            </template>
+        </Dialog>
     </AuthenticatedLayout>
     <ConfirmDialog></ConfirmDialog>
 </template>

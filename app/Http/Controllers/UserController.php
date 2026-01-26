@@ -62,11 +62,30 @@ class UserController extends Controller implements HasMiddleware
             });
         }
 
+        if ($request->has('sso') && $request->sso !== null) {
+            $isSso = filter_var($request->sso, FILTER_VALIDATE_BOOLEAN);
+            if ($isSso) {
+                $query->whereNotNull('uid');
+            } else {
+                $query->whereNull('uid');
+            }
+        }
+
+        if ($request->has('verified') && $request->verified !== null) {
+            $isVerified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN);
+            if ($isVerified) {
+                $query->whereNotNull('email_verified_at');
+            } else {
+                $query->whereNull('email_verified_at');
+            }
+        }
+
         $datas = $query->paginate(10)->withQueryString();
 
         return Inertia::render("$this->view/Index", [
             'users' => $datas,
             'datas' => $datas,
+            'roles' => Role::all(),
             'share' => $this->share,
             'filters' => $request->only(['search']),
         ]);
