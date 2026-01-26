@@ -83,7 +83,8 @@ class HandleInertiaRequests extends Middleware
         $roles = $user->roles->pluck('slug')->toArray();
 
         $menus = \App\Models\Menu::where('is_active', true)
-            ->orderBy('order')
+            ->orderBy('order', 'asc')
+            ->orderBy('title', 'asc') // Tie breaker
             ->get();
 
         return $this->buildMenuTree($menus, null, $roles);

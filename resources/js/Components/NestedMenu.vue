@@ -108,10 +108,10 @@ const updateChildList = (index, newChildren) => {
                     </div>
                 </div>
 
-                <!-- Children (Recursive) -->
-                <div class="pl-8 border-l-2 border-dashed border-gray-200 dark:border-gray-700 ml-6 mt-2" v-if="element.children && element.children.length > 0">
+                <!-- Children (Recursive) - Always render to allow dropping new items -->
+                <div class="pl-8 border-l-2 border-dashed border-gray-200 dark:border-gray-700 ml-6 mt-2 pb-2">
                      <NestedMenu 
-                        :modelValue="element.children" 
+                        :modelValue="element.children || []" 
                         @update:modelValue="updateChildList(index, $event)"
                         @add-child="$emit('add-child', $event)" 
                         @edit="$emit('edit', $event)"

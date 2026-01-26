@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
@@ -26,6 +26,15 @@ const confirm = useConfirm();
 // Tree Data Reaktif
 const treeValue = ref(props.nodes);
 const isSaving = ref(false);
+
+// Auto-Save Watcher
+let autoSaveTimeout;
+watch(treeValue, () => {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+        saveOrder();
+    }, 1000); // 1 second debounce
+}, { deep: true });
 
 // Modal
 const displayModal = ref(false);
@@ -145,25 +154,25 @@ const saveOrder = async () => {
     isSaving.value = true;
     try {
         if (!treeValue.value || treeValue.value.length === 0) {
-            alert('Data menu kosong, tidak ada yang disimpan.');
+            // alert('Data menu kosong, tidak ada yang disimpan.');
             return;
         }
 
         // Debug: Log tree value to see if it changed
-        console.log('Tree Structure before Save:', JSON.parse(JSON.stringify(treeValue.value)));
+        // console.log('Tree Structure before Save:', JSON.parse(JSON.stringify(treeValue.value)));
 
         const payload = flattenTree(treeValue.value);
-        console.log('Sending Flattened Payload:', payload);
+        // console.log('Sending Flattened Payload:', payload);
         
         await axios.post('/settings/menu/reorder', { items: payload });
         
         toast.success('Urutan menu berhasil disimpan');
         
         // Full visit to ensure Shared Props (Sidebar menu) are refreshed
-        // Partial reload ({ only: ['nodes'] }) would skip updating auth.menu
+        // Force state reload to ensure Sidebar receives new order
         router.visit(window.location.pathname, { 
             preserveScroll: true,
-            preserveState: false // Reset state to ensure fresh data
+            preserveState: false
         });
         
     } catch (e) {
@@ -171,7 +180,7 @@ const saveOrder = async () => {
         const msg = e.response?.data?.message || e.message || 'Unknown error';
         toast.error('Gagal menyimpan: ' + msg);
         // Fallback alert ensures user sees error even if toast fails
-        alert('Gagal menyimpan: ' + msg); 
+        // alert('Gagal menyimpan: ' + msg); 
     } finally {
         isSaving.value = false;
     }
@@ -189,7 +198,7 @@ const saveOrder = async () => {
                      <button 
                         @click="saveOrder" 
                         :disabled="isSaving"
-                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition-colors bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition-colors bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed hidden md:flex"
                     >
                         <i class="pi" :class="isSaving ? 'pi-spinner pi-spin' : 'pi-check'"></i>
                         {{ isSaving ? 'Menyimpan...' : 'Simpan Urutan' }}
@@ -217,7 +226,7 @@ const saveOrder = async () => {
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 p-6">
                     <p class="mb-4 text-sm text-gray-500 dark:text-gray-400 border-b pb-2">
                         <Icon icon="solar:info-circle-linear" class="inline w-4 h-4 mr-1"/>
-                        Geser (Drag & Drop) untuk mengatur urutan dan struktur hirarki menu. Klik <strong>Simpan Urutan</strong> untuk menerapkan perubahan.
+                        Geser (Drag & Drop) untuk mengatur urutan dan struktur hirarki menu. Perubahan akan disimpan secara otomatis.
                     </p>
 
                     <div v-if="treeValue && treeValue.length > 0">

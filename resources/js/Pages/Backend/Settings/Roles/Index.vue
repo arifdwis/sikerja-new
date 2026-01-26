@@ -205,9 +205,11 @@ const expandedRows = ref([]);
 
                         <Column header="USERS" class="!text-center w-24">
                             <template #body="{ data }">
-                                <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">
-                                    {{ data.users_count || 0 }} Users
-                                </span>
+                                <div class="flex justify-center">
+                                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full dark:bg-blue-900 dark:text-blue-300 min-w-[2rem] text-center">
+                                        {{ data.users_count || 0 }}
+                                    </span>
+                                </div>
                             </template>
                         </Column>
 
