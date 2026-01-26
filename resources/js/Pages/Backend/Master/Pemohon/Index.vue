@@ -192,7 +192,11 @@ const confirmDelete = (item) => {
                             </template>
                         </Column>
 
-                        <Column field="instansi" header="Instansi" sortable />
+                        <Column header="Instansi" sortable>
+                            <template #body="{ data }">
+                                {{ data.instansi || data.nama_instansi || data.unit_kerja || '-' }}
+                            </template>
+                        </Column>
 
                         <Column field="jabatan" header="Jabatan" sortable />
 

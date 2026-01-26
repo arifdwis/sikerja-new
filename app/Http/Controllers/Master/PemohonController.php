@@ -52,6 +52,8 @@ class PemohonController extends Controller implements HasMiddleware
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('instansi', 'like', "%{$search}%")
+                    ->orWhere('unit_kerja', 'like', "%{$search}%")
+                    ->orWhere('nama_instansi', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
