@@ -5,11 +5,15 @@ import { computed, ref } from 'vue';
 import Header from '@/Pages/Backend/Dashboard/Components/Header.vue';
 import StagesStatusCount from '@/Pages/Backend/Dashboard/Components/StagesStatusCount.vue';
 import CreateForm from '@/Pages/Backend/Permohonan/Components/CreateForm.vue';
+import TrendChart from '@/Pages/Backend/Dashboard/Charts/TrendChart.vue';
+import StatusChart from '@/Pages/Backend/Dashboard/Charts/StatusChart.vue';
 import Dialog from 'primevue/dialog';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
     stats: Object,
+    chartTrend: Array,
+    chartStatus: Array,
     permohonanTerbaru: Array,
     kategoris: Array,
     provinsis: Array,
@@ -78,6 +82,27 @@ const statusLabels = {
                 
                 <!-- Stats Cards -->
                 <StagesStatusCount :counts="stats" />
+
+                <!-- Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Trend (Left 2/3) -->
+                    <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 overflow-hidden">
+                        <div class="mb-6 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-gray-900 dark:text-white text-lg">Statistik Pengajuan Saya</h3>
+                                <p class="text-sm text-gray-500">Trend data per bulan</p>
+                            </div>
+                        </div>
+                        <div class="h-80 w-full relative">
+                            <TrendChart :data="chartTrend" :dark-mode="false" />
+                        </div>
+                    </div>
+
+                    <!-- Status (Right 1/3) -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 flex flex-col justify-center overflow-hidden">
+                        <StatusChart :data="chartStatus" :dark-mode="false" />
+                    </div>
+                </div>
 
                 <!-- Action Button -->
                 <div class="flex justify-end">

@@ -13,6 +13,8 @@ import Paginator from 'primevue/paginator';
 import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
+import ApprovalModal from './Components/ApprovalModal.vue';
+import ActionDialogs from './Components/ActionDialogs.vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -273,123 +275,23 @@ const submitPersetujuan = () => {
             </div>
         </section>
 
-        <!-- Detail Dialog -->
-        <Dialog v-model:visible="detailDialog" modal header="Detail Permohonan" :style="{ width: '1100px' }" :breakpoints="{ '1199px': '95vw' }" maximizable class="p-0 overflow-hidden">
-             <div v-if="loadingDetail" class="p-6 space-y-4"><Skeleton height="20rem" /></div>
-             <div v-else-if="detailData" class="flex flex-col h-[85vh]">
-                <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/50 dark:bg-gray-900/50">
-                    <!-- Header -->
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-indigo-200 dark:border-indigo-900 shadow-sm relative overflow-hidden">
-                         <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-bl-full -mr-16 -mt-16 pointer-events-none"></div>
-                         <div class="relative z-10">
-                            <div class="flex items-center gap-2 mb-2">
-                                <Tag :value="detailData.kategori?.label" severity="info" class="text-xs px-2 py-1" />
-                                <span class="text-xs font-mono text-gray-500 border border-gray-200 rounded px-1.5 py-0.5">{{ detailData.nomor_permohonan || detailData.kode }}</span>
-                            </div>
-                            <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ detailData.label }}</h1>
-                            <div class="flex items-center gap-4 text-sm text-gray-500">
-                                <span>{{ detailData.nama_instansi }}</span>
-                                <div>
-                                    <span class="font-bold text-indigo-600">Jadwal Diajukan:</span> 
-                                    <span v-if="detailData.penjadwalans?.[0]">{{ formatDate(detailData.penjadwalans[0].tanggal) }} {{ formatTime(detailData.penjadwalans[0].waktu) }}</span>
-                                </div>
-                            </div>
-                         </div>
-                    </div>
+        <!-- Components -->
+        <ApprovalModal 
+            v-model:visible="detailDialog"
+            :loading="loadingDetail"
+            :data="detailData"
+            @reject="openRejectDialog"
+            @approve="openConfirmDialog"
+        />
 
-                    <!-- Layout -->
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                        <div class="xl:col-span-2 space-y-6">
-                             <!-- Schedule Info Card -->
-                             <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-5 border border-indigo-200 dark:border-indigo-700">
-                                <h4 class="font-bold text-indigo-800 dark:text-indigo-200 mb-4 flex items-center gap-2">
-                                    <Icon icon="solar:calendar-mark-bold" /> Detail Jadwal Pembahasan
-                                </h4>
-                                <div class="grid grid-cols-2 gap-4 text-sm" v-if="detailData.penjadwalans?.[0]">
-                                    <div>
-                                        <p class="text-xs font-bold uppercase text-gray-500 mb-1">Tanggal</p>
-                                        <p class="font-medium text-gray-800 dark:text-gray-200">{{ formatDate(detailData.penjadwalans[0].tanggal) }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs font-bold uppercase text-gray-500 mb-1">Waktu</p>
-                                        <p class="font-medium text-gray-800 dark:text-gray-200">{{ formatTime(detailData.penjadwalans[0].waktu) }} WITA</p>
-                                    </div>
-                                    <div class="col-span-2">
-                                        <p class="text-xs font-bold uppercase text-gray-500 mb-1">Lokasi</p>
-                                        <p class="font-medium text-gray-800 dark:text-gray-200">{{ detailData.penjadwalans[0].lokasi }}</p>
-                                    </div>
-                                    <div class="col-span-2" v-if="detailData.penjadwalans[0].agenda">
-                                        <p class="text-xs font-bold uppercase text-gray-500 mb-1">Agenda</p>
-                                        <p class="italic text-gray-700 dark:text-gray-300">"{{ detailData.penjadwalans[0].agenda }}"</p>
-                                    </div>
-                                </div>
-                             </div>
-
-                             <!-- Substansi -->
-                            <div class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 shadow-sm">
-                                <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><Icon icon="solar:document-text-bold" class="text-indigo-600" /> Substansi Kerjasama</h3>
-                                <div class="space-y-4 text-sm text-gray-700">
-                                    <div v-if="detailData.latar_belakang"><span class="font-bold block mb-1">Latar Belakang:</span> {{ detailData.latar_belakang }}</div>
-                                    <div v-if="detailData.maksud_tujuan"><span class="font-bold block mb-1">Maksud & Tujuan:</span> {{ detailData.maksud_tujuan }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Metadata Right -->
-                        <div class="space-y-6">
-                            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                                <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Informasi Kontak</h5>
-                                <div class="space-y-3 text-sm">
-                                    <div>
-                                        <p class="text-xs text-gray-500">Nama</p>
-                                        <p class="font-semibold">{{ detailData.operator?.name }}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-xs text-gray-500">Email</p>
-                                        <p class="font-semibold">{{ detailData.operator?.email }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Action Footer -->
-                <div class="bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 rounded-b-xl z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-                    <Button label="Tutup" severity="secondary" text @click="detailDialog = false" />
-                    <Button label="Tolak Jadwal" icon="pi pi-times-circle" severity="danger" @click="openRejectDialog(detailData)" />
-                    <Button label="Setujui Jadwal" icon="pi pi-check-circle" severity="success" @click="openConfirmDialog(detailData)" />
-                </div>
-            </div>
-        </Dialog>
-
-        <!-- Confirm Dialog -->
-        <Dialog v-model:visible="confirmDialog" modal header="Konfirmasi Persetujuan Jadwal" :style="{ width: '500px' }">
-            <div class="text-center p-4">
-                <i class="pi pi-verified text-green-600 text-5xl mb-4"></i>
-                <p class="mb-4">Setujui jadwal pembahasan ini?</p>
-                <div v-if="selectedItem?.penjadwalans?.[0]" class="bg-gray-50 p-3 rounded mb-6 text-left">
-                     <p class="font-bold">{{ formatDate(selectedItem.penjadwalans[0].tanggal) }} • {{ formatTime(selectedItem.penjadwalans[0].waktu) }}</p>
-                     <p class="text-sm text-gray-600">{{ selectedItem.penjadwalans[0].lokasi }}</p>
-                </div>
-                <div class="flex justify-center gap-2">
-                    <Button label="Batal" text @click="confirmDialog = false" />
-                    <Button label="Setujui Jadwal" severity="success" @click="submitPersetujuan" :loading="processing" />
-                </div>
-            </div>
-        </Dialog>
-
-        <!-- Reject Dialog -->
-        <Dialog v-model:visible="rejectDialog" modal header="Konfirmasi Penolakan Jadwal" :style="{ width: '500px' }">
-             <div class="p-2">
-                 <p class="mb-4">Anda akan menolak jadwal ini. Berikan alasan?</p>
-                 <div class="mb-4">
-                     <Textarea v-model="rejectReason" class="w-full" rows="4" placeholder="Alasan penolakan..." />
-                 </div>
-                 <div class="flex justify-end gap-2">
-                     <Button label="Batal" text @click="rejectDialog = false" />
-                     <Button label="Tolak Jadwal" severity="danger" @click="submitRejection" :loading="processing" />
-                 </div>
-             </div>
-        </Dialog>
+        <ActionDialogs 
+            v-model:confirmVisible="confirmDialog"
+            v-model:rejectVisible="rejectDialog"
+            v-model:rejectReason="rejectReason"
+            :item="selectedItem"
+            :processing="processing"
+            @confirm="submitPersetujuan"
+            @reject="submitRejection"
+        />
     </AuthenticatedLayout>
 </template>

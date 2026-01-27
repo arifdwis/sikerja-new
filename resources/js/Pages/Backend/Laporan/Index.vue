@@ -15,6 +15,8 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
 import axios from 'axios';
+import StatsCards from './Components/StatsCards.vue';
+import DetailModal from '../Permohonan/Components/DetailModal.vue';
 
 const props = defineProps({
     laporan: Object, 
@@ -102,64 +104,7 @@ const getSeverity = (alertLevel) => {
                 <Breadcrumb class="mb-6" />
 
                 <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <!-- Berlangsung (Emerald) -->
-                     <div class="relative flex cursor-pointer flex-col bg-clip-border rounded-xl text-white shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-white dark:bg-gray-800">
-                        <div class="bg-gradient-to-tr from-emerald-800 to-emerald-600 px-6 py-4 h-full">
-                            <div class="flex justify-between items-start">
-                                <div class="text-left">
-                                    <h1 class="text-3xl font-bold tracking-tight text-white/90">
-                                        {{ summary?.berlangsung || 0 }}
-                                    </h1>
-                                    <p class="mt-2 text-xs uppercase font-semibold text-white/80">
-                                        Berlangsung
-                                    </p>
-                                </div>
-                                <div class="flex items-center justify-center">
-                                    <Icon icon="solar:play-broken" class="w-10 h-10 text-white/60" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Segera Berakhir (Teal) -->
-                    <div class="relative flex cursor-pointer flex-col bg-clip-border rounded-xl text-white shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-white dark:bg-gray-800">
-                        <div class="bg-gradient-to-tr from-teal-800 to-teal-600 px-6 py-4 h-full">
-                            <div class="flex justify-between items-start">
-                                <div class="text-left">
-                                    <h1 class="text-3xl font-bold tracking-tight text-white/90">
-                                        {{ summary?.segera_berakhir || 0 }}
-                                    </h1>
-                                    <p class="mt-2 text-xs uppercase font-semibold text-white/80">
-                                        Segera Berakhir
-                                    </p>
-                                </div>
-                                <div class="flex items-center justify-center">
-                                    <Icon icon="solar:alarm-broken" class="w-10 h-10 text-white/60" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Telah Berakhir (Red) -->
-                     <div class="relative flex cursor-pointer flex-col bg-clip-border rounded-xl text-white shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 bg-white dark:bg-gray-800">
-                        <div class="bg-gradient-to-tr from-red-800 to-red-600 px-6 py-4 h-full">
-                            <div class="flex justify-between items-start">
-                                <div class="text-left">
-                                    <h1 class="text-3xl font-bold tracking-tight text-white/90">
-                                        {{ summary?.berakhir || 0 }}
-                                    </h1>
-                                    <p class="mt-2 text-xs uppercase font-semibold text-white/80">
-                                        Telah Berakhir
-                                    </p>
-                                </div>
-                                <div class="flex items-center justify-center">
-                                    <Icon icon="solar:close-circle-broken" class="w-10 h-10 text-white/60" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <StatsCards :summary="summary" />
 
                 <!-- Control Bar -->
                 <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
@@ -335,141 +280,12 @@ const getSeverity = (alertLevel) => {
             </div>
         </section>
 
-        <!-- Detail Modal (Reusing Design) -->
-        <Dialog v-model:visible="detailDialog" modal header="Detail Lengkap Kerjasama" :style="{ width: '1100px' }" :breakpoints="{ '1199px': '95vw' }" maximizable class="p-0 overflow-hidden">
-             <div v-if="loadingDetail" class="space-y-6 p-6">
-                 <div class="grid grid-cols-2 gap-6">
-                     <Skeleton height="15rem" class="w-full rounded-xl" />
-                     <Skeleton height="15rem" class="w-full rounded-xl" />
-                 </div>
-                 <Skeleton height="25rem" class="w-full rounded-xl" />
-            </div>
-            
-            <div v-else-if="detailData" class="flex flex-col h-[85vh]">
-                <!-- Scrollable Content -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/50 dark:bg-gray-900/50">
-                    <!-- Header Card -->
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-green-200 dark:border-green-900 shadow-sm relative overflow-hidden">
-                         <div class="absolute top-0 right-0 w-64 h-64 bg-green-50/50 dark:bg-green-900/20 rounded-bl-full -mr-16 -mt-16 pointer-events-none"></div>
-                         <div class="relative z-10 flex flex-col md:flex-row justify-between items-start gap-6">
-                            <div class="flex-1">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <Tag :value="detailData.kategori?.label" severity="success" class="text-xs px-2 py-1" />
-                                    <span class="text-xs font-mono text-gray-500 border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5">{{ detailData.nomor_permohonan || detailData.kode }}</span>
-                                </div>
-                                <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-2">{{ detailData.label }}</h1>
-                                <p class="text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                    <Icon icon="solar:calendar-date-bold" class="w-4 h-4" />
-                                    Masa berlaku: {{ formatDate(detailData.tanggal_mulai) }} - {{ formatDate(detailData.tanggal_berakhir) }}
-                                </p>
-                            </div>
-                         </div>
-                    </div>
-
-                    <!-- Grid Layout -->
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                        <!-- LEFT COLUMN: Details -->
-                        <div class="xl:col-span-2 space-y-8">
-                            <!-- PARA PIHAK SECTION -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- PIHAK KESATU -->
-                                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-green-200 dark:border-green-700 shadow-sm relative overflow-hidden group">
-                                     <div class="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
-                                     <h3 class="text-sm font-bold text-green-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <Icon icon="solar:user-circle-bold" /> PIHAK KESATU
-                                     </h3>
-                                     <div class="space-y-4">
-                                        <div>
-                                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Instansi</p>
-                                            <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">{{ detailData.nama_instansi || '-' }}</p>
-                                        </div>
-                                        <div v-if="detailData.pemohon1">
-                                            <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Penanggung Jawab</p>
-                                            <p class="font-bold text-gray-800">{{ detailData.pemohon1.name }}</p>
-                                        </div>
-                                     </div>
-                                </div>
-
-                                <!-- PIHAK KEDUA -->
-                                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-green-200 dark:border-green-700 shadow-sm relative overflow-hidden group">
-                                     <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                                     <h3 class="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <Icon icon="solar:buildings-2-bold" /> PIHAK KEDUA
-                                     </h3>
-                                     <div class="space-y-4">
-                                         <div v-if="detailData.pemohon2">
-                                            <div>
-                                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Pejabat</p>
-                                                <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">{{ detailData.pemohon2.name }}</p>
-                                            </div>
-                                             <div>
-                                                <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Jabatan</p>
-                                                <p class="text-sm text-gray-700 dark:text-gray-300">{{ detailData.pemohon2.jabatan }}</p>
-                                            </div>
-                                         </div>
-                                     </div>
-                                </div>
-                            </div>
-
-                            <!-- DETAIL KERJASAMA -->
-                            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                                <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 bg-gray-50/50">
-                                    <Icon icon="solar:document-text-bold" class="text-gray-400" />
-                                    <h3 class="font-bold text-gray-800 dark:text-gray-200">Substansi Kerjasama</h3>
-                                </div>
-                                <div class="p-6 space-y-8">
-                                    <div class="grid grid-cols-1 gap-6">
-                                        <div>
-                                            <h4 class="text-sm font-bold text-green-600 mb-2">Latar Belakang</h4>
-                                            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ detailData.latar_belakang }}</p>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-green-600 mb-2">Maksud & Tujuan</h4>
-                                            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ detailData.maksud_tujuan }}</p>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-green-600 mb-2">Ruang Lingkup</h4>
-                                            <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ detailData.ruang_lingkup }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- RIGHT COLUMN: Files -->
-                        <div class="space-y-6">
-                             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-                                <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <Icon icon="solar:folder-with-files-bold" /> Dokumen
-                                </h5>
-                                <div v-if="detailData.files?.length" class="space-y-3">
-                                    <div v-for="file in detailData.files" :key="file.id"
-                                        class="border rounded-lg p-3 transition hover:shadow-md bg-white border-gray-200 hover:border-green-300 hover:bg-green-50/20"
-                                    >
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-green-50 text-green-600">
-                                                <Icon icon="solar:file-check-bold-duotone" class="w-6 h-6" />
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ file.label }}</p>
-                                                <div class="flex gap-2 text-xs mt-1">
-                                                    <a :href="file.file_url" target="_blank" class="text-green-600 hover:text-green-800 hover:underline flex items-center gap-1">
-                                                        Download <Icon icon="solar:download-linear" class="w-3 h-3" />
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else class="text-center py-8">
-                                    <Icon icon="solar:folder-error-linear" class="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                    <p class="text-xs text-gray-400">Belum ada dokumen yang diupload.</p>
-                                </div>
-                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Dialog>
+        <!-- Detail Modal -->
+        <DetailModal 
+            v-model:visible="detailDialog" 
+            :loading="loadingDetail" 
+            :data="detailData" 
+            :isAdmin="false"
+        />
     </AuthenticatedLayout>
 </template>

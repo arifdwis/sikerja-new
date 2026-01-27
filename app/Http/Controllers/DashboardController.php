@@ -281,6 +281,8 @@ class DashboardController extends Controller
 
             return Inertia::render('Backend/DashboardPemohon', [
                 'stats' => $stats,
+                'chartTrend' => $chartTrend,
+                'chartStatus' => $chartStatus,
                 'permohonanTerbaru' => $permohonanTerbaru,
                 'kategoris' => $kategoris,
                 'provinsis' => $provinsis,
