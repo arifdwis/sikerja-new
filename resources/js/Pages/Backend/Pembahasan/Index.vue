@@ -202,7 +202,7 @@ const getFileStatusClass = (file) => {
                             class="group relative rounded-lg border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col h-full"
                         >
                             <div class="p-5 flex flex-col h-full relative z-10">
-                                <div class="flex justify-between items-center mb-3">
+                                <div class="flex justify-between items-center mb-3 gap-2">
                                     <span class="bg-blue-50 text-blue-700 px-2 py-1 text-xs font-bold rounded border border-blue-200 uppercase tracking-wide">
                                         {{ item.kategori?.label || 'Kerjasama' }}
                                     </span>
