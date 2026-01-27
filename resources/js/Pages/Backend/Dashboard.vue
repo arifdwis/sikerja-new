@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import TrendChart from '@/Pages/Backend/Dashboard/Charts/TrendChart.vue';
 import StatusChart from '@/Pages/Backend/Dashboard/Charts/StatusChart.vue';
 import CategoryChart from '@/Pages/Backend/Dashboard/Charts/CategoryChart.vue';
@@ -12,6 +12,8 @@ import StackedTrendChart from '@/Pages/Backend/Dashboard/Charts/StackedTrendChar
 import Header from '@/Pages/Backend/Dashboard/Components/Header.vue';
 import StagesStatusCount from '@/Pages/Backend/Dashboard/Components/StagesStatusCount.vue';
 import Dropdown from 'primevue/dropdown';
+import Dialog from 'primevue/dialog';
+import Button from 'primevue/button';
 
 const props = defineProps({
     stats: Object,
@@ -87,6 +89,22 @@ const statusLabels = {
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('id-ID').format(value);
 };
+
+const showNewPermohonanAlert = ref(false);
+
+onMounted(() => {
+    // Check if there are new permohonan (status 0/Baru usually) or pending items
+    // Using stats.permohonan which typically represents the 'Baru' count based on the chart logic
+    const hasNewPermohonan = props.stats.permohonan > 0;
+    
+    // Check session storage to ensure we only show this once per session/login
+    const hasShownAlert = sessionStorage.getItem('newPermohonanAlertShown');
+    
+    if (hasNewPermohonan && !hasShownAlert) {
+        showNewPermohonanAlert.value = true;
+        sessionStorage.setItem('newPermohonanAlertShown', 'true');
+    }
+});
 </script>
 
 <template>
@@ -330,6 +348,23 @@ const formatCurrency = (value) => {
                 </div>
             </div>
         </div>
+        <Dialog v-model:visible="showNewPermohonanAlert" modal header="Permohonan Baru" :style="{ width: '450px' }" :breakpoints="{ '960px': '75vw', '640px': '90vw' }">
+            <div class="flex flex-col items-center justify-center text-center pt-4 pb-6">
+                <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4 text-yellow-600 animate-pulse">
+                    <i class="pi pi-bell text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Permohonan Baru Terdeteksi!</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-6 px-4">
+                    Terdapat <span class="font-bold text-yellow-600 text-lg">{{ stats.permohonan }}</span> permohonan baru yang memerlukan pemeriksaan dan validasi Anda.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3 w-full px-4">
+                    <Button label="Nanti Saja" icon="pi pi-times" severity="secondary" outlined @click="showNewPermohonanAlert = false" class="flex-1" />
+                    <Link :href="route('permohonan.index', { status: 'pending' })" class="flex-1 w-full">
+                        <Button label="Lihat Sekarang" icon="pi pi-arrow-right" class="w-full" />
+                    </Link>
+                </div>
+            </div>
+        </Dialog>
     </AuthenticatedLayout>
 </template>
 
