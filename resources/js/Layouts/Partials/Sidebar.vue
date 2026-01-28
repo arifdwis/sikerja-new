@@ -115,13 +115,22 @@ onMounted(() => {
                                     <li v-for="child in item.children" :key="child.route">
                                         <Link 
                                             :href="getHref(child.route)" 
-                                            class="block py-2 px-2 text-sm font-medium border-l-[1.5px] border-dashed transition-all duration-150 rounded-r-lg"
+                                            class="flex items-center py-2 px-2 text-sm font-medium border-l-[1.5px] border-dashed transition-all duration-150 rounded-r-lg"
                                             :class="{
                                                 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400': isActive(child.route),
                                                 'border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200': !isActive(child.route),
                                             }"
                                         >
-                                            <span class="ml-3">{{ child.title }}</span>
+                                            <Icon 
+                                                v-if="child.icon" 
+                                                :icon="child.icon" 
+                                                class="w-5 h-5 flex-shrink-0 ml-1"
+                                                :class="{
+                                                    'text-blue-600 dark:text-blue-400': isActive(child.route),
+                                                    'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300': !isActive(child.route),
+                                                }"
+                                            />
+                                            <span class="ml-2 leading-tight">{{ child.title }}</span>
                                         </Link>
                                     </li>
                                 </ul>

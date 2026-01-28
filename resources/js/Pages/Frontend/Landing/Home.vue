@@ -97,6 +97,7 @@ const steps = [
     <main class="font-['Inter'] antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden">
         <section id="hero" class="relative min-h-screen flex items-center overflow-hidden pt-20">
             <!-- Dynamic Background from Slider or Default -->
+            <!-- Dynamic Background from Slider or Default -->
             <div v-if="currentSlider" class="absolute inset-0 transition-opacity duration-1000 ease-in-out">
                  <!-- Assume file path is stored relative to public/storage or similar. Adjust src accordingly. -->
                  <!-- If file is full URL or needs storage wrapper -->
@@ -230,36 +231,151 @@ const steps = [
             </div>
         </section>
 
+        <!-- Video Gallery Section -->
+        <section id="video-gallery" class="py-24 bg-gray-900 text-white relative overflow-hidden">
+            <!-- Dynamic Background -->
+            <div class="absolute inset-0">
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                <div class="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse"></div>
+                <div class="absolute bottom-0 left-0 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse" style="animation-delay:2s;"></div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-6 relative z-10">
+                <div class="text-center mb-16" data-aos="fade-up">
+                    <span class="inline-block py-1 px-3 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-emerald-400 font-bold tracking-wider uppercase text-xs mb-4 shadow-lg">
+                        Media Center
+                    </span>
+                    <h2 class="font-['Outfit'] text-4xl lg:text-5xl font-black mb-6 leading-tight">
+                        Galeri <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Video</span>
+                    </h2>
+                    <p class="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+                        Dokumentasi visual mengenai panduan penggunaan sistem dan pesona Kota Samarinda.
+                    </p>
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-12">
+                    <!-- Video 1: Manual Kerjasama -->
+                    <div class="group relative" data-aos="fade-right" data-aos-delay="100">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-[2rem] blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                        <div class="relative bg-gray-800 rounded-[2rem] border border-gray-700 overflow-hidden shadow-2xl transition-transform duration-500 group-hover:-translate-y-2">
+                            <div class="relative aspect-video overflow-hidden">
+                                <iframe 
+                                    class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
+                                    src="https://www.youtube.com/embed/RkE7RkPr7Og?si=hE6BcnUXVZkJyJkF" 
+                                    title="Manual Kerjasama" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                    referrerpolicy="strict-origin-when-cross-origin" 
+                                    allowfullscreen>
+                                </iframe>
+                                <!-- Overlay Label -->
+                                <div class="absolute top-4 left-4">
+                                     <span class="px-3 py-1 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold rounded-lg border border-white/10 flex items-center gap-2">
+                                        <Icon icon="solar:book-bookmark-bold" class="text-emerald-400" />
+                                        Panduan
+                                     </span>
+                                </div>
+                            </div>
+                            <div class="p-8">
+                                <h3 class="text-2xl font-bold font-['Outfit'] text-white mb-2 group-hover:text-emerald-400 transition-colors">
+                                    Manual Kerjasama
+                                </h3>
+                                <p class="text-gray-400 text-sm leading-relaxed mb-6">
+                                    Pelajari langkah-langkah pengajuan dan pengelolaan kerjasama daerah. Panduan lengkap untuk memaksimalkan penggunaan Sikerja.
+                                </p>
+                                <div class="flex items-center gap-2 text-sm font-medium text-gray-500 group-hover:text-emerald-400 transition-colors">
+                                    <Icon icon="solar:play-circle-bold" class="w-5 h-5" />
+                                    <span>Tonton Sekarang</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video 2: Jelajah Samarinda -->
+                    <div class="group relative" data-aos="fade-left" data-aos-delay="200">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-[2rem] blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                        <div class="relative bg-gray-800 rounded-[2rem] border border-gray-700 overflow-hidden shadow-2xl transition-transform duration-500 group-hover:-translate-y-2">
+                            <div class="relative aspect-video overflow-hidden">
+                                <iframe 
+                                    class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
+                                    src="https://www.youtube.com/embed/aQIZWUcM2jo?si=PrktvIb-vtV8Nr8k" 
+                                    title="Jelajah Samarinda" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                    referrerpolicy="strict-origin-when-cross-origin" 
+                                    allowfullscreen>
+                                </iframe>
+                                 <!-- Overlay Label -->
+                                <div class="absolute top-4 left-4">
+                                     <span class="px-3 py-1 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold rounded-lg border border-white/10 flex items-center gap-2">
+                                        <Icon icon="solar:map-point-bold" class="text-orange-400" />
+                                        Wisata
+                                     </span>
+                                </div>
+                            </div>
+                            <div class="p-8">
+                                <h3 class="text-2xl font-bold font-['Outfit'] text-white mb-2 group-hover:text-orange-400 transition-colors">
+                                    Jelajah Kota Samarinda
+                                </h3>
+                                <p class="text-gray-400 text-sm leading-relaxed mb-6">
+                                    Pusat Peradaban, Jantung Perdagangan. Temukan pesona keindahan Sungai Mahakam, keragaman budaya, dan dinamika pembangunan Kota Tepian.
+                                </p>
+                                <div class="flex items-center gap-2 text-sm font-medium text-gray-500 group-hover:text-orange-400 transition-colors">
+                                    <Icon icon="solar:play-circle-bold" class="w-5 h-5" />
+                                    <span>Tonton Sekarang</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decorative Elements -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-5xl pointer-events-none opacity-30">
+                     <svg viewBox="0 0 100 100" fill="none" class="w-full h-full animate-[spin_20s_linear_infinite]">
+                        <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="0.5" stroke-dasharray="4 4" class="text-gray-600" />
+                        <circle cx="50" cy="50" r="30" stroke="currentColor" stroke-width="0.5" class="text-gray-700" />
+                    </svg>
+                </div>
+            </div>
+        </section>
+
         <section id="tentang" class="py-24 bg-white dark:bg-gray-900">
             <div class="max-w-7xl mx-auto px-6">
                 <div class="grid lg:grid-cols-2 gap-16 items-center">
                     <div data-aos="fade-right">
-                        <h2 class="font-['Outfit'] text-4xl lg:text-5xl font-black mb-6 text-gray-900 dark:text-white">
-                            Moderenisasi <span class="text-emerald-600">Kerjasama Daerah</span>
+                        <span class="inline-block py-1 px-3 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold tracking-wider uppercase text-xs mb-4">
+                            Tentang Aplikasi
+                        </span>
+                        <h2 class="font-['Outfit'] text-4xl lg:text-5xl font-black mb-6 text-gray-900 dark:text-white leading-tight">
+                            Apa itu <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">SIKERJA?</span>
                         </h2>
-                        <p class="text-lg text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                            <span class="font-bold text-gray-900 dark:text-white">Sikerja</span> hadir sebagai solusi digital komprehensif untuk Pemerintah Kota Samarinda. Menggantikan proses manual dengan sistem yang terintegrasi penuh.
-                        </p>
-                        <ul class="space-y-4 mb-8">
-                             <li class="flex items-start gap-3">
-                                <div class="mt-1 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                    <Icon icon="solar:check-read-bold" class="w-4 h-4 text-emerald-600" />
-                                </div>
-                                <span class="text-gray-600 dark:text-gray-300">Pengajuan kerjasama dari mana saja</span>
-                            </li>
-                             <li class="flex items-start gap-3">
-                                <div class="mt-1 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                    <Icon icon="solar:check-read-bold" class="w-4 h-4 text-emerald-600" />
-                                </div>
-                                <span class="text-gray-600 dark:text-gray-300">Tracking progress real-time</span>
-                            </li>
-                             <li class="flex items-start gap-3">
-                                <div class="mt-1 w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                                    <Icon icon="solar:check-read-bold" class="w-4 h-4 text-emerald-600" />
-                                </div>
-                                <span class="text-gray-600 dark:text-gray-300">Arsip digital terpusat</span>
-                            </li>
-                        </ul>
+                        
+                        <div class="prose prose-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
+                            <p class="mb-4 text-justify">
+                                <span class="font-bold text-gray-900 dark:text-white">Sistem Informasi Kerjasama Daerah (SIKERJA)</span> adalah platform digital yang dibangun oleh Pemerintah Kota Samarinda untuk mendukung penyelenggaraan Sistem Pemerintahan Berbasis Elektronik (SPBE).
+                            </p>
+                            <p class="mb-4 text-justify">
+                                Sistem ini dirancang untuk mendata, memonitor, dan mengevaluasi seluruh kerjasama daerah secara terintegrasi. Dikelola oleh <span class="font-semibold text-emerald-600">Bagian Kerja Sama Sekretariat Daerah Kota Samarinda</span>, SIKERJA memfasilitasi efisiensi layanan melalui digitalisasi proses untuk seluruh Perangkat Daerah dan Mitra.
+                            </p>
+                            <p class="text-justify bg-emerald-50 dark:bg-gray-800 p-4 rounded-xl border border-emerald-100 dark:border-gray-700 italic text-base">
+                                "Wujud nyata keterbukaan informasi publik yang akuntabel dan transparan dalam mendukung tercapainya Good Governance di Kota Samarinda."
+                            </p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-4">
+                             <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <Icon icon="solar:monitor-smartphone-bold" class="text-emerald-500 w-5 h-5" />
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-200">Digitalisasi</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <Icon icon="solar:graph-up-bold" class="text-blue-500 w-5 h-5" />
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-200">Monitoring</span>
+                            </div>
+                            <div class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <Icon icon="solar:shield-check-bold" class="text-orange-500 w-5 h-5" />
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-200">Evaluasi</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-6" data-aos="fade-left">
                         <div class="space-y-6 mt-8">

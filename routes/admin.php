@@ -23,7 +23,16 @@ Route::resource('persetujuan', PersetujuanController::class)->only(['index', 'sh
 Route::resource('validasi', ValidasiController::class)->only(['index', 'show', 'update']);
 
 // Laporan
-Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
+// Laporan
+Route::prefix('laporan')->name('laporan.')->controller(LaporanController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/akumulatif', 'akumulatif')->name('akumulatif');
+    Route::get('/rekap-mitra', 'rekapMitra')->name('rekap-mitra');
+    Route::get('/persentase-opd', 'persentaseOpd')->name('persentase-opd');
+    Route::get('/persentase-bidang', 'persentaseBidang')->name('persentase-bidang');
+    Route::get('/cetak-detail/{uuid}', 'cetakDetail')->name('cetak-detail');
+    Route::get('/cetak-semua', 'cetakSemua')->name('cetak-semua');
+});
 
 // Settings (Admin)
 Route::get('pengaturan', function () {

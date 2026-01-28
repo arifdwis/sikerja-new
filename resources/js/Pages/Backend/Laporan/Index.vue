@@ -109,10 +109,13 @@ const getSeverity = (alertLevel) => {
                 <!-- Control Bar -->
                 <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div class="relative w-full">
+                        <div class="relative w-full sm:w-1/2">
                             <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input v-model="filterQuery" type="text" placeholder="Cari laporan..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-green-500 rounded-lg text-sm dark:bg-gray-700" />
                         </div>
+                        <a :href="route('laporan.cetak-semua')" target="_blank" class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
+                            <Icon icon="solar:printer-bold" /> Cetak Detail (Semua)
+                        </a>
                     </div>
                 </div>
 

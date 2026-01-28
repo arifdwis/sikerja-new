@@ -88,7 +88,43 @@ class MenusSeeder extends Seeder
                 'icon' => 'solar:chart-bold',
                 'order' => 6,
                 'roles' => 'administrator,superadmin,tkksd',
-                'children' => []
+                'children' => [
+                    [
+                        'title' => 'Monitoring Kerjasama',
+                        'route' => 'laporan.index',
+                        'icon' => 'solar:monitor-camera-linear',
+                        'roles' => 'administrator,superadmin,tkksd',
+                        'order' => 1
+                    ],
+                    [
+                        'title' => 'Akumulatif Kerjasama',
+                        'route' => 'laporan.akumulatif',
+                        'icon' => 'solar:chart-square-linear',
+                        'roles' => 'administrator,superadmin,tkksd',
+                        'order' => 2
+                    ],
+                    [
+                        'title' => 'Rekapitulasi Mitra',
+                        'route' => 'laporan.rekap-mitra',
+                        'icon' => 'solar:users-group-two-rounded-linear',
+                        'roles' => 'administrator,superadmin,tkksd',
+                        'order' => 3
+                    ],
+                    [
+                        'title' => 'Persentase Perangkat Daerah',
+                        'route' => 'laporan.persentase-opd',
+                        'icon' => 'solar:pie-chart-2-linear',
+                        'roles' => 'administrator,superadmin,tkksd',
+                        'order' => 4
+                    ],
+                    [
+                        'title' => 'Persentase Bidang Kerjasama',
+                        'route' => 'laporan.persentase-bidang',
+                        'icon' => 'solar:graph-new-linear',
+                        'roles' => 'administrator,superadmin,tkksd',
+                        'order' => 5
+                    ],
+                ]
             ],
             [
                 'title' => 'Master Data',
@@ -163,12 +199,21 @@ class MenusSeeder extends Seeder
             $children = $menuData['children'];
             unset($menuData['children']);
 
-            $parent = Menu::create($menuData);
+            // Use updateOrCreate to avoid duplicates
+            // Identify by title + route? or just title? Route might be null.
+            // Let's use title as unique identifier for top level
+            $parent = Menu::updateOrCreate(
+                ['title' => $menuData['title']],
+                $menuData
+            );
 
             if (!empty($children)) {
                 foreach ($children as $childData) {
                     $childData['parent_id'] = $parent->id;
-                    Menu::create($childData);
+                    Menu::updateOrCreate(
+                        ['title' => $childData['title'], 'parent_id' => $parent->id],
+                        $childData
+                    );
                 }
             }
         }
