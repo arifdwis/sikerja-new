@@ -200,40 +200,46 @@ const getFileStatusClass = (file) => {
                     <!-- Grid View -->
                     <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div v-for="item in datas.data" :key="item.id" 
-                            class="group relative rounded-lg border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col h-full"
+                            class="group relative rounded-xl border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden"
                         >
-                            <div class="p-5 flex flex-col h-full relative z-10">
-                                <div class="flex justify-between items-center mb-3 gap-2">
-                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 text-xs font-bold rounded border border-blue-200 uppercase tracking-wide">
-                                        {{ item.kategori?.label || 'Kerjasama' }}
-                                    </span>
-                                    <div class="flex flex-col sm:flex-row gap-2">
-                                        <span class="bg-indigo-100 text-indigo-700 px-2 py-1 text-xs font-bold rounded border border-indigo-200 uppercase tracking-wide flex items-center gap-1 w-fit">
-                                            <Icon icon="solar:chat-round-dots-bold" /> PEMBAHASAN
+                            <!-- Status Strip -->
+                            <div class="absolute top-0 bottom-0 left-0 w-1.5" 
+                                :class="item.contributed ? 'bg-green-500' : 'bg-orange-500 animate-pulse'">
+                            </div>
+
+                            <div class="p-5 pl-7 flex flex-col h-full relative z-10">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div class="flex flex-wrap gap-2 items-center text-xs text-gray-500 font-medium">
+                                        <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-md">
+                                            {{ item.kategori?.label || 'Kerjasama' }}
                                         </span>
-                                        <!-- Visual Badge for Contribution -->
-                                        <span v-if="item.contributed" class="bg-green-100 text-green-700 px-2 py-1 text-xs font-bold rounded border border-green-200 uppercase tracking-wide flex items-center gap-1 w-fit">
-                                            <Icon icon="solar:check-read-bold" /> SUDAH ADA MASUKAN
-                                        </span>
-                                        <span v-else class="bg-orange-100 text-orange-700 px-2 py-1 text-xs font-bold rounded border border-orange-200 uppercase tracking-wide flex items-center gap-1 w-fit animate-pulse">
-                                            <Icon icon="solar:bell-bold" /> PERLU MASUKAN
-                                        </span>
+                                        <span>•</span>
+                                        <span class="font-mono">{{ formatDate(item.updated_at) }}</span>
+                                    </div>
+                                    <!-- Status Indicator Text (Optional, small) -->
+                                    <div v-if="!item.contributed" class="text-orange-600 bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-orange-100">
+                                        Perlu Masukan
+                                    </div>
+                                    <div v-else class="text-green-600 bg-green-50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-green-100">
+                                        Sudah Dibahas
                                     </div>
                                 </div>
-                                <div class="mb-2 text-xs text-gray-400 font-mono">
-                                    {{ item.nomor_permohonan || item.kode }} • {{ formatDate(item.updated_at) }}
-                                </div>
-                                <h4 @click="openDetailModal(item)" class="font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer">
+                                
+                                <h4 @click="openDetailModal(item)" class="font-bold text-gray-900 dark:text-white mb-2 leading-snug hover:text-blue-600 transition-colors cursor-pointer text-lg">
                                     {{ item.label }}
                                 </h4>
-                                <div class="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                                     <Icon icon="solar:buildings-bold" class="w-4 h-4" /> {{ item.nama_instansi }}
+                                
+                                <div class="text-sm text-gray-500 mb-6 flex items-center gap-2">
+                                     <Icon icon="solar:buildings-bold" class="w-4 h-4 text-gray-400" /> 
+                                     <span class="line-clamp-1">{{ item.nama_instansi }}</span>
                                 </div>
                                 
-                                <div class="mt-auto border-t border-gray-100 dark:border-gray-700 pt-4">
-                                     <button @click="openDetailModal(item)" class="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2">
-                                        <Icon icon="solar:chat-square-call-bold" />
-                                        Review & Diskusi
+                                <div class="mt-auto pt-4 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between">
+                                     <div class="text-xs text-gray-400 font-mono">
+                                        {{ item.nomor_permohonan || item.kode }}
+                                     </div>
+                                     <button @click="openDetailModal(item)" class="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
+                                        Bahas Sekarang <Icon icon="solar:arrow-right-linear" class="w-4 h-4" />
                                      </button>
                                 </div>
                             </div>
