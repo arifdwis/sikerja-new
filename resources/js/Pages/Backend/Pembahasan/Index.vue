@@ -5,14 +5,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'vue-toastification';
 import Dialog from 'primevue/dialog';
-import Tag from 'primevue/tag';
-import Skeleton from 'primevue/skeleton';
 import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Paginator from 'primevue/paginator';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
-import FileDiskusiSection from '../Permohonan/Components/FileDiskusiSection.vue';
 import ReviewModal from './Components/ReviewModal.vue';
+import ControlBar from '../Permohonan/Components/ControlBar.vue';
+import PembahasanList from './Components/PembahasanList.vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -57,6 +54,45 @@ const confirmDialog = ref(false);
 const selectedItem = ref(null);
 const detailData = ref(null);
 const loadingDetail = ref(false);
+const groupBy = ref(localStorage.getItem('pembahasanGroupBy') || 'latest');
+watch(groupBy, (newVal) => localStorage.setItem('pembahasanGroupBy', newVal));
+
+// Filter & Grouping Logic
+const filteredData = computed(() => {
+    if (!filterQuery.value) return props.datas?.data || [];
+    const query = filterQuery.value.toLowerCase();
+    return (props.datas?.data || []).filter(item =>
+        item.label?.toLowerCase().includes(query) ||
+        item.kode?.toLowerCase().includes(query) ||
+        item.nomor_permohonan?.toLowerCase().includes(query) ||
+        item.nama_instansi?.toLowerCase().includes(query)
+    );
+});
+
+const groupedData = computed(() => {
+    const data = filteredData.value;
+    if (groupBy.value === 'latest') {
+        const title = props.share.title?.includes("Riwayat") ? "Riwayat Pembahasan" : "Daftar Pembahasan";
+        return { [title]: data };
+    } else if (groupBy.value === 'kategori') {
+        return data.reduce((acc, item) => {
+            const key = item.kategori?.label || "Tanpa Kategori";
+            (acc[key] = acc[key] || []).push(item);
+            return acc;
+        }, {});
+    } else if (groupBy.value === 'status') {
+         // Group by Contribution Status instead of ID status (since all are status 1)
+        return data.reduce((acc, item) => {
+            const key = item.contributed ? "Sudah Dibahas" : "Perlu Masukan";
+            (acc[key] = acc[key] || []).push(item);
+            return acc;
+        }, {});
+    }
+    return { "Semua Pembahasan": data };
+});
+
+// States
+
 const processing = ref(false);
 const selectedFile = ref(null);
 
@@ -164,116 +200,23 @@ const getFileStatusClass = (file) => {
 
         <section class="py-12">
             <div class="mx-auto max-w-full px-6 lg:px-8">
-                <Breadcrumb class="mb-6" :crumbs="[{ label: 'Dashboard', route: 'dashboard' }, { label: share.title, route: null }]" />
+                <Breadcrumb class="mb-6" />
 
-                <!-- Control Bar -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div class="relative w-full sm:w-80">
-                            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input v-model="filterQuery" type="text" placeholder="Cari pembahasan..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-blue-500 rounded-lg text-sm dark:bg-gray-700" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
-                                <button @click="viewMode = 'grid'" :class="viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'" class="p-2 rounded-md transition-all">
-                                    <Icon icon="lucide:layout-grid" class="w-4 h-4" />
-                                </button>
-                                <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'" class="p-2 rounded-md transition-all">
-                                    <Icon icon="lucide:list" class="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ControlBar 
+                    v-model:filterQuery="filterQuery" 
+                    v-model:viewMode="viewMode" 
+                    v-model:groupBy="groupBy" 
+                    @create="() => {}"
+                    :showCreate="false"
+                />
 
-                <!-- Empty State -->
-                <div v-if="!datas.data.length" class="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
-                     <div class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Icon icon="solar:chat-round-line-bold-duotone" class="w-12 h-12 text-blue-400" />
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Tidak ada Pembahasan</h3>
-                    <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">Tidak ada permohonan yang sedang dalam tahap pembahasan saat ini.</p>
-                </div>
-
-                <!-- Content -->
-                <div v-else class="mb-10">
-                    <!-- Grid View -->
-                    <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="item in datas.data" :key="item.id" 
-                            class="group relative rounded-xl border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col h-full overflow-hidden"
-                        >
-                            <!-- Status Strip -->
-                            <div class="absolute top-0 bottom-0 left-0 w-1.5" 
-                                :class="item.contributed ? 'bg-green-500' : 'bg-orange-500 animate-pulse'">
-                            </div>
-
-                            <div class="p-5 pl-7 flex flex-col h-full relative z-10">
-                                <div class="flex justify-between items-start mb-3">
-                                    <div class="flex flex-wrap gap-2 items-center text-xs text-gray-500 font-medium">
-                                        <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-md">
-                                            {{ item.kategori?.label || 'Kerjasama' }}
-                                        </span>
-                                        <span>•</span>
-                                        <span class="font-mono">{{ formatDate(item.updated_at) }}</span>
-                                    </div>
-                                    <!-- Status Indicator Text (Optional, small) -->
-                                    <div v-if="!item.contributed" class="text-orange-600 bg-orange-50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-orange-100">
-                                        Perlu Masukan
-                                    </div>
-                                    <div v-else class="text-green-600 bg-green-50 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border border-green-100">
-                                        Sudah Dibahas
-                                    </div>
-                                </div>
-                                
-                                <h4 @click="openDetailModal(item)" class="font-bold text-gray-900 dark:text-white mb-2 leading-snug hover:text-blue-600 transition-colors cursor-pointer text-lg">
-                                    {{ item.label }}
-                                </h4>
-                                
-                                <div class="text-sm text-gray-500 mb-6 flex items-center gap-2">
-                                     <Icon icon="solar:buildings-bold" class="w-4 h-4 text-gray-400" /> 
-                                     <span class="line-clamp-1">{{ item.nama_instansi }}</span>
-                                </div>
-                                
-                                <div class="mt-auto pt-4 border-t border-gray-50 dark:border-gray-700/50 flex items-center justify-between">
-                                     <div class="text-xs text-gray-400 font-mono">
-                                        {{ item.nomor_permohonan || item.kode }}
-                                     </div>
-                                     <button @click="openDetailModal(item)" class="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
-                                        Bahas Sekarang <Icon icon="solar:arrow-right-linear" class="w-4 h-4" />
-                                     </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- List View -->
-                    <div v-else class="space-y-3">
-                         <div v-for="item in datas.data" :key="item.id" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center gap-4 group">
-                             <div class="flex-1">
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="font-bold text-sm font-mono text-gray-500">{{ item.nomor_permohonan || item.kode }}</span>
-                                    <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 text-[10px] font-bold rounded border border-indigo-200 uppercase">PEMBAHASAN</span>
-                                </div>
-                                <h4 @click="openDetailModal(item)" class="font-semibold text-gray-950 dark:text-white hover:text-blue-600 cursor-pointer transition-colors capitalize text-lg">
-                                    {{ item.label }}
-                                </h4>
-                                <div class="text-sm text-gray-500 mt-1 flex gap-2 items-center">
-                                     <span>{{ item.nama_instansi }}</span> 
-                                     <span class="text-gray-300">•</span>
-                                     <span>{{ formatDate(item.updated_at) }}</span>
-                                </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <Button icon="pi pi-comments" severity="info" label="Diskusi" @click="openDetailModal(item)" />
-                            </div>
-                         </div>
-                    </div>
-
-                     <!-- Paginator -->
-                     <div class="mt-4">
-                        <Paginator :totalRecords="datas?.total || 0" :rows="10" @page="params => router.get(datas.next_page_url)" template="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink" />
-                    </div>
-                </div>
+                <PembahasanList 
+                    :groupedData="groupedData"
+                    :viewMode="viewMode"
+                    :isAdmin="isUserAdmin"
+                    :hasData="filteredData.length > 0"
+                    @detail="openDetailModal"
+                />
             </div>
         </section>
 
