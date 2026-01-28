@@ -13,7 +13,7 @@ import axios from 'axios';
 import DetailModal from '../Permohonan/Components/DetailModal.vue';
 
 const props = defineProps({
-    datas: Object, // Paginator from controller
+    permohonan: Object, // Paginator from controller
     share: Object,
     filters: Object,
 });
@@ -129,7 +129,7 @@ const onPageChange = (url) => {
                 </div>
 
                 <!-- Empty State -->
-                <div v-if="!datas.data.length" class="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
+                <div v-if="!permohonan.data.length" class="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
                     <div class="w-24 h-24 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Icon icon="solar:history-bold-duotone" class="w-12 h-12 text-gray-400" />
                     </div>
@@ -141,7 +141,7 @@ const onPageChange = (url) => {
                 <div v-else class="mb-10">
                     <!-- Grid View -->
                     <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="item in datas.data" :key="item.id" 
+                        <div v-for="item in permohonan.data" :key="item.id" 
                             class="group relative rounded-lg border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                         >
                             <div class="p-4 flex flex-col h-full relative z-10">
@@ -183,7 +183,7 @@ const onPageChange = (url) => {
 
                     <!-- List View -->
                     <div v-else class="space-y-3">
-                        <div v-for="item in datas.data" :key="item.id" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center gap-4 group">
+                        <div v-for="item in permohonan.data" :key="item.id" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center gap-4 group">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
                                     <span class="font-bold text-sm font-mono text-gray-500">{{ item.nomor_permohonan || item.kode }}</span>
@@ -207,11 +207,11 @@ const onPageChange = (url) => {
                     </div>
 
                     <!-- Pagination -->
-                    <div class="mt-6 flex justify-center" v-if="datas.links.length > 3">
+                    <div class="mt-6 flex justify-center" v-if="permohonan.links.length > 3">
                         <div class="flex gap-1">
                             <component 
                                 :is="link.url ? Link : 'span'" 
-                                v-for="(link, i) in datas.links" 
+                                v-for="(link, i) in permohonan.links" 
                                 :key="i"
                                 :href="link.url" 
                                 v-html="link.label"
