@@ -157,8 +157,8 @@ const allFilesApproved = computed(() => detailData.value?.all_files_approved || 
 
 const openConfirmDialog = (item) => {
     if (!allFilesApproved.value) {
-        toast.warning('Semua dokumen harus disetujui terlebih dahulu.');
-        return;
+        // Warning but allow proceed for Admin
+        toast.info('Catatan: Belum semua dokumen disetujui. Melanjutkan sebagai Administrator.');
     }
     selectedItem.value = item;
     confirmDialog.value = true;
@@ -235,9 +235,15 @@ const getFileStatusClass = (file) => {
         <!-- Confirm Dialog -->
         <Dialog v-model:visible="confirmDialog" modal header="Konfirmasi Selesai Pembahasan" :style="{ width: '450px' }">
             <div class="text-center p-4">
-                <Icon icon="solar:check-circle-bold-duotone" class="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <p class="mb-4">Semua dokumen sudah disetujui. Lanjutkan ke tahap <strong>Penjadwalan</strong>?</p>
-                <div class="font-semibold text-gray-700 mb-6">
+                <Icon v-if="allFilesApproved" icon="solar:check-circle-bold-duotone" class="w-16 h-16 text-green-500 mx-auto mb-4" />
+                <Icon v-else icon="solar:danger-triangle-bold-duotone" class="w-16 h-16 text-orange-500 mx-auto mb-4" />
+                
+                <p class="mb-2 font-semibold">Selesaikan Pembahasan?</p>
+                <p class="mb-4 text-sm text-gray-600">
+                    <span v-if="!allFilesApproved" class="text-orange-600 block mb-1">⚠️ Beberapa dokumen belum disetujui.</span>
+                    Lanjutkan ke tahap <strong>Penjadwalan</strong>?
+                </p>
+                <div class="font-semibold text-gray-700 mb-6 bg-gray-50 py-2 rounded border border-gray-200">
                     {{ selectedItem?.nomor_permohonan || selectedItem?.kode }}
                 </div>
                 <div class="flex justify-center gap-2">

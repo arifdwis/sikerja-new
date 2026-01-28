@@ -160,13 +160,13 @@ class PembahasanController extends Controller implements HasMiddleware
     {
         $permohonan = Permohonan::with('files')->where('uuid', $uuid)->firstOrFail();
 
-        // Check if all files are approved
+        // Check if all files are approved (Optional validation)
         $allFilesApproved = $permohonan->files->count() > 0 &&
             $permohonan->files->every(fn($file) => $file->status === 1);
 
-        if (!$allFilesApproved) {
-            return redirect()->back()->with('error', 'Semua dokumen harus disetujui sebelum melanjutkan ke penjadwalan.');
-        }
+        // Allow Admin to proceed regardless, or just warn? 
+        // User requested that administrator CAN approve.
+        // We will remove the server-side block.
 
         // Pembahasan selesai -> masuk ke Penjadwalan (pemohon buat jadwal meeting)
         $permohonan->update([

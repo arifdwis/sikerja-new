@@ -61,7 +61,6 @@ const getFileStatusClass = (file) => {
                     label="Selesai & Lanjut Jadwal" 
                     icon="pi pi-check-circle" 
                     severity="success"
-                    :disabled="!allFilesApproved"
                     @click="$emit('confirm-finish', data)" 
                 />
             </div>
