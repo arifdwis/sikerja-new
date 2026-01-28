@@ -20,6 +20,11 @@ class DashboardController extends Controller
         $user = $request->user();
         $isPemohon = $user->hasRole('pemohon');
 
+        // Redirect TKKSD directly to Pembahasan for simplified experience
+        if ($user->hasRole('tkksd') && !$user->hasRole(['administrator', 'superadmin'])) {
+            return redirect()->route('pembahasan.index');
+        }
+
         // Base Query
         $query = Permohonan::whereYear('created_at', $tahun);
 

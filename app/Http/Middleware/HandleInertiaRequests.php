@@ -87,6 +87,26 @@ class HandleInertiaRequests extends Middleware
             ->orderBy('title', 'asc') // Tie breaker
             ->get();
 
+        // Special overrides for TKKSD to simplify experience
+        if (in_array('tkksd', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles)) {
+            return [
+                [
+                    'id' => 'dashboard-tkksd',
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'solar:home-smile-bold-duotone',
+                    'children' => []
+                ],
+                [
+                    'id' => 'pembahasan-tkksd',
+                    'title' => 'Pembahasan',
+                    'route' => 'pembahasan.index',
+                    'icon' => 'solar:chat-round-line-duotone',
+                    'children' => []
+                ]
+            ];
+        }
+
         return $this->buildMenuTree($menus, null, $roles);
     }
 
