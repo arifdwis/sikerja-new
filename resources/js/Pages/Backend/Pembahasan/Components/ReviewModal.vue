@@ -16,7 +16,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'select-file', 'confirm-finish', 'status-update']);
 
-const allFilesApproved = computed(() => props.data?.all_files_approved || false);
+const allFilesApproved = computed(() => {
+    const files = props.data?.files || [];
+    return files.length > 0 && files.every(f => f.status == 1);
+});
 
 const getFileStatusClass = (file) => {
     if (file.status === 1) return 'border-green-500 bg-green-50 dark:bg-green-900/20';

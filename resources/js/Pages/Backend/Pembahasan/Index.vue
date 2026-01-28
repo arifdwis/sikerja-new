@@ -143,17 +143,13 @@ const handleFileStatusUpdate = (updatedFile) => {
         if (index !== -1) {
             detailData.value.files[index] = updatedFile;
         }
-        checkAllFilesApproved();
     }
 };
 
-const checkAllFilesApproved = () => {
-    if (detailData.value?.files) {
-        detailData.value.all_files_approved = detailData.value.files.length > 0 && detailData.value.files.every(f => f.status == 1);
-    }
-};
-
-const allFilesApproved = computed(() => detailData.value?.all_files_approved || false);
+const allFilesApproved = computed(() => {
+    const files = detailData.value?.files || [];
+    return files.length > 0 && files.every(f => f.status == 1);
+});
 
 const openConfirmDialog = (item) => {
     if (!allFilesApproved.value) {
