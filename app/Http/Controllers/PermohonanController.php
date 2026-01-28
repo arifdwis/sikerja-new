@@ -184,7 +184,7 @@ class PermohonanController extends Controller implements HasMiddleware
         $permohonan = $query->latest()->paginate(15)->withQueryString();
         $statusLabels = Permohonan::statusLabels();
 
-        return Inertia::render("Riwayat/Index", [
+        return Inertia::render("Backend/Riwayat/Index", [
             'permohonan' => $permohonan,
             'statusLabels' => $statusLabels,
             'filters' => $request->only(['search']),
