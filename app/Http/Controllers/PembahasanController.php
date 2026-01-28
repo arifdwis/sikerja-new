@@ -110,6 +110,37 @@ class PembahasanController extends Controller implements HasMiddleware
         ]);
     }
 
+    public function arsip(Request $request)
+    {
+        $userId = Auth::id();
+        $query = Permohonan::with(['kategori', 'pemohon1', 'operator.corporate', 'provinsi', 'kota', 'files'])
+            ->withExists([
+                'historis as contributed' => function ($q) use ($userId) {
+                    $q->where('id_operator', $userId);
+                }
+            ])
+            ->where('status', '>', Permohonan::STATUS_PEMBAHASAN) // Status > 1 (Selesai/Penjadwalan/Ditolak)
+            ->latest();
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('label', 'like', "%{$search}%")
+                    ->orWhere('nomor_permohonan', 'like', "%{$search}%")
+                    ->orWhere('nama_instansi', 'like', "%{$search}%");
+            });
+        }
+
+        $datas = $query->paginate(10)->withQueryString();
+
+        return Inertia::render("$this->view/Index", [
+            'datas' => $datas,
+            'share' => array_merge($this->share, ['title' => 'Arsip Pembahasan']),
+            'filters' => $request->only(['search']),
+            'isRiwayat' => true // Reuse read-only view logic
+        ]);
+    }
+
     public function show(string $uuid)
     {
         $permohonan = Permohonan::with(['kategori', 'pemohon1', 'pemohon2', 'operator.corporate', 'provinsi', 'kota', 'files'])

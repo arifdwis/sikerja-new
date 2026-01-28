@@ -103,6 +103,20 @@ class HandleInertiaRequests extends Middleware
                     'route' => 'pembahasan.index',
                     'icon' => 'solar:chat-round-line-duotone',
                     'children' => []
+                ],
+                [
+                    'id' => 'riwayat-tkksd',
+                    'title' => 'Riwayat Kontribusi',
+                    'route' => 'pembahasan.riwayat',
+                    'icon' => 'solar:history-bold-duotone',
+                    'children' => []
+                ],
+                [
+                    'id' => 'arsip-tkksd',
+                    'title' => 'Arsip Pembahasan',
+                    'route' => 'pembahasan.arsip',
+                    'icon' => 'solar:box-bold-duotone',
+                    'children' => []
                 ]
             ];
         }

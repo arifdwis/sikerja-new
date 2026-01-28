@@ -10,4 +10,5 @@ Route::put('penjadwalan/{penjadwalan}/review', [PenjadwalanController::class, 'r
 
 // Pembahasan
 Route::get('pembahasan/riwayat', [PembahasanController::class, 'riwayat'])->name('pembahasan.riwayat');
+Route::get('pembahasan/arsip', [PembahasanController::class, 'arsip'])->name('pembahasan.arsip');
 Route::resource('pembahasan', PembahasanController::class);
