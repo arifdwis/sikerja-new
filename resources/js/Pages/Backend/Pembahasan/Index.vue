@@ -207,9 +207,18 @@ const getFileStatusClass = (file) => {
                                     <span class="bg-blue-50 text-blue-700 px-2 py-1 text-xs font-bold rounded border border-blue-200 uppercase tracking-wide">
                                         {{ item.kategori?.label || 'Kerjasama' }}
                                     </span>
-                                    <span class="bg-indigo-100 text-indigo-700 px-2 py-1 text-xs font-bold rounded border border-indigo-200 uppercase tracking-wide flex items-center gap-1">
-                                        <Icon icon="solar:chat-round-dots-bold" /> PEMBAHASAN
-                                    </span>
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <span class="bg-indigo-100 text-indigo-700 px-2 py-1 text-xs font-bold rounded border border-indigo-200 uppercase tracking-wide flex items-center gap-1 w-fit">
+                                            <Icon icon="solar:chat-round-dots-bold" /> PEMBAHASAN
+                                        </span>
+                                        <!-- Visual Badge for Contribution -->
+                                        <span v-if="item.contributed" class="bg-green-100 text-green-700 px-2 py-1 text-xs font-bold rounded border border-green-200 uppercase tracking-wide flex items-center gap-1 w-fit">
+                                            <Icon icon="solar:check-read-bold" /> SUDAH ADA MASUKAN
+                                        </span>
+                                        <span v-else class="bg-orange-100 text-orange-700 px-2 py-1 text-xs font-bold rounded border border-orange-200 uppercase tracking-wide flex items-center gap-1 w-fit animate-pulse">
+                                            <Icon icon="solar:bell-bold" /> PERLU MASUKAN
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="mb-2 text-xs text-gray-400 font-mono">
                                     {{ item.nomor_permohonan || item.kode }} • {{ formatDate(item.updated_at) }}

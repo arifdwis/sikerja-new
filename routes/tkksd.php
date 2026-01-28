@@ -9,4 +9,5 @@ Route::resource('penjadwalan', PenjadwalanController::class)->only(['store', 'up
 Route::put('penjadwalan/{penjadwalan}/review', [PenjadwalanController::class, 'review'])->name('penjadwalan.review');
 
 // Pembahasan
+Route::get('pembahasan/riwayat', [PembahasanController::class, 'riwayat'])->name('pembahasan.riwayat');
 Route::resource('pembahasan', PembahasanController::class);

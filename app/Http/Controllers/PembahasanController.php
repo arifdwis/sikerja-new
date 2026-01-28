@@ -40,7 +40,13 @@ class PembahasanController extends Controller implements HasMiddleware
 
     public function index(Request $request)
     {
+        $userId = Auth::id();
         $query = Permohonan::with(['kategori', 'pemohon1', 'operator.corporate', 'provinsi', 'kota', 'files'])
+            ->withExists([
+                'historis as contributed' => function ($q) use ($userId) {
+                    $q->where('id_operator', $userId);
+                }
+            ])
             ->where('status', Permohonan::STATUS_PEMBAHASAN) // Status 1: Dalam Pembahasan
             ->latest();
 
@@ -59,6 +65,48 @@ class PembahasanController extends Controller implements HasMiddleware
             'datas' => $datas,
             'share' => $this->share,
             'filters' => $request->only(['search']),
+            'isRiwayat' => false
+        ]);
+    }
+
+    public function riwayat(Request $request)
+    {
+        $userId = Auth::id();
+        // Riwayat: Items I have contributed to, regardless of status (or maybe finished ones?)
+        // Let's assume History = I contributed AND they might not be in active discussion anymore, or simplified list of all my contributions.
+        // Usually "Riwayat" matches "History of completed tasks".
+        // But user said "mana yang sudah dia lakukan pembahasan". This implies "My Done List".
+
+        $query = Permohonan::with(['kategori', 'pemohon1', 'operator.corporate', 'provinsi', 'kota'])
+            ->whereHas('historis', function ($q) use ($userId) {
+                $q->where('id_operator', $userId);
+            })
+            // Optional: Exclude current active discussions if they are in the main list?
+            // ->where('status', '!=', Permohonan::STATUS_PEMBAHASAN) 
+            ->latest();
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('label', 'like', "%{$search}%")
+                    ->orWhere('nomor_permohonan', 'like', "%{$search}%")
+                    ->orWhere('nama_instansi', 'like', "%{$search}%");
+            });
+        }
+
+        $datas = $query->paginate(10)->withQueryString();
+
+        // Mark all as contributed since we filtered by it
+        $datas->getCollection()->transform(function ($item) {
+            $item->contributed = true;
+            return $item;
+        });
+
+        return Inertia::render("$this->view/Index", [
+            'datas' => $datas,
+            'share' => array_merge($this->share, ['title' => 'Riwayat Pembahasan Saya']),
+            'filters' => $request->only(['search']),
+            'isRiwayat' => true
         ]);
     }
 
