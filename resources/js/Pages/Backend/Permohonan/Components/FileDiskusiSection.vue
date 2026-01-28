@@ -319,7 +319,13 @@ onMounted(() => {
         </div>
 
         <!-- Input Area -->
-        <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <div v-if="file?.status === 1" class="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center">
+             <div class="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-2 rounded-lg border border-green-100 dark:border-green-800/50">
+                <Icon icon="solar:check-circle-bold" class="w-5 h-5" />
+                <span class="text-sm font-medium">Dokumen ini sudah disetujui. Diskusi ditutup.</span>
+            </div>
+        </div>
+        <div v-else class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div class="flex gap-2 items-end">
                 <textarea 
                     v-model="newMessage" 

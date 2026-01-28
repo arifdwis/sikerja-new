@@ -53,16 +53,7 @@ const getStatusColor = (item) => {
     return colors[item.status] || { bg: 'bg-gray-400', text: 'text-gray-950', border: 'border-gray-400' };
 };
 
-const getUploadButtonLabel = (item) => {
-    return (item.files && item.files.length > 0) ? 'Kelola Berkas' : 'Upload Berkas';
-};
 
-const canManageFiles = (item) => {
-    if (props.isAdmin) return false;
-    // Status 0: Menunggu Validasi (No Upload)
-    // Use loose comparison because status might be string
-    return item.status != 0 && item.status != 4 && item.status != 9;
-};
 </script>
 
 <template>
@@ -127,48 +118,13 @@ const canManageFiles = (item) => {
                     {{ diffForHumans(item.created_at) }}
                 </div>
 
-                <div class="w-full grid grid-cols-2 gap-2 mt-2">
-                    <!-- Edit Button (Only for Status 0 & Not Admin) -->
-                     <button 
-                        v-if="!isAdmin && item.status == 0"
-                        @click.stop="$emit('edit', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-white text-yellow-600 hover:bg-yellow-50 col-span-2 shadow-sm"
-                    >
-                        <Icon icon="solar:pen-bold" class="w-3.5 h-3.5" />
-                        <span>Edit Pengajuan</span>
-                    </button>
-
-                    <button 
-                        v-if="!isAdmin && item.status == 2 && (!item.penjadwalans || item.penjadwalans.length === 0 || item.penjadwalans[0].status === 2)"
-                        @click.stop="$emit('schedule', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all bg-indigo-600 text-white col-span-2"
-                    >
-                        <Icon icon="solar:calendar-add-bold" class="w-3.5 h-3.5" />
-                        <span>Buat Jadwal</span>
-                    </button>
-
+                <div class="mt-4">
                     <button 
                         @click.stop="$emit('detail', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all bg-gray-900 text-white"
+                        class="w-full flex items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-bold uppercase transition-all bg-gray-900 text-white hover:bg-gray-800 shadow-md"
                     >
-                        <span>Detail</span>
-                        <Icon icon="solar:alt-arrow-right-bold" class="w-3.5 h-3.5" />
-                    </button>
-                    <button 
-                        @click.stop="$emit('tracking', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all bg-white/80 text-gray-900"
-                    >
-                        <span>Lacak</span>
-                        <Icon icon="solar:alt-arrow-right-bold" class="w-3.5 h-3.5" />
-                    </button>
-                    <button 
-                        v-if="canManageFiles(item)"
-                        @click.stop="$emit('upload', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all col-span-2"
-                        :class="item.files?.length > 0 ? 'bg-blue-800 text-white' : 'bg-orange-600 text-white'"
-                    >
-                        <Icon icon="solar:upload-bold" class="w-3.5 h-3.5" />
-                        <span>{{ getUploadButtonLabel(item) }}</span>
+                        <span>Detail & Diskusi</span>
+                        <Icon icon="solar:alt-arrow-right-bold" class="w-4 h-4" />
                     </button>
                 </div>
             </div>
