@@ -24,9 +24,9 @@ const page = usePage();
 // Auth Check
 const isUserAdmin = computed(() => {
     const roles = page.props.auth?.roles || [];
-    const permissions = page.props.auth?.permissions || [];
+    // Strict Admin check: Only actual Administrators can finish the discussion
     const adminRoleSlugs = ['admin', 'administrator', 'superadmin', 'super-admin'];
-    return roles.some(r => adminRoleSlugs.includes(r?.toLowerCase())) || permissions.includes('permohonan.menu.pembahasan.lanjut');
+    return roles.some(r => adminRoleSlugs.includes(r?.toLowerCase()));
 });
 
 // Pagination & Search
@@ -149,7 +149,7 @@ const handleFileStatusUpdate = (updatedFile) => {
 
 const checkAllFilesApproved = () => {
     if (detailData.value?.files) {
-        detailData.value.all_files_approved = detailData.value.files.length > 0 && detailData.value.files.every(f => f.status === 1);
+        detailData.value.all_files_approved = detailData.value.files.length > 0 && detailData.value.files.every(f => f.status == 1);
     }
 };
 

@@ -149,7 +149,7 @@ class PembahasanController extends Controller implements HasMiddleware
 
         // Calculate if all files are approved
         $allFilesApproved = $permohonan->files->count() > 0 &&
-            $permohonan->files->every(fn($file) => $file->status === 1);
+            $permohonan->files->every(fn($file) => $file->status == 1);
 
         $permohonan->all_files_approved = $allFilesApproved;
 
@@ -162,7 +162,7 @@ class PembahasanController extends Controller implements HasMiddleware
 
         // Check if all files are approved (Optional validation)
         $allFilesApproved = $permohonan->files->count() > 0 &&
-            $permohonan->files->every(fn($file) => $file->status === 1);
+            $permohonan->files->every(fn($file) => $file->status == 1);
 
         // Allow Admin to proceed regardless, or just warn? 
         // User requested that administrator CAN approve.
