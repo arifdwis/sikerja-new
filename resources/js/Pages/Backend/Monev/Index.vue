@@ -163,6 +163,10 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                             <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input v-model="filterQuery" type="text" placeholder="Cari monev..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-green-500 rounded-lg text-sm dark:bg-gray-700" />
                         </div>
+                        <a v-if="isAdmin && completedCount > 0" :href="route('monev.export')" class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            <Icon icon="solar:download-bold" class="w-4 h-4" />
+                            Export CSV
+                        </a>
                     </div>
                 </div>
 

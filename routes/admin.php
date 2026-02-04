@@ -38,6 +38,7 @@ Route::prefix('laporan')->name('laporan.')->controller(LaporanController::class)
 Route::prefix('monev')->name('monev.')->controller(\App\Http\Controllers\MonevController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     Route::get('/create', 'create')->name('create');
+    Route::get('/export', 'export')->name('export');
     Route::post('/', 'store')->name('store');
     Route::get('/{uuid}', 'show')->name('show');
     Route::post('/{uuid}/review', 'review')->name('review');

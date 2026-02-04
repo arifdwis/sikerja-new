@@ -235,4 +235,78 @@ class MonevController extends Controller implements HasMiddleware
 
         return redirect()->back()->with('success', 'Monev berhasil direview.');
     }
+
+    /**
+     * Export Monev to CSV
+     */
+    public function export(Request $request)
+    {
+        $monevs = Monev::with(['permohonan.kategori'])
+            ->latest()
+            ->get();
+
+        $filename = 'monev_' . date('Y-m-d_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($monevs) {
+            $file = fopen('php://output', 'w');
+
+            // Add BOM for Excel UTF-8 compatibility
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            // Header row
+            fputcsv($file, [
+                'Kode Monev',
+                'Kerjasama',
+                'Instansi',
+                'Kategori',
+                'Tanggal Evaluasi',
+                'Kesesuaian Tujuan',
+                'Ketepatan Waktu',
+                'Kontribusi Mitra',
+                'Tingkat Koordinasi',
+                'Capaian Indikator',
+                'Dampak Pelaksanaan',
+                'Inovasi Manfaat',
+                'Kelengkapan Dokumen',
+                'Pelaporan Berkala',
+                'Relevansi Kebutuhan',
+                'Rekomendasi Lanjutan',
+                'Kendala Administrasi',
+                'Saran Rekomendasi',
+            ]);
+
+            // Data rows
+            foreach ($monevs as $monev) {
+                fputcsv($file, [
+                    $monev->kode_monev,
+                    $monev->permohonan?->label ?? '-',
+                    $monev->permohonan?->nama_instansi ?? '-',
+                    $monev->permohonan?->kategori?->label ?? '-',
+                    $monev->tanggal_evaluasi?->format('d/m/Y'),
+                    $monev->kesesuaian_tujuan,
+                    $monev->ketepatan_waktu,
+                    $monev->kontribusi_mitra,
+                    $monev->tingkat_koordinasi,
+                    $monev->capaian_indikator,
+                    $monev->dampak_pelaksanaan,
+                    $monev->inovasi_manfaat,
+                    $monev->kelengkapan_dokumen,
+                    $monev->pelaporan_berkala,
+                    $monev->relevansi_kebutuhan,
+                    $monev->rekomendasi_lanjutan,
+                    $monev->kendala_administrasi,
+                    $monev->saran_rekomendasi,
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
