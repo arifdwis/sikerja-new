@@ -28,6 +28,7 @@ Route::post('permohonan/file/{uuid}/revision', [PermohonanController::class, 'up
 // Monev (Pemohon & Admin)
 Route::get('monev', [MonevController::class, 'index'])->name('monev.index');
 Route::get('monev/create', [MonevController::class, 'create'])->name('monev.create');
+Route::get('monev/export', [MonevController::class, 'export'])->name('monev.export');
 Route::post('monev', [MonevController::class, 'store'])->name('monev.store');
 Route::get('monev/{uuid}', [MonevController::class, 'show'])->name('monev.show');
 Route::post('monev/{uuid}/review', [MonevController::class, 'review'])->name('monev.review');
