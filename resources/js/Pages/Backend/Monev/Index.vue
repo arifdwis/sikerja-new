@@ -32,9 +32,9 @@ const doSearch = () => {
 
 const getStatusBadge = (status) => {
     const badges = {
-        0: { label: 'Draft', class: 'bg-gray-100 text-gray-700 border-gray-200' },
-        1: { label: 'Menunggu Review', class: 'bg-orange-100 text-orange-700 border-orange-200' },
-        2: { label: 'Sudah Direview', class: 'bg-green-100 text-green-700 border-green-200' },
+        0: { label: 'Draft', class: 'bg-gray-100 text-gray-700' },
+        1: { label: 'Menunggu Review', class: 'bg-orange-100 text-orange-700' },
+        2: { label: 'Sudah Direview', class: 'bg-green-100 text-green-700' },
     };
     return badges[status] || badges[0];
 };
@@ -71,46 +71,46 @@ const hasMonevData = computed(() => props.datas?.data?.length > 0);
                         <Icon icon="solar:clipboard-check-bold-duotone" class="w-6 h-6 text-orange-500" />
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Kerjasama Perlu Diisi Monev</h3>
                         <span class="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-600 rounded-full">
-                            {{ pendingPermohonans.length }} Menunggu
+                            {{ pendingPermohonans.length }}
                         </span>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <div 
-                            v-for="item in pendingPermohonans" 
-                            :key="item.id"
-                            class="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-800 dark:to-gray-700 rounded-xl border border-orange-200 dark:border-gray-600 p-5 hover:shadow-lg hover:border-orange-300 transition-all"
-                        >
-                            <div class="flex items-start justify-between mb-3">
-                                <span class="text-xs font-mono text-gray-500 bg-white/50 px-2 py-0.5 rounded">{{ item.nomor_permohonan || item.kode }}</span>
-                                <span class="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full border border-green-200">
-                                    Selesai
-                                </span>
-                            </div>
-                            
-                            <h3 class="font-bold text-gray-900 dark:text-white mb-1 line-clamp-2">
-                                {{ item.label || 'Tanpa Judul' }}
-                            </h3>
-                            <p class="text-sm text-gray-500 mb-3">{{ item.nama_instansi }}</p>
-                            
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs text-gray-400">
-                                    <Icon icon="solar:tag-linear" class="w-4 h-4 inline-block mr-1" />
-                                    {{ item.kategori?.label || 'Umum' }}
-                                </span>
-                                <Link 
-                                    :href="route('monev.create', { permohonan: item.uuid })"
-                                    class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors"
-                                >
-                                    <Icon icon="solar:pen-new-square-linear" class="w-4 h-4" />
-                                    Isi Monev
-                                </Link>
-                            </div>
-                        </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-500 dark:text-gray-400">
+                                <tr>
+                                    <th class="px-4 py-3">No</th>
+                                    <th class="px-4 py-3">Kode</th>
+                                    <th class="px-4 py-3">Judul Kerjasama</th>
+                                    <th class="px-4 py-3">Instansi</th>
+                                    <th class="px-4 py-3">Kategori</th>
+                                    <th class="px-4 py-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tr v-for="(item, index) in pendingPermohonans" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-4 py-3 text-gray-500">{{ index + 1 }}</td>
+                                    <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ item.nomor_permohonan || item.kode }}</td>
+                                    <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ item.label || '-' }}</td>
+                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ item.nama_instansi }}</td>
+                                    <td class="px-4 py-3 text-gray-500">{{ item.kategori?.label || 'Umum' }}</td>
+                                    <td class="px-4 py-3 text-center">
+                                        <Link 
+                                            :href="route('monev.create', { permohonan: item.uuid })"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                        >
+                                            <Icon icon="solar:pen-new-square-linear" class="w-4 h-4" />
+                                            Isi Monev
+                                        </Link>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 <!-- Divider -->
-                <div v-if="!isAdmin && hasPendingPermohonans && hasMonevData" class="border-t border-gray-200 dark:border-gray-700 my-8"></div>
+                <div v-if="!isAdmin && hasPendingPermohonans" class="border-t border-gray-200 dark:border-gray-700 my-8"></div>
 
                 <!-- Riwayat Monev Section -->
                 <div>
@@ -120,7 +120,7 @@ const hasMonevData = computed(() => props.datas?.data?.length > 0);
                     </div>
 
                     <!-- Control Bar -->
-                    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                             <div class="relative">
                                 <Icon icon="solar:magnifer-linear" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -145,40 +145,58 @@ const hasMonevData = computed(() => props.datas?.data?.length > 0);
                         </div>
                     </div>
 
-                    <!-- Data Grid -->
-                    <div v-if="hasMonevData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        <Link 
-                            v-for="item in datas.data" 
-                            :key="item.id"
-                            :href="route('monev.show', item.uuid)"
-                            class="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-lg hover:border-blue-300 transition-all group"
-                        >
-                            <div class="flex items-start justify-between mb-3">
-                                <span class="text-xs font-mono text-gray-500">{{ item.kode_monev }}</span>
-                                <span 
-                                    class="px-2 py-0.5 text-xs font-medium rounded-full border"
-                                    :class="getStatusBadge(item.status).class"
-                                >
-                                    {{ getStatusBadge(item.status).label }}
-                                </span>
-                            </div>
-                            
-                            <h3 class="font-bold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                {{ item.permohonan?.label || 'Tanpa Judul' }}
-                            </h3>
-                            <p class="text-sm text-gray-500 mb-3">{{ item.permohonan?.nama_instansi }}</p>
-                            
-                            <div class="flex items-center justify-between text-xs text-gray-400">
-                                <span>{{ formatDate(item.tanggal_evaluasi) }}</span>
-                                <span v-if="item.rekomendasi_lanjutan" class="font-medium" :class="{
-                                    'text-green-600': item.rekomendasi_lanjutan === 'Dilanjutkan',
-                                    'text-blue-600': item.rekomendasi_lanjutan === 'Diperluas',
-                                    'text-red-600': item.rekomendasi_lanjutan === 'Dihentikan',
-                                }">
-                                    {{ item.rekomendasi_lanjutan }}
-                                </span>
-                            </div>
-                        </Link>
+                    <!-- Data Table -->
+                    <div v-if="hasMonevData" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-500 dark:text-gray-400">
+                                <tr>
+                                    <th class="px-4 py-3">No</th>
+                                    <th class="px-4 py-3">Kode Monev</th>
+                                    <th class="px-4 py-3">Kerjasama</th>
+                                    <th class="px-4 py-3">Instansi</th>
+                                    <th class="px-4 py-3">Tgl Evaluasi</th>
+                                    <th class="px-4 py-3">Rekomendasi</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tr v-for="(item, index) in datas.data" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-4 py-3 text-gray-500">{{ (datas.current_page - 1) * datas.per_page + index + 1 }}</td>
+                                    <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ item.kode_monev }}</td>
+                                    <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ item.permohonan?.label || '-' }}</td>
+                                    <td class="px-4 py-3 text-gray-600 dark:text-gray-300">{{ item.permohonan?.nama_instansi }}</td>
+                                    <td class="px-4 py-3 text-gray-500">{{ formatDate(item.tanggal_evaluasi) }}</td>
+                                    <td class="px-4 py-3">
+                                        <span v-if="item.rekomendasi_lanjutan" class="text-xs font-medium px-2 py-0.5 rounded" :class="{
+                                            'bg-green-100 text-green-700': item.rekomendasi_lanjutan === 'Dilanjutkan',
+                                            'bg-blue-100 text-blue-700': item.rekomendasi_lanjutan === 'Diperluas',
+                                            'bg-red-100 text-red-700': item.rekomendasi_lanjutan === 'Dihentikan',
+                                        }">
+                                            {{ item.rekomendasi_lanjutan }}
+                                        </span>
+                                        <span v-else class="text-gray-400">-</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span 
+                                            class="px-2 py-0.5 text-xs font-medium rounded"
+                                            :class="getStatusBadge(item.status).class"
+                                        >
+                                            {{ getStatusBadge(item.status).label }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <Link 
+                                            :href="route('monev.show', item.uuid)"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                        >
+                                            <Icon icon="solar:eye-linear" class="w-4 h-4" />
+                                            Detail
+                                        </Link>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <!-- Empty State -->
