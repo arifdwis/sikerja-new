@@ -37,14 +37,7 @@ class MenusSeeder extends Seeder
                 'roles' => 'pemohon',
                 'children' => []
             ],
-            [
-                'title' => 'Monev',
-                'route' => 'monev.index',
-                'icon' => 'solar:clipboard-check-bold',
-                'order' => 4,
-                'roles' => 'pemohon,administrator,superadmin',
-                'children' => []
-            ],
+
             [
                 'title' => 'Kelola Permohonan',
                 'route' => null,
@@ -131,6 +124,13 @@ class MenusSeeder extends Seeder
                         'icon' => 'solar:graph-new-linear',
                         'roles' => 'administrator,superadmin,tkksd',
                         'order' => 5
+                    ],
+                    [
+                        'title' => 'Monev Kerjasama',
+                        'route' => 'monev.index',
+                        'icon' => 'solar:clipboard-check-linear',
+                        'roles' => 'administrator,superadmin,tkksd',
+                        'order' => 6
                     ],
                 ]
             ],

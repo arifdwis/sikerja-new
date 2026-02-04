@@ -86,11 +86,11 @@ class MonevController extends Controller implements HasMiddleware
 
         $datas = $query->paginate(10)->withQueryString();
 
-        // Get completed permohonan that don't have monev yet (for user only)
+        // Get completed permohonan that don't have monev yet
         $pendingPermohonans = [];
-        if (!$isAdmin) {
+        if ($isAdmin) {
+            // Admin sees all completed permohonan without monev
             $pendingPermohonans = Permohonan::with(['kategori'])
-                ->where('id_pemohon_0', $user->id)
                 ->where('status', Permohonan::STATUS_SELESAI)
                 ->whereDoesntHave('monev')
                 ->latest()
