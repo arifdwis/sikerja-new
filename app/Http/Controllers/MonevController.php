@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Monev;
 use App\Models\Permohonan;
-use App\Models\Operator;
+use App\Models\Pemohon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -35,7 +35,10 @@ class MonevController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            // Add middleware as needed
+            new Middleware('can:monev.menu', only: ['index']),
+            new Middleware('can:monev.create', only: ['create', 'store']),
+            new Middleware('can:monev.view', only: ['show']),
+            new Middleware('can:monev.review', only: ['review']),
         ];
     }
 
@@ -46,18 +49,21 @@ class MonevController extends Controller implements HasMiddleware
     public function index(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->hasRole(['administrator', 'superadmin', 'admin']);
+        $isAdmin = $user->can('monev.menu.admin');
 
-        $query = Monev::with(['permohonan.kategori', 'operator', 'reviewer'])
+        $query = Monev::with(['permohonan.kategori', 'pemohon', 'reviewer'])
             ->latest();
 
         // Pemohon only sees their own
         if (!$isAdmin) {
-            $operator = Operator::where('id_user', $user->id)->first();
-            if ($operator) {
-                $query->where('id_operator', $operator->id);
+            $pemohon = Pemohon::where('id_operator', $user->id)->first();
+            if ($pemohon) {
+                $query->where('id_pemohon', $pemohon->id);
             } else {
-                $query->whereRaw('1 = 0'); // No results
+                // Also check by user id directly via permohonan
+                $query->whereHas('permohonan', function ($q) use ($user) {
+                    $q->where('id_pemohon_0', $user->id);
+                });
             }
         }
 
@@ -94,11 +100,7 @@ class MonevController extends Controller implements HasMiddleware
     public function create(Request $request)
     {
         $user = Auth::user();
-        $operator = Operator::where('id_user', $user->id)->first();
-
-        if (!$operator) {
-            return redirect()->back()->with('error', 'Data operator tidak ditemukan.');
-        }
+        $pemohon = Pemohon::where('id_operator', $user->id)->first();
 
         // Get completed permohonan that don't have monev yet
         $permohonans = Permohonan::where('id_pemohon_0', $user->id)
@@ -118,7 +120,7 @@ class MonevController extends Controller implements HasMiddleware
             'share' => array_merge($this->share, ['title' => 'Isi Form Monev']),
             'permohonans' => $permohonans,
             'selectedPermohonan' => $selectedPermohonan,
-            'operator' => $operator,
+            'pemohon' => $pemohon,
         ]);
     }
 
@@ -128,11 +130,7 @@ class MonevController extends Controller implements HasMiddleware
     public function store(Request $request)
     {
         $user = Auth::user();
-        $operator = Operator::where('id_user', $user->id)->first();
-
-        if (!$operator) {
-            return redirect()->back()->with('error', 'Data operator tidak ditemukan.');
-        }
+        $pemohon = Pemohon::where('id_operator', $user->id)->first();
 
         $validated = $request->validate([
             'id_permohonan' => 'required|exists:permohonans,id',
@@ -161,10 +159,26 @@ class MonevController extends Controller implements HasMiddleware
             $validated['file_bukti'] = $path;
         }
 
-        $validated['id_operator'] = $operator->id;
+        $validated['id_pemohon'] = $pemohon?->id;
         $validated['status'] = Monev::STATUS_SUBMITTED;
 
         $monev = Monev::create($validated);
+
+        // Send WhatsApp notification to Admin
+        try {
+            $permohonan = Permohonan::find($validated['id_permohonan']);
+            $message = "📋 *MONEV BARU DITERIMA*\n\n";
+            $message .= "Kode: {$monev->kode_monev}\n";
+            $message .= "Kerjasama: {$permohonan->label}\n";
+            $message .= "Instansi: {$permohonan->nama_instansi}\n";
+            $message .= "Rekomendasi: {$validated['rekomendasi_lanjutan']}\n\n";
+            $message .= "Silakan login untuk mereview.";
+
+            // Send to admin number
+            send_whatsapp('082255949881', $message);
+        } catch (\Exception $e) {
+            \Log::error('Monev WA Notification Error: ' . $e->getMessage());
+        }
 
         return redirect()->route('monev.show', $monev->uuid)
             ->with('success', 'Form Monev berhasil disubmit.');
@@ -176,16 +190,19 @@ class MonevController extends Controller implements HasMiddleware
     public function show(string $uuid)
     {
         $user = Auth::user();
-        $isAdmin = $user->hasRole(['administrator', 'superadmin', 'admin']);
+        $isAdmin = $user->can('monev.menu.admin');
 
-        $monev = Monev::with(['permohonan.kategori', 'operator', 'reviewer'])
+        $monev = Monev::with(['permohonan.kategori', 'pemohon', 'reviewer'])
             ->where('uuid', $uuid)
             ->firstOrFail();
 
         // Check access
         if (!$isAdmin) {
-            $operator = Operator::where('id_user', $user->id)->first();
-            if (!$operator || $monev->id_operator !== $operator->id) {
+            $pemohon = Pemohon::where('id_operator', $user->id)->first();
+            $hasAccess = ($pemohon && $monev->id_pemohon === $pemohon->id) ||
+                ($monev->permohonan && $monev->permohonan->id_pemohon_0 === $user->id);
+
+            if (!$hasAccess) {
                 abort(403, 'Akses ditolak.');
             }
         }
@@ -202,12 +219,6 @@ class MonevController extends Controller implements HasMiddleware
      */
     public function review(Request $request, string $uuid)
     {
-        $user = Auth::user();
-
-        if (!$user->hasRole(['administrator', 'superadmin', 'admin'])) {
-            abort(403, 'Hanya administrator yang dapat mereview.');
-        }
-
         $monev = Monev::where('uuid', $uuid)->firstOrFail();
 
         $validated = $request->validate([
@@ -218,7 +229,7 @@ class MonevController extends Controller implements HasMiddleware
             'status' => Monev::STATUS_REVIEWED,
             'catatan_admin' => $validated['catatan_admin'],
             'reviewed_at' => now(),
-            'reviewed_by' => $user->id,
+            'reviewed_by' => Auth::id(),
         ]);
 
         return redirect()->back()->with('success', 'Monev berhasil direview.');

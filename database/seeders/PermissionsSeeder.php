@@ -73,6 +73,13 @@ class PermissionsSeeder extends Seeder
             // Profile Pemohon
             'profile.edit',
             'profile.corporate',
+
+            // Monev (Monitoring & Evaluasi)
+            'monev.menu',
+            'monev.menu.admin',
+            'monev.create',
+            'monev.view',
+            'monev.review',
         ];
 
         foreach ($permissions as $permission) {

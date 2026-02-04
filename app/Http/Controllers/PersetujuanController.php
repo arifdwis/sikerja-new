@@ -177,6 +177,19 @@ class PersetujuanController extends Controller implements HasMiddleware
                     'status' => Permohonan::STATUS_SELESAI, // Status 4: Selesai
                 ]);
 
+                // Send Monev reminder to pemohon
+                try {
+                    if ($targetPhone) {
+                        $monevMsg = "📋 *PENGINGAT MONEV*\n\n";
+                        $monevMsg .= "Kerjasama *{$permohonan->label}* telah selesai.\n\n";
+                        $monevMsg .= "Silakan isi Form Monitoring & Evaluasi (Monev) melalui menu MONEV di SIKERJA untuk memberikan feedback pelaksanaan kerjasama.\n\n";
+                        $monevMsg .= "_Terima kasih atas kerjasamanya._";
+                        $wa->sendMessage($targetPhone, $monevMsg);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Monev reminder error: ' . $e->getMessage());
+                }
+
                 return redirect()->back()->with('success', 'Jadwal disetujui. Permohonan kerjasama selesai.');
             }
             return redirect()->back()->with('error', 'Tidak ada jadwal yang perlu disetujui.');

@@ -13,7 +13,7 @@ class Monev extends Model
     protected $fillable = [
         'uuid',
         'id_permohonan',
-        'id_operator',
+        'id_pemohon',
         'kode_monev',
         'tanggal_evaluasi',
         // Evaluasi Pelaksanaan
@@ -73,9 +73,9 @@ class Monev extends Model
         return $this->belongsTo(Permohonan::class, 'id_permohonan');
     }
 
-    public function operator(): BelongsTo
+    public function pemohon(): BelongsTo
     {
-        return $this->belongsTo(Operator::class, 'id_operator');
+        return $this->belongsTo(Pemohon::class, 'id_pemohon');
     }
 
     public function reviewer(): BelongsTo
@@ -110,8 +110,8 @@ class Monev extends Model
         return $query->where('status', self::STATUS_SUBMITTED);
     }
 
-    public function scopeByOperator($query, $operatorId)
+    public function scopeByPemohon($query, $pemohonId)
     {
-        return $query->where('id_operator', $operatorId);
+        return $query->where('id_pemohon', $pemohonId);
     }
 }

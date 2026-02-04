@@ -38,6 +38,14 @@ class MenusSeeder extends Seeder
                 'children' => []
             ],
             [
+                'title' => 'Monev',
+                'route' => 'monev.index',
+                'icon' => 'solar:clipboard-check-bold',
+                'order' => 4,
+                'roles' => 'pemohon,administrator,superadmin',
+                'children' => []
+            ],
+            [
                 'title' => 'Kelola Permohonan',
                 'route' => null,
                 'icon' => 'solar:folder-open-bold',
