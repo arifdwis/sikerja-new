@@ -1,0 +1,226 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Monev;
+use App\Models\Permohonan;
+use App\Models\Operator;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+
+class MonevController extends Controller implements HasMiddleware
+{
+    protected $title;
+    protected $prefix;
+    protected $view;
+    protected $share;
+
+    public function __construct()
+    {
+        $this->title = 'Monitoring & Evaluasi';
+        $this->view = 'Backend/Monev';
+        $this->prefix = 'monev';
+
+        $this->share = [
+            'title' => $this->title,
+            'view' => $this->view,
+            'prefix' => $this->prefix
+        ];
+    }
+
+    public static function middleware(): array
+    {
+        return [
+            // Add middleware as needed
+        ];
+    }
+
+    /**
+     * Display list of Monev
+     * Admin: see all, Pemohon: see own
+     */
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $isAdmin = $user->hasRole(['administrator', 'superadmin', 'admin']);
+
+        $query = Monev::with(['permohonan.kategori', 'operator', 'reviewer'])
+            ->latest();
+
+        // Pemohon only sees their own
+        if (!$isAdmin) {
+            $operator = Operator::where('id_user', $user->id)->first();
+            if ($operator) {
+                $query->where('id_operator', $operator->id);
+            } else {
+                $query->whereRaw('1 = 0'); // No results
+            }
+        }
+
+        // Filter by status
+        if ($request->has('status') && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_monev', 'like', "%{$search}%")
+                    ->orWhereHas('permohonan', function ($q2) use ($search) {
+                        $q2->where('label', 'like', "%{$search}%")
+                            ->orWhere('nama_instansi', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $datas = $query->paginate(10)->withQueryString();
+
+        return Inertia::render("$this->view/Index", [
+            'datas' => $datas,
+            'share' => $this->share,
+            'filters' => $request->only(['search', 'status']),
+            'isAdmin' => $isAdmin,
+        ]);
+    }
+
+    /**
+     * Show form to create new Monev
+     */
+    public function create(Request $request)
+    {
+        $user = Auth::user();
+        $operator = Operator::where('id_user', $user->id)->first();
+
+        if (!$operator) {
+            return redirect()->back()->with('error', 'Data operator tidak ditemukan.');
+        }
+
+        // Get completed permohonan that don't have monev yet
+        $permohonans = Permohonan::where('id_pemohon_0', $user->id)
+            ->where('status', Permohonan::STATUS_SELESAI)
+            ->whereDoesntHave('monev')
+            ->get(['id', 'uuid', 'label', 'nama_instansi', 'nomor_permohonan']);
+
+        // If specific permohonan is requested
+        $selectedPermohonan = null;
+        if ($request->has('permohonan')) {
+            $selectedPermohonan = Permohonan::where('uuid', $request->permohonan)
+                ->where('id_pemohon_0', $user->id)
+                ->first();
+        }
+
+        return Inertia::render("$this->view/Create", [
+            'share' => array_merge($this->share, ['title' => 'Isi Form Monev']),
+            'permohonans' => $permohonans,
+            'selectedPermohonan' => $selectedPermohonan,
+            'operator' => $operator,
+        ]);
+    }
+
+    /**
+     * Store new Monev
+     */
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+        $operator = Operator::where('id_user', $user->id)->first();
+
+        if (!$operator) {
+            return redirect()->back()->with('error', 'Data operator tidak ditemukan.');
+        }
+
+        $validated = $request->validate([
+            'id_permohonan' => 'required|exists:permohonans,id',
+            'tanggal_evaluasi' => 'required|date',
+            'kesesuaian_tujuan' => 'required',
+            'ketepatan_waktu' => 'required',
+            'kontribusi_mitra' => 'required',
+            'tingkat_koordinasi' => 'required',
+            'capaian_indikator' => 'required',
+            'dampak_pelaksanaan' => 'required',
+            'inovasi_manfaat' => 'required',
+            'kelengkapan_dokumen' => 'required',
+            'pelaporan_berkala' => 'required',
+            'kendala_administrasi' => 'nullable|string',
+            'relevansi_kebutuhan' => 'required',
+            'rekomendasi_lanjutan' => 'required',
+            'saran_rekomendasi' => 'nullable|string',
+            'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        // Handle file upload
+        if ($request->hasFile('file_bukti')) {
+            $file = $request->file('file_bukti');
+            $filename = 'monev_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('monev', $filename, 'public');
+            $validated['file_bukti'] = $path;
+        }
+
+        $validated['id_operator'] = $operator->id;
+        $validated['status'] = Monev::STATUS_SUBMITTED;
+
+        $monev = Monev::create($validated);
+
+        return redirect()->route('monev.show', $monev->uuid)
+            ->with('success', 'Form Monev berhasil disubmit.');
+    }
+
+    /**
+     * Show Monev detail
+     */
+    public function show(string $uuid)
+    {
+        $user = Auth::user();
+        $isAdmin = $user->hasRole(['administrator', 'superadmin', 'admin']);
+
+        $monev = Monev::with(['permohonan.kategori', 'operator', 'reviewer'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        // Check access
+        if (!$isAdmin) {
+            $operator = Operator::where('id_user', $user->id)->first();
+            if (!$operator || $monev->id_operator !== $operator->id) {
+                abort(403, 'Akses ditolak.');
+            }
+        }
+
+        return Inertia::render("$this->view/Show", [
+            'share' => array_merge($this->share, ['title' => 'Detail Monev']),
+            'monev' => $monev,
+            'isAdmin' => $isAdmin,
+        ]);
+    }
+
+    /**
+     * Admin review Monev
+     */
+    public function review(Request $request, string $uuid)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole(['administrator', 'superadmin', 'admin'])) {
+            abort(403, 'Hanya administrator yang dapat mereview.');
+        }
+
+        $monev = Monev::where('uuid', $uuid)->firstOrFail();
+
+        $validated = $request->validate([
+            'catatan_admin' => 'nullable|string',
+        ]);
+
+        $monev->update([
+            'status' => Monev::STATUS_REVIEWED,
+            'catatan_admin' => $validated['catatan_admin'],
+            'reviewed_at' => now(),
+            'reviewed_by' => $user->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Monev berhasil direview.');
+    }
+}

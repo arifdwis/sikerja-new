@@ -171,4 +171,9 @@ class Permohonan extends Model
     {
         return $this->hasOne(PermohonanHistori::class, 'id_permohonan')->latestOfMany();
     }
+
+    public function monev()
+    {
+        return $this->hasOne(Monev::class, 'id_permohonan');
+    }
 }

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermohonanController;
+use App\Http\Controllers\MonevController;
 
 // Profile
 Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -23,3 +24,10 @@ Route::get('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'getF
 Route::post('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'storeFileDiskusi'])->name('permohonan.file.diskusi.store');
 Route::put('permohonan/file/{uuid}/review', [PermohonanController::class, 'reviewFile'])->name('permohonan.file.review');
 Route::post('permohonan/file/{uuid}/revision', [PermohonanController::class, 'uploadFileRevision'])->name('permohonan.file.revision');
+
+// Monev (Pemohon & Admin)
+Route::get('monev', [MonevController::class, 'index'])->name('monev.index');
+Route::get('monev/create', [MonevController::class, 'create'])->name('monev.create');
+Route::post('monev', [MonevController::class, 'store'])->name('monev.store');
+Route::get('monev/{uuid}', [MonevController::class, 'show'])->name('monev.show');
+Route::post('monev/{uuid}/review', [MonevController::class, 'review'])->name('monev.review');
