@@ -145,7 +145,7 @@ class MonevController extends Controller implements HasMiddleware
         $pemohon = Pemohon::where('id_operator', $user->id)->first();
 
         $validated = $request->validate([
-            'id_permohonan' => 'required|exists:permohonans,id',
+            'id_permohonan' => 'required|exists:permohonan,id',
             'tanggal_evaluasi' => 'required|date',
             'kesesuaian_tujuan' => 'required',
             'ketepatan_waktu' => 'required',

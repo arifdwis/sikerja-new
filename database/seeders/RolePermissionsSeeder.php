@@ -115,9 +115,8 @@ class RolePermissionsSeeder extends Seeder
                 'profile.corporate',
                 // Riwayat
                 'riwayat.index',
-                // Monev
+                // Monev - only view
                 'monev.menu',
-                'monev.create',
                 'monev.view',
             ],
         ];
