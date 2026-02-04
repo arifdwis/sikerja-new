@@ -1,10 +1,9 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
 import { Icon } from '@iconify/vue';
-import InputText from 'primevue/inputtext';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
@@ -14,7 +13,8 @@ import Textarea from 'primevue/textarea';
 import Calendar from 'primevue/calendar';
 import Tag from 'primevue/tag';
 import FileUpload from 'primevue/fileupload';
-import Paginator from 'primevue/paginator';
+import TabView from 'primevue/tabview';
+import TabPanel from 'primevue/tabpanel';
 
 const props = defineProps({
     datas: Object,
@@ -25,38 +25,24 @@ const props = defineProps({
 });
 
 // Filter/Search
-const searchQuery = ref(props.filters?.search || '');
-const currentPage = ref(props.datas?.current_page || 1);
-const perPage = ref(props.datas?.per_page || 10);
-const rowsPerPageOptions = [10, 25, 50];
-
+const filterQuery = ref(props.filters?.search || '');
 let searchTimeout;
-watch(searchQuery, () => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        currentPage.value = 1;
-        applyFilters();
-    }, 500);
-});
 
 const applyFilters = () => {
     router.visit(route('monev.index'), {
-        data: {
-            page: currentPage.value,
-            per_page: perPage.value,
-            search: searchQuery.value || undefined,
-        },
+        data: { search: filterQuery.value },
         preserveState: true,
         preserveScroll: true,
-        only: ['datas']
+        only: ['datas', 'pendingPermohonans']
     });
 };
 
-const onPageChange = (e) => {
-    perPage.value = e.rows;
-    currentPage.value = e.page + 1;
-    applyFilters();
-};
+watch(filterQuery, (val) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        applyFilters();
+    }, 500);
+});
 
 // Modal Form
 const formDialog = ref(false);
@@ -149,6 +135,9 @@ const formatDate = (dateString) => {
 const viewDetail = (uuid) => {
     router.visit(route('monev.show', uuid));
 };
+
+const pendingCount = computed(() => props.pendingPermohonans?.length || 0);
+const completedCount = computed(() => props.datas?.data?.length || 0);
 </script>
 
 <template>
@@ -158,123 +147,120 @@ const viewDetail = (uuid) => {
             <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">{{ share.title }}</h2>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-full sm:px-6 lg:px-8 space-y-4">
-                <Breadcrumb />
+        <section class="py-12">
+            <div class="mx-auto max-w-full px-6 lg:px-8">
+                <!-- Breadcrumb -->
+                <Breadcrumb class="mb-6" />
 
-                <!-- Admin: Pending Permohonan Section -->
-                <div v-if="isAdmin && pendingPermohonans?.length > 0" class="max-w-full w-full bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6">
-                    <div class="flex items-center gap-2 mb-4">
-                        <Icon icon="solar:clipboard-check-bold-duotone" class="w-5 h-5 text-orange-500" />
-                        <h3 class="font-semibold text-gray-800 dark:text-white">Kerjasama Perlu Evaluasi</h3>
-                        <Tag :value="pendingPermohonans.length" severity="warning" />
+                <!-- Control Bar -->
+                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="relative w-full sm:w-1/2">
+                            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input v-model="filterQuery" type="text" placeholder="Cari monev..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-green-500 rounded-lg text-sm dark:bg-gray-700" />
+                        </div>
                     </div>
-                    
-                    <DataTable :value="pendingPermohonans" showGridlines stripedRows tableStyle="min-width: 50rem">
-                        <Column header="NO" class="w-10 !text-center">
-                            <template #body="slotProps">{{ slotProps.index + 1 }}</template>
-                        </Column>
-                        <Column field="nomor_permohonan" header="KODE">
-                            <template #body="{ data }">
-                                <span class="font-mono text-xs">{{ data.nomor_permohonan || data.kode }}</span>
-                            </template>
-                        </Column>
-                        <Column field="label" header="JUDUL KERJASAMA" sortable>
-                            <template #body="{ data }">
-                                <div class="font-medium">{{ data.label || '-' }}</div>
-                                <div class="text-xs text-gray-500">{{ data.nama_instansi }}</div>
-                            </template>
-                        </Column>
-                        <Column field="kategori.label" header="KATEGORI">
-                            <template #body="{ data }">{{ data.kategori?.label || 'Umum' }}</template>
-                        </Column>
-                        <Column header="AKSI" class="w-32 !text-center">
-                            <template #body="{ data }">
-                                <Button label="Isi Monev" icon="pi pi-pencil" severity="warning" size="small" @click="openFormModal(data)" />
-                            </template>
-                        </Column>
-                    </DataTable>
                 </div>
 
-                <!-- Riwayat Monev -->
-                <div class="max-w-full w-full bg-white rounded-lg shadow-sm dark:bg-gray-800 p-4 md:p-6 dark:text-gray-100">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 md:gap-0">
-                        <div class="flex items-center gap-2">
-                            <Icon icon="solar:document-text-bold-duotone" class="w-5 h-5 text-blue-500" />
-                            <h3 class="font-semibold">Riwayat Monev</h3>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-2 md:gap-4 items-start sm:items-center">
-                            <InputText size="small" v-model="searchQuery" placeholder="Cari..." class="border block rounded w-full sm:w-64 dark:bg-gray-700 dark:border-gray-600" />
-                            <Paginator 
-                                v-if="datas?.total > 10"
-                                size="small" 
-                                :totalRecords="datas.total" 
-                                :rows="perPage" 
-                                :first="(currentPage - 1) * perPage"
-                                :rowsPerPageOptions="rowsPerPageOptions" 
-                                @page="onPageChange" 
-                                template="RowsPerPageDropdown PrevPageLink CurrentPageReport NextPageLink"
-                                currentPageReportTemplate="{first}-{last} / {totalRecords}" 
-                            />
-                        </div>
-                    </div>
-
-                    <DataTable :value="datas?.data || []" showGridlines stripedRows tableStyle="min-width: 50rem">
-                        <template #empty>
-                            <div class="text-center py-8 text-gray-500">
-                                <Icon icon="solar:clipboard-list-bold-duotone" class="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                                <p>Belum ada riwayat Monev</p>
+                <!-- Main Content -->
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-xl border border-gray-100 dark:border-gray-700 p-6">
+                    <TabView class="w-full">
+                        
+                        <!-- Perlu Evaluasi Tab -->
+                        <TabPanel v-if="isAdmin">
+                            <template #header>
+                                <div class="flex items-center gap-2">
+                                    <Icon icon="solar:clipboard-check-bold" class="w-4 h-4 text-orange-500" />
+                                    <span>Perlu Evaluasi</span>
+                                    <Tag :value="pendingCount" severity="warning" />
+                                </div>
+                            </template>
+                            
+                            <div v-if="pendingCount > 0" class="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 rounded-r-lg flex items-start gap-4">
+                                <div class="bg-orange-100 p-2 rounded-full text-orange-600">
+                                    <Icon icon="solar:clipboard-check-bold-duotone" class="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-orange-800 text-lg">Kerjasama Perlu Evaluasi</h4>
+                                    <p class="text-sm text-orange-700 mt-1">Terdapat <span class="font-bold">{{ pendingCount }}</span> kerjasama yang telah berakhir dan perlu diisi form Monev.</p>
+                                </div>
                             </div>
-                        </template>
-                        <Column header="NO" class="w-10 !text-center">
-                            <template #body="slotProps">{{ (currentPage - 1) * perPage + slotProps.index + 1 }}</template>
-                        </Column>
-                        <Column field="kode_monev" header="KODE MONEV">
-                            <template #body="{ data }">
-                                <span class="font-mono text-xs">{{ data.kode_monev }}</span>
+                            
+                            <DataTable :value="pendingPermohonans" paginator :rows="10" stripedRows tableStyle="min-width: 50rem" class="p-datatable-sm mt-4">
+                                <template #empty>Tidak ada kerjasama yang perlu evaluasi.</template>
+                                <Column field="label" header="Judul Kerjasama" sortable>
+                                    <template #body="{ data }">
+                                        <div class="font-bold text-gray-800 dark:text-white text-base">{{ data.label }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">{{ data.kategori?.label || 'Umum' }}</div>
+                                    </template>
+                                </Column>
+                                <Column field="nama_instansi" header="Instansi" sortable></Column>
+                                <Column header="Tanggal Berakhir">
+                                    <template #body="{ data }">
+                                        <div class="text-sm font-bold text-red-600">{{ formatDate(data.tanggal_berakhir) }}</div>
+                                    </template>
+                                </Column>
+                                <Column header="Status">
+                                    <template #body>
+                                        <Tag value="Belum Evaluasi" severity="warning" />
+                                    </template>
+                                </Column>
+                                <Column header="Aksi" style="width: 120px">
+                                    <template #body="{ data }">
+                                        <Button label="Isi Monev" icon="pi pi-pencil" severity="warning" size="small" @click="openFormModal(data)" />
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </TabPanel>
+                        
+                        <!-- Riwayat Monev Tab -->
+                        <TabPanel>
+                            <template #header>
+                                <div class="flex items-center gap-2">
+                                    <Icon icon="solar:document-text-bold" class="w-4 h-4 text-blue-500" />
+                                    <span>Riwayat Monev</span>
+                                    <Tag :value="completedCount" severity="info" />
+                                </div>
                             </template>
-                        </Column>
-                        <Column field="permohonan.label" header="KERJASAMA" sortable>
-                            <template #body="{ data }">
-                                <div class="font-medium">{{ data.permohonan?.label || '-' }}</div>
-                                <div class="text-xs text-gray-500">{{ data.permohonan?.nama_instansi }}</div>
-                            </template>
-                        </Column>
-                        <Column header="TGL EVALUASI" class="w-32">
-                            <template #body="{ data }">{{ formatDate(data.tanggal_evaluasi) }}</template>
-                        </Column>
-                        <Column header="REKOMENDASI" class="w-32">
-                            <template #body="{ data }">
-                                <Tag v-if="data.rekomendasi_lanjutan" :value="data.rekomendasi_lanjutan" :severity="data.rekomendasi_lanjutan === 'Dilanjutkan' ? 'success' : data.rekomendasi_lanjutan === 'Diperluas' ? 'info' : 'danger'" />
-                                <span v-else class="text-gray-400">-</span>
-                            </template>
-                        </Column>
-                        <Column header="STATUS" class="w-32">
-                            <template #body="{ data }">
-                                <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" />
-                            </template>
-                        </Column>
-                        <Column header="AKSI" class="w-20 !text-center">
-                            <template #body="{ data }">
-                                <Button icon="pi pi-eye" severity="secondary" outlined size="small" @click="viewDetail(data.uuid)" v-tooltip.top="'Lihat Detail'" class="!w-8 !h-8 !p-0" />
-                            </template>
-                        </Column>
-                    </DataTable>
 
-                    <div v-if="datas?.total > 10" class="mt-4">
-                        <Paginator 
-                            :totalRecords="datas.total" 
-                            :rows="perPage" 
-                            :first="(currentPage - 1) * perPage"
-                            :rowsPerPageOptions="rowsPerPageOptions" 
-                            @page="onPageChange" 
-                            template="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
-                            currentPageReportTemplate="{first}-{last} dari {totalRecords}" 
-                        />
-                    </div>
+                            <DataTable :value="datas?.data || []" paginator :rows="10" stripedRows tableStyle="min-width: 50rem" class="mt-4">
+                                <template #empty>Belum ada riwayat Monev.</template>
+                                <Column field="kode_monev" header="Kode Monev">
+                                    <template #body="{ data }">
+                                        <span class="font-mono text-xs">{{ data.kode_monev }}</span>
+                                    </template>
+                                </Column>
+                                <Column field="permohonan.label" header="Kerjasama" sortable>
+                                    <template #body="{ data }">
+                                        <div class="font-bold text-gray-800 dark:text-white text-base">{{ data.permohonan?.label || '-' }}</div>
+                                        <div class="text-xs text-gray-500 mt-1">{{ data.permohonan?.nama_instansi }}</div>
+                                    </template>
+                                </Column>
+                                <Column header="Tgl Evaluasi">
+                                    <template #body="{ data }">{{ formatDate(data.tanggal_evaluasi) }}</template>
+                                </Column>
+                                <Column header="Rekomendasi">
+                                    <template #body="{ data }">
+                                        <Tag v-if="data.rekomendasi_lanjutan" :value="data.rekomendasi_lanjutan" :severity="data.rekomendasi_lanjutan === 'Dilanjutkan' ? 'success' : data.rekomendasi_lanjutan === 'Diperluas' ? 'info' : 'danger'" />
+                                        <span v-else class="text-gray-400">-</span>
+                                    </template>
+                                </Column>
+                                <Column header="Status">
+                                    <template #body="{ data }">
+                                        <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" />
+                                    </template>
+                                </Column>
+                                <Column header="Aksi" style="width: 100px">
+                                    <template #body="{ data }">
+                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="viewDetail(data.uuid)" />
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </TabPanel>
+                    </TabView>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Monev Form Modal -->
         <Dialog v-model:visible="formDialog" modal header="Form Monitoring & Evaluasi" :style="{ width: '700px' }" :breakpoints="{ '960px': '90vw' }">

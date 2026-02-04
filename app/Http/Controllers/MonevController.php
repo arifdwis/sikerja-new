@@ -86,12 +86,17 @@ class MonevController extends Controller implements HasMiddleware
 
         $datas = $query->paginate(10)->withQueryString();
 
-        // Get completed permohonan that don't have monev yet
+        // Get kerjasama that have expired (tanggal_berakhir passed) and don't have monev yet
         $pendingPermohonans = [];
         if ($isAdmin) {
-            // Admin sees all completed permohonan without monev
+            // Admin sees all finished kerjasama without monev
+            // A kerjasama is considered finished when:
+            // 1. Status is SELESAI (signed agreement)
+            // 2. tanggal_berakhir has passed (the agreement period ended)
             $pendingPermohonans = Permohonan::with(['kategori'])
                 ->where('status', Permohonan::STATUS_SELESAI)
+                ->whereNotNull('tanggal_berakhir')
+                ->where('tanggal_berakhir', '<', now())
                 ->whereDoesntHave('monev')
                 ->latest()
                 ->get();
