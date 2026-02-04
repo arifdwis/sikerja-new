@@ -34,6 +34,15 @@ Route::prefix('laporan')->name('laporan.')->controller(LaporanController::class)
     Route::get('/cetak-semua', 'cetakSemua')->name('cetak-semua');
 });
 
+// Monev (Admin fills evaluation for expired kerjasama)
+Route::prefix('monev')->name('monev.')->controller(\App\Http\Controllers\MonevController::class)->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/create', 'create')->name('create');
+    Route::post('/', 'store')->name('store');
+    Route::get('/{uuid}', 'show')->name('show');
+    Route::post('/{uuid}/review', 'review')->name('review');
+});
+
 // Settings (Admin)
 Route::get('pengaturan', function () {
     return redirect()->route('settings.users.index');
