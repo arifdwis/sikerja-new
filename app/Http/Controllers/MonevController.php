@@ -177,28 +177,12 @@ class MonevController extends Controller implements HasMiddleware
         }
 
         $validated['id_pemohon'] = $pemohon?->id;
-        $validated['status'] = Monev::STATUS_SUBMITTED;
+        $validated['status'] = Monev::STATUS_REVIEWED; // Admin creates directly, no review needed
 
         $monev = Monev::create($validated);
 
-        // Send WhatsApp notification to Admin
-        try {
-            $permohonan = Permohonan::find($validated['id_permohonan']);
-            $message = "📋 *MONEV BARU DITERIMA*\n\n";
-            $message .= "Kode: {$monev->kode_monev}\n";
-            $message .= "Kerjasama: {$permohonan->label}\n";
-            $message .= "Instansi: {$permohonan->nama_instansi}\n";
-            $message .= "Rekomendasi: {$validated['rekomendasi_lanjutan']}\n\n";
-            $message .= "Silakan login untuk mereview.";
-
-            // Send to admin number
-            send_whatsapp('082255949881', $message);
-        } catch (\Exception $e) {
-            \Log::error('Monev WA Notification Error: ' . $e->getMessage());
-        }
-
         return redirect()->route('monev.show', $monev->uuid)
-            ->with('success', 'Form Monev berhasil disubmit.');
+            ->with('success', 'Form Monev berhasil disimpan.');
     }
 
     /**

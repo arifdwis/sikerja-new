@@ -44,7 +44,7 @@ watch(filterQuery, (val) => {
     }, 500);
 });
 
-// Modal Form
+// Create Form Modal
 const formDialog = ref(false);
 const selectedPermohonan = ref(null);
 
@@ -117,23 +117,27 @@ const submitForm = () => {
     });
 };
 
-const getStatusSeverity = (status) => {
-    const map = { 0: 'secondary', 1: 'warning', 2: 'success' };
-    return map[status] || 'info';
+// Detail Modal
+const detailDialog = ref(false);
+const selectedMonev = ref(null);
+
+const openDetailModal = (monev) => {
+    selectedMonev.value = monev;
+    detailDialog.value = true;
 };
 
-const getStatusLabel = (status) => {
-    const map = { 0: 'Draft', 1: 'Menunggu Review', 2: 'Sudah Direview' };
-    return map[status] || '-';
+const getAnswerColor = (answer) => {
+    const positives = ['Ya seluruhnya', 'Ya sepenuhnya', 'Tepat waktu', 'Sangat baik', 'Tercapai seluruhnya', 'Sangat berdampak', 'Ya signifikan', 'Lengkap', 'Rutin', 'Sangat relevan', 'Dilanjutkan'];
+    const neutrals = ['Sebagian', 'Baik', 'Cukup', 'Ada', 'Kadang', 'Diperluas'];
+    
+    if (positives.includes(answer)) return 'text-green-600 bg-green-50';
+    if (neutrals.includes(answer)) return 'text-yellow-600 bg-yellow-50';
+    return 'text-red-600 bg-red-50';
 };
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-const viewDetail = (uuid) => {
-    router.visit(route('monev.show', uuid));
 };
 
 const pendingCount = computed(() => props.pendingPermohonans?.length || 0);
@@ -245,14 +249,9 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                         <span v-else class="text-gray-400">-</span>
                                     </template>
                                 </Column>
-                                <Column header="Status">
-                                    <template #body="{ data }">
-                                        <Tag :value="getStatusLabel(data.status)" :severity="getStatusSeverity(data.status)" />
-                                    </template>
-                                </Column>
                                 <Column header="Aksi" style="width: 100px">
                                     <template #body="{ data }">
-                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="viewDetail(data.uuid)" />
+                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(data)" />
                                     </template>
                                 </Column>
                             </DataTable>
@@ -262,7 +261,7 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
             </div>
         </section>
 
-        <!-- Monev Form Modal -->
+        <!-- Create Form Modal -->
         <Dialog v-model:visible="formDialog" modal header="Form Monitoring & Evaluasi" :style="{ width: '700px' }" :breakpoints="{ '960px': '90vw' }">
             <form @submit.prevent="submitForm">
                 <div class="space-y-4">
@@ -307,9 +306,72 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
 
                 <div class="flex justify-end gap-2 mt-4 pt-4 border-t">
                     <Button label="Batal" severity="secondary" text size="small" @click="formDialog = false" />
-                    <Button type="submit" label="Submit" icon="pi pi-check" size="small" :loading="form.processing" />
+                    <Button type="submit" label="Simpan" icon="pi pi-check" size="small" :loading="form.processing" />
                 </div>
             </form>
+        </Dialog>
+
+        <!-- Detail Modal -->
+        <Dialog v-model:visible="detailDialog" modal header="Detail Monev" :style="{ width: '800px' }" :breakpoints="{ '960px': '90vw' }">
+            <div v-if="selectedMonev" class="space-y-4">
+                <!-- Header Info -->
+                <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-mono text-gray-500">{{ selectedMonev.kode_monev }}</span>
+                            <h3 class="text-lg font-bold text-gray-900">{{ selectedMonev.permohonan?.label }}</h3>
+                            <p class="text-sm text-gray-600">{{ selectedMonev.permohonan?.nama_instansi }}</p>
+                            <p class="text-sm text-gray-500 mt-1">Evaluasi: <strong>{{ formatDate(selectedMonev.tanggal_evaluasi) }}</strong></p>
+                        </div>
+                        <Tag value="Selesai" severity="success" />
+                    </div>
+                </div>
+
+                <!-- Answers Grid -->
+                <div class="space-y-4">
+                    <template v-for="section in ['Pelaksanaan', 'Capaian', 'Administrasi', 'Rekomendasi']" :key="section">
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                                <Icon icon="solar:widget-bold" class="w-4 h-4 text-blue-500" />
+                                {{ section === 'Pelaksanaan' ? 'Evaluasi Pelaksanaan' : section === 'Capaian' ? 'Capaian & Dampak' : section }}
+                            </h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <template v-for="q in questions.filter(x => x.section === section)" :key="q.key">
+                                    <div class="p-2 bg-gray-50 rounded-lg">
+                                        <p class="text-xs text-gray-500">{{ q.label }}</p>
+                                        <p class="font-medium text-sm px-2 py-0.5 rounded inline-block mt-1" :class="getAnswerColor(selectedMonev[q.key])">
+                                            {{ selectedMonev[q.key] || '-' }}
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Notes -->
+                <div v-if="selectedMonev.kendala_administrasi || selectedMonev.saran_rekomendasi" class="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div v-if="selectedMonev.kendala_administrasi">
+                        <h4 class="text-sm font-bold text-gray-800 mb-1">Kendala</h4>
+                        <p class="text-sm text-gray-600 bg-gray-50 p-2 rounded">{{ selectedMonev.kendala_administrasi }}</p>
+                    </div>
+                    <div v-if="selectedMonev.saran_rekomendasi">
+                        <h4 class="text-sm font-bold text-gray-800 mb-1">Saran</h4>
+                        <p class="text-sm text-gray-600 bg-gray-50 p-2 rounded">{{ selectedMonev.saran_rekomendasi }}</p>
+                    </div>
+                </div>
+
+                <!-- File -->
+                <div v-if="selectedMonev.file_bukti" class="pt-4 border-t">
+                    <a :href="`/storage/${selectedMonev.file_bukti}`" target="_blank" class="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                        <Icon icon="solar:file-download-bold" class="w-5 h-5" />
+                        Lihat/Unduh Bukti
+                    </a>
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Tutup" severity="secondary" @click="detailDialog = false" />
+            </template>
         </Dialog>
     </AuthenticatedLayout>
 </template>
