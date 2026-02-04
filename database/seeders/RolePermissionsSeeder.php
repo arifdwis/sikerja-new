@@ -74,6 +74,12 @@ class RolePermissionsSeeder extends Seeder
                 'penjadwalan.destroy',
                 // Riwayat
                 'riwayat.index',
+                // Monev
+                'monev.menu',
+                'monev.menu.admin',
+                'monev.create',
+                'monev.view',
+                'monev.review',
             ],
 
             // TKKSD - Validasi & Pembahasan access
@@ -109,6 +115,10 @@ class RolePermissionsSeeder extends Seeder
                 'profile.corporate',
                 // Riwayat
                 'riwayat.index',
+                // Monev
+                'monev.menu',
+                'monev.create',
+                'monev.view',
             ],
         ];
 
