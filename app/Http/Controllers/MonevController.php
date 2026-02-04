@@ -86,8 +86,20 @@ class MonevController extends Controller implements HasMiddleware
 
         $datas = $query->paginate(10)->withQueryString();
 
+        // Get completed permohonan that don't have monev yet (for user only)
+        $pendingPermohonans = [];
+        if (!$isAdmin) {
+            $pendingPermohonans = Permohonan::with(['kategori'])
+                ->where('id_pemohon_0', $user->id)
+                ->where('status', Permohonan::STATUS_SELESAI)
+                ->whereDoesntHave('monev')
+                ->latest()
+                ->get();
+        }
+
         return Inertia::render("$this->view/Index", [
             'datas' => $datas,
+            'pendingPermohonans' => $pendingPermohonans,
             'share' => $this->share,
             'filters' => $request->only(['search', 'status']),
             'isAdmin' => $isAdmin,
