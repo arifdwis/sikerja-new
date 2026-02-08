@@ -329,21 +329,21 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
         <Dialog v-model:visible="detailDialog" modal :style="{ width: '850px' }" :breakpoints="{ '960px': '95vw' }" :showHeader="false" contentClass="p-0">
             <div v-if="selectedMonev">
                 <!-- Header -->
-                <div class="bg-gradient-to-r from-slate-700 to-slate-800 text-white p-6">
+                <div class="bg-white border-b border-slate-200 p-6">
                     <div class="flex items-start justify-between">
                         <div>
                             <div class="flex items-center gap-3 mb-3">
-                                <span class="px-2.5 py-1 text-xs font-mono bg-white/20 backdrop-blur rounded">{{ selectedMonev.kode_monev }}</span>
-                                <span class="px-2.5 py-1 text-xs font-medium bg-emerald-500 rounded">Selesai</span>
+                                <span class="px-2.5 py-1 text-xs font-mono bg-slate-100 text-slate-600 rounded">{{ selectedMonev.kode_monev }}</span>
+                                <span class="px-2.5 py-1 text-xs font-medium bg-emerald-500 text-white rounded">Selesai</span>
                             </div>
-                            <h3 class="text-xl font-semibold mb-1">{{ selectedMonev.permohonan?.label }}</h3>
-                            <p class="text-slate-300 text-sm">{{ selectedMonev.permohonan?.nama_instansi }}</p>
+                            <h3 class="text-xl font-semibold text-slate-800 mb-1">{{ selectedMonev.permohonan?.label }}</h3>
+                            <p class="text-slate-500 text-sm">{{ selectedMonev.permohonan?.nama_instansi }}</p>
                         </div>
-                        <button @click="detailDialog = false" class="text-white/70 hover:text-white p-1">
+                        <button @click="detailDialog = false" class="text-slate-400 hover:text-slate-600 p-1">
                             <Icon icon="solar:close-circle-bold" class="w-6 h-6" />
                         </button>
                     </div>
-                    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-white/20 text-sm text-slate-300">
+                    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500">
                         <span class="flex items-center gap-1.5">
                             <Icon icon="solar:calendar-linear" class="w-4 h-4" />
                             {{ formatDate(selectedMonev.tanggal_evaluasi) }}
