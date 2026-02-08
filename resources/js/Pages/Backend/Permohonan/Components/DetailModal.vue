@@ -6,6 +6,7 @@ import DetailParties from './Detail/DetailParties.vue';
 import DetailSubstance from './Detail/DetailSubstance.vue';
 import DetailSchedule from './Detail/DetailSchedule.vue';
 import DetailDocuments from './Detail/DetailDocuments.vue';
+import DetailContact from './Detail/DetailContact.vue';
 
 const props = defineProps({
     visible: Boolean,
@@ -30,7 +31,8 @@ const handleUpdateVisible = (val) => {
         :style="{ width: '1100px' }" 
         :breakpoints="{ '1199px': '95vw' }" 
         maximizable 
-        class="p-0 overflow-hidden"
+        class="p-0"
+        contentClass="overflow-y-auto"
     >
         <div v-if="loading" class="space-y-6 p-6">
                 <div class="grid grid-cols-2 gap-6">
@@ -40,20 +42,19 @@ const handleUpdateVisible = (val) => {
                 <Skeleton height="25rem" class="w-full rounded-xl" />
         </div>
         
-        <div v-else-if="data" class="flex flex-col h-[85vh]">
-            <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/50 dark:bg-gray-900/50">
-                <DetailHeader :data="data" />
+        <div v-else-if="data" class="p-6 space-y-8 bg-gray-50/50 dark:bg-gray-900/50">
+            <DetailHeader :data="data" />
 
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                    <div class="xl:col-span-2 space-y-8">
-                        <DetailParties :data="data" />
-                        <DetailSubstance :data="data" />
-                    </div>
+            <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div class="xl:col-span-2 space-y-8">
+                    <DetailParties :data="data" />
+                    <DetailSubstance :data="data" />
+                </div>
 
-                    <div class="space-y-6">
-                        <DetailSchedule :data="data" :isAdmin="isAdmin" @refresh="$emit('refresh')" />
-                        <DetailDocuments :data="data" @open-file-diskusi="$emit('open-file-diskusi', $event)" />
-                    </div>
+                <div class="space-y-6">
+                    <DetailSchedule :data="data" :isAdmin="isAdmin" @refresh="$emit('refresh')" />
+                    <DetailDocuments :data="data" @open-file-diskusi="$emit('open-file-diskusi', $event)" />
+                    <DetailContact :data="data" />
                 </div>
             </div>
         </div>
