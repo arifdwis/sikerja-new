@@ -42,10 +42,6 @@ class MonevController extends Controller implements HasMiddleware
         ];
     }
 
-    /**
-     * Display list of Monev
-     * Admin: see all, Pemohon: see own
-     */
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -54,25 +50,21 @@ class MonevController extends Controller implements HasMiddleware
         $query = Monev::with(['permohonan.kategori', 'permohonan.pemohon', 'pemohon', 'reviewer'])
             ->latest();
 
-        // Pemohon only sees their own
         if (!$isAdmin) {
             $pemohon = Pemohon::where('id_operator', $user->id)->first();
             if ($pemohon) {
                 $query->where('id_pemohon', $pemohon->id);
             } else {
-                // Also check by user id directly via permohonan
                 $query->whereHas('permohonan', function ($q) use ($user) {
                     $q->where('id_pemohon_0', $user->id);
                 });
             }
         }
 
-        // Filter by status
         if ($request->has('status') && $request->status !== '') {
             $query->where('status', $request->status);
         }
 
-        // Search
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -86,13 +78,8 @@ class MonevController extends Controller implements HasMiddleware
 
         $datas = $query->paginate(10)->withQueryString();
 
-        // Get kerjasama that have expired (tanggal_berakhir passed) and don't have monev yet
         $pendingPermohonans = [];
         if ($isAdmin) {
-            // Admin sees all finished kerjasama without monev
-            // A kerjasama is considered finished when:
-            // 1. Status is SELESAI (signed agreement)
-            // 2. tanggal_berakhir has passed (the agreement period ended)
             $pendingPermohonans = Permohonan::with(['kategori'])
                 ->where('status', Permohonan::STATUS_SELESAI)
                 ->whereNotNull('tanggal_berakhir')
@@ -111,21 +98,16 @@ class MonevController extends Controller implements HasMiddleware
         ]);
     }
 
-    /**
-     * Show form to create new Monev
-     */
     public function create(Request $request)
     {
         $user = Auth::user();
         $pemohon = Pemohon::where('id_operator', $user->id)->first();
 
-        // Get completed permohonan that don't have monev yet
         $permohonans = Permohonan::where('id_pemohon_0', $user->id)
             ->where('status', Permohonan::STATUS_SELESAI)
             ->whereDoesntHave('monev')
             ->get(['id', 'uuid', 'label', 'nama_instansi', 'nomor_permohonan']);
 
-        // If specific permohonan is requested
         $selectedPermohonan = null;
         if ($request->has('permohonan')) {
             $selectedPermohonan = Permohonan::where('uuid', $request->permohonan)
@@ -141,9 +123,6 @@ class MonevController extends Controller implements HasMiddleware
         ]);
     }
 
-    /**
-     * Store new Monev
-     */
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -168,7 +147,6 @@ class MonevController extends Controller implements HasMiddleware
             'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
-        // Handle file upload
         if ($request->hasFile('file_bukti')) {
             $file = $request->file('file_bukti');
             $filename = 'monev_' . time() . '.' . $file->getClientOriginalExtension();
@@ -177,7 +155,7 @@ class MonevController extends Controller implements HasMiddleware
         }
 
         $validated['id_pemohon'] = $pemohon?->id;
-        $validated['status'] = Monev::STATUS_REVIEWED; // Admin creates directly, no review needed
+        $validated['status'] = Monev::STATUS_REVIEWED;
 
         $monev = Monev::create($validated);
 
@@ -185,9 +163,6 @@ class MonevController extends Controller implements HasMiddleware
             ->with('success', 'Form Monev berhasil disimpan.');
     }
 
-    /**
-     * Show Monev detail
-     */
     public function show(string $uuid)
     {
         $user = Auth::user();
@@ -197,7 +172,6 @@ class MonevController extends Controller implements HasMiddleware
             ->where('uuid', $uuid)
             ->firstOrFail();
 
-        // Check access
         if (!$isAdmin) {
             $pemohon = Pemohon::where('id_operator', $user->id)->first();
             $hasAccess = ($pemohon && $monev->id_pemohon === $pemohon->id) ||
@@ -215,9 +189,6 @@ class MonevController extends Controller implements HasMiddleware
         ]);
     }
 
-    /**
-     * Admin review Monev
-     */
     public function review(Request $request, string $uuid)
     {
         $monev = Monev::where('uuid', $uuid)->firstOrFail();
@@ -236,9 +207,6 @@ class MonevController extends Controller implements HasMiddleware
         return redirect()->back()->with('success', 'Monev berhasil direview.');
     }
 
-    /**
-     * Export Monev to CSV
-     */
     public function export(Request $request)
     {
         $monevs = Monev::with(['permohonan.kategori'])
@@ -255,10 +223,8 @@ class MonevController extends Controller implements HasMiddleware
         $callback = function () use ($monevs) {
             $file = fopen('php://output', 'w');
 
-            // Add BOM for Excel UTF-8 compatibility
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            // Header row
             fputcsv($file, [
                 'Kode Monev',
                 'Kerjasama',
@@ -280,7 +246,6 @@ class MonevController extends Controller implements HasMiddleware
                 'Saran Rekomendasi',
             ]);
 
-            // Data rows
             foreach ($monevs as $monev) {
                 fputcsv($file, [
                     $monev->kode_monev,

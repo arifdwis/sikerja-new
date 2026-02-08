@@ -12,14 +12,8 @@ use Carbon\Carbon;
 
 class SSOController extends Controller
 {
-    /**
-     * Where to redirect users after login.
-     */
     protected $redirectTo = '/dashboard';
 
-    /**
-     * Redirect to SSO login page
-     */
     public function login()
     {
         $queries = http_build_query([
@@ -32,9 +26,6 @@ class SSOController extends Controller
         return redirect(config('sso.server_url') . '/oauth/sso/authorize?' . $queries);
     }
 
-    /**
-     * Handle SSO callback
-     */
     public function callback(Request $request)
     {
         Log::info('SSO Callback received', ['params' => $request->all()]);
@@ -42,7 +33,6 @@ class SSOController extends Controller
         try {
             $broker = new Broker();
 
-            // Login with code + uid + pwd (form-based SSO login)
             if ($request->filled('code') && $request->filled('uid') && $request->filled('pwd')) {
                 $username = base64_decode($request->uid);
                 $password = base64_decode($request->pwd);
@@ -64,7 +54,6 @@ class SSOController extends Controller
                     Log::error('SSO: Broker login error', ['error' => $e->getMessage()]);
                 }
 
-                // If broker login fails, try to get user info directly with the token/code
                 Log::info('SSO: Trying token method as fallback');
                 try {
                     if ($broker->token($request->code)) {
@@ -78,10 +67,8 @@ class SSOController extends Controller
                     Log::error('SSO: Token fallback error', ['error' => $e->getMessage()]);
                 }
 
-                // Last resort: Try to create user directly from decoded credentials
                 Log::info('SSO: Attempting direct user creation from SSO response');
 
-                // Parse the JWT code to get user info
                 $codeParts = explode('.', $request->code);
                 if (count($codeParts) === 3) {
                     $payload = json_decode(base64_decode($codeParts[1]), true);
@@ -99,7 +86,6 @@ class SSOController extends Controller
                 }
             }
 
-            // Login with token only (redirect-based SSO login)
             if ($request->filled('code') && !$request->filled('uid') && !$request->filled('pwd')) {
                 Log::info('SSO: Attempting token login', ['code' => substr($request->code, 0, 50) . '...']);
 
@@ -123,9 +109,6 @@ class SSOController extends Controller
         }
     }
 
-    /**
-     * Create or update user from JWT payload
-     */
     protected function createOrUpdateUserFromJWT(array $payload, string $email)
     {
         try {
@@ -136,7 +119,7 @@ class SSOController extends Controller
             $userData = [
                 'uid' => $payload['sub'],
                 'email' => $email,
-                'name' => explode('@', $email)[0], // Use part before @ as name
+                'name' => explode('@', $email)[0],
                 'last_login' => Carbon::now(),
                 'last_ip_address' => request()->ip(),
             ];
@@ -164,9 +147,6 @@ class SSOController extends Controller
         }
     }
 
-    /**
-     * Sync user data from SSO to local database
-     */
     protected function syncUserFromSSO(Broker $broker)
     {
         try {
@@ -218,9 +198,6 @@ class SSOController extends Controller
         }
     }
 
-    /**
-     * Log the user out of the application.
-     */
     public function logout(Request $request)
     {
         $broker = new Broker();
