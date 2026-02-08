@@ -316,76 +316,144 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
         </Dialog>
 
         <!-- Detail Modal -->
-        <Dialog v-model:visible="detailDialog" modal header="Detail Monev" :style="{ width: '800px' }" :breakpoints="{ '960px': '90vw' }">
-            <div v-if="selectedMonev" class="space-y-4">
+        <Dialog v-model:visible="detailDialog" modal header="Detail Monev" :style="{ width: '900px' }" :breakpoints="{ '960px': '95vw' }">
+            <div v-if="selectedMonev" class="space-y-5">
                 <!-- Header Info -->
-                <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-xs font-mono text-gray-500">{{ selectedMonev.kode_monev }}</span>
-                            <h3 class="text-lg font-bold text-gray-900">{{ selectedMonev.permohonan?.label }}</h3>
-                            <p class="text-sm text-gray-600">{{ selectedMonev.permohonan?.nama_instansi }}</p>
-                            <p class="text-sm text-gray-500 mt-1">Evaluasi: <strong>{{ formatDate(selectedMonev.tanggal_evaluasi) }}</strong></p>
+                <div class="flex items-start justify-between gap-4 pb-4 border-b border-gray-200">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="px-2 py-1 text-xs font-mono bg-gray-100 text-gray-600 rounded">{{ selectedMonev.kode_monev }}</span>
+                            <Tag value="Selesai" severity="success" />
                         </div>
-                        <Tag value="Selesai" severity="success" />
+                        <h3 class="text-xl font-bold text-gray-900 mb-1">{{ selectedMonev.permohonan?.label }}</h3>
+                        <p class="text-sm text-gray-600">{{ selectedMonev.permohonan?.nama_instansi }}</p>
+                        <p class="text-xs text-gray-500 mt-2">
+                            <Icon icon="solar:calendar-bold" class="w-3.5 h-3.5 inline mr-1" />
+                            Evaluasi: {{ formatDate(selectedMonev.tanggal_evaluasi) }}
+                        </p>
                     </div>
                 </div>
 
-                <!-- Answers Grid -->
-                <div class="space-y-4">
-                    <template v-for="section in ['Pelaksanaan', 'Capaian', 'Administrasi', 'Rekomendasi']" :key="section">
-                        <div>
-                            <h4 class="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
-                                <Icon icon="solar:widget-bold" class="w-4 h-4 text-blue-500" />
-                                {{ section === 'Pelaksanaan' ? 'Evaluasi Pelaksanaan' : section === 'Capaian' ? 'Capaian & Dampak' : section }}
+                <!-- Answers Grid - 2 columns layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <!-- Left Column -->
+                    <div class="space-y-4">
+                        <!-- Evaluasi Pelaksanaan -->
+                        <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+                            <h4 class="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                <Icon icon="solar:clipboard-check-bold" class="w-4 h-4" />
+                                Evaluasi Pelaksanaan
                             </h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                <template v-for="q in questions.filter(x => x.section === section)" :key="q.key">
-                                    <div class="p-2 bg-gray-50 rounded-lg">
-                                        <p class="text-xs text-gray-500">{{ q.label }}</p>
-                                        <p class="font-medium text-sm px-2 py-0.5 rounded inline-block mt-1" :class="getAnswerColor(selectedMonev[q.key])">
+                            <div class="grid grid-cols-2 gap-2">
+                                <template v-for="q in questions.filter(x => x.section === 'Pelaksanaan')" :key="q.key">
+                                    <div class="bg-white p-2.5 rounded-lg border border-blue-100/50">
+                                        <p class="text-xs text-gray-500 mb-1">{{ q.label }}</p>
+                                        <p class="font-semibold text-sm" :class="getAnswerColor(selectedMonev[q.key])">
                                             {{ selectedMonev[q.key] || '-' }}
                                         </p>
                                     </div>
                                 </template>
                             </div>
                         </div>
-                    </template>
+
+                        <!-- Administrasi -->
+                        <div class="bg-purple-50/50 rounded-xl p-4 border border-purple-100">
+                            <h4 class="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                                <Icon icon="solar:document-text-bold" class="w-4 h-4" />
+                                Administrasi
+                            </h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <template v-for="q in questions.filter(x => x.section === 'Administrasi')" :key="q.key">
+                                    <div class="bg-white p-2.5 rounded-lg border border-purple-100/50">
+                                        <p class="text-xs text-gray-500 mb-1">{{ q.label }}</p>
+                                        <p class="font-semibold text-sm" :class="getAnswerColor(selectedMonev[q.key])">
+                                            {{ selectedMonev[q.key] || '-' }}
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="space-y-4">
+                        <!-- Capaian & Dampak -->
+                        <div class="bg-green-50/50 rounded-xl p-4 border border-green-100">
+                            <h4 class="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                                <Icon icon="solar:chart-bold" class="w-4 h-4" />
+                                Capaian & Dampak
+                            </h4>
+                            <div class="space-y-2">
+                                <template v-for="q in questions.filter(x => x.section === 'Capaian')" :key="q.key">
+                                    <div class="bg-white p-2.5 rounded-lg border border-green-100/50 flex justify-between items-center">
+                                        <p class="text-xs text-gray-500">{{ q.label }}</p>
+                                        <p class="font-semibold text-sm px-2 py-0.5 rounded" :class="getAnswerColor(selectedMonev[q.key])">
+                                            {{ selectedMonev[q.key] || '-' }}
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Rekomendasi -->
+                        <div class="bg-orange-50/50 rounded-xl p-4 border border-orange-100">
+                            <h4 class="text-sm font-semibold text-orange-800 mb-3 flex items-center gap-2">
+                                <Icon icon="solar:star-bold" class="w-4 h-4" />
+                                Rekomendasi
+                            </h4>
+                            <div class="space-y-2">
+                                <template v-for="q in questions.filter(x => x.section === 'Rekomendasi')" :key="q.key">
+                                    <div class="bg-white p-2.5 rounded-lg border border-orange-100/50 flex justify-between items-center">
+                                        <p class="text-xs text-gray-500">{{ q.label }}</p>
+                                        <p class="font-semibold text-sm px-2 py-0.5 rounded" :class="getAnswerColor(selectedMonev[q.key])">
+                                            {{ selectedMonev[q.key] || '-' }}
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Notes -->
-                <div v-if="selectedMonev.kendala_administrasi || selectedMonev.saran_rekomendasi" class="grid grid-cols-2 gap-4 pt-4 border-t">
-                    <div v-if="selectedMonev.kendala_administrasi">
-                        <h4 class="text-sm font-bold text-gray-800 mb-1">Kendala</h4>
-                        <p class="text-sm text-gray-600 bg-gray-50 p-2 rounded">{{ selectedMonev.kendala_administrasi }}</p>
+                <!-- Notes Section -->
+                <div v-if="selectedMonev.kendala_administrasi || selectedMonev.saran_rekomendasi" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                    <div v-if="selectedMonev.kendala_administrasi" class="bg-red-50/50 rounded-lg p-4 border border-red-100">
+                        <h4 class="text-sm font-semibold text-red-800 mb-2 flex items-center gap-2">
+                            <Icon icon="solar:danger-triangle-bold" class="w-4 h-4" />
+                            Kendala
+                        </h4>
+                        <p class="text-sm text-gray-700">{{ selectedMonev.kendala_administrasi }}</p>
                     </div>
-                    <div v-if="selectedMonev.saran_rekomendasi">
-                        <h4 class="text-sm font-bold text-gray-800 mb-1">Saran</h4>
-                        <p class="text-sm text-gray-600 bg-gray-50 p-2 rounded">{{ selectedMonev.saran_rekomendasi }}</p>
+                    <div v-if="selectedMonev.saran_rekomendasi" class="bg-teal-50/50 rounded-lg p-4 border border-teal-100">
+                        <h4 class="text-sm font-semibold text-teal-800 mb-2 flex items-center gap-2">
+                            <Icon icon="solar:lightbulb-bold" class="w-4 h-4" />
+                            Saran
+                        </h4>
+                        <p class="text-sm text-gray-700">{{ selectedMonev.saran_rekomendasi }}</p>
                     </div>
                 </div>
 
-                <!-- File -->
-                <div v-if="selectedMonev.file_bukti" class="pt-4 border-t">
-                    <a :href="`/storage/${selectedMonev.file_bukti}`" target="_blank" class="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                <!-- File Bukti -->
+                <div v-if="selectedMonev.file_bukti" class="pt-4 border-t border-gray-200">
+                    <a :href="`/storage/${selectedMonev.file_bukti}`" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium rounded-lg transition-colors border border-blue-200">
                         <Icon icon="solar:file-download-bold" class="w-5 h-5" />
                         Lihat/Unduh Bukti
                     </a>
                 </div>
             </div>
             <template #footer>
-                <div class="flex justify-between w-full">
+                <div class="flex justify-between items-center w-full">
                     <a 
                         v-if="selectedMonev?.permohonan?.pemohon?.phone"
                         :href="`https://wa.me/${selectedMonev.permohonan.pemohon.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`"
                         target="_blank"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
                     >
                         <Icon icon="logos:whatsapp-icon" class="w-5 h-5" />
                         Hubungi Pemohon
                     </a>
                     <span v-else></span>
-                    <Button label="Tutup" severity="secondary" @click="detailDialog = false" />
+                    <Button label="Tutup" icon="pi pi-times" severity="secondary" @click="detailDialog = false" />
                 </div>
             </template>
         </Dialog>
