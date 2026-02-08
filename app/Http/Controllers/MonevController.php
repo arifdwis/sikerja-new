@@ -51,7 +51,7 @@ class MonevController extends Controller implements HasMiddleware
         $user = Auth::user();
         $isAdmin = $user->can('monev.menu.admin');
 
-        $query = Monev::with(['permohonan.kategori', 'pemohon', 'reviewer'])
+        $query = Monev::with(['permohonan.kategori', 'permohonan.pemohon', 'pemohon', 'reviewer'])
             ->latest();
 
         // Pemohon only sees their own
