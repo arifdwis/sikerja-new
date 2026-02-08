@@ -196,6 +196,46 @@ const statusColors = {
                     <!-- Sidebar -->
                     <div class="space-y-6">
                         
+                        <!-- Kontak Pemohon -->
+                        <div v-if="permohonan.pemohon1 || permohonan.pemohon2" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                                <Icon icon="solar:phone-bold" class="w-5 h-5 mr-2 text-green-500" />
+                                Kontak Pemohon
+                            </h3>
+                            <div class="space-y-3">
+                                <!-- Pemohon 1 -->
+                                <div v-if="permohonan.pemohon1" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pemohon 1</p>
+                                    <p class="font-medium text-gray-900 dark:text-white text-sm mb-2">{{ permohonan.pemohon1.name }}</p>
+                                    <a 
+                                        v-if="permohonan.pemohon1.phone"
+                                        :href="`https://wa.me/${permohonan.pemohon1.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`"
+                                        target="_blank"
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                    >
+                                        <Icon icon="logos:whatsapp-icon" class="w-4 h-4" />
+                                        Hubungi via WhatsApp
+                                    </a>
+                                    <p v-else class="text-xs text-gray-400">No. HP tidak tersedia</p>
+                                </div>
+                                <!-- Pemohon 2 -->
+                                <div v-if="permohonan.pemohon2" class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Pemohon 2</p>
+                                    <p class="font-medium text-gray-900 dark:text-white text-sm mb-2">{{ permohonan.pemohon2.name }}</p>
+                                    <a 
+                                        v-if="permohonan.pemohon2.phone"
+                                        :href="`https://wa.me/${permohonan.pemohon2.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`"
+                                        target="_blank"
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
+                                    >
+                                        <Icon icon="logos:whatsapp-icon" class="w-4 h-4" />
+                                        Hubungi via WhatsApp
+                                    </a>
+                                    <p v-else class="text-xs text-gray-400">No. HP tidak tersedia</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Files -->
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
