@@ -23,17 +23,9 @@ const proposalKakFile = ref(null);
 const draftMouFile = ref(null);
 
 const handleFileSelect = (event, field) => {
-    console.log('File select event:', event, 'for field:', field);
-    
-    // PrimeVue FileUpload passes files array in event.files
     const file = event.files ? event.files[0] : (event.target?.files ? event.target.files[0] : null);
     
-    if (!file) {
-        console.error('No file found in event');
-        return;
-    }
-    
-    console.log('Selected file:', file.name, file.size);
+    if (!file) return;
     
     form[field] = file;
     
@@ -58,24 +50,11 @@ const formatFileSize = (bytes) => {
 };
 
 const submit = () => {
-    console.log('Submitting files...', {
-        surat: form.surat_permohonan,
-        proposal: form.proposal_kak,
-        mou: form.draft_mou
-    });
-    
     form.post(route('permohonan.upload', props.permohonan.uuid), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            console.log('Upload success!');
             emit('success');
-        },
-        onError: (errors) => {
-            console.error('Upload errors:', errors);
-        },
-        onFinish: () => {
-            console.log('Upload finished');
         }
     });
 };

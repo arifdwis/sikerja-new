@@ -154,15 +154,10 @@ const saveOrder = async () => {
     isSaving.value = true;
     try {
         if (!treeValue.value || treeValue.value.length === 0) {
-            // alert('Data menu kosong, tidak ada yang disimpan.');
             return;
         }
 
-        // Debug: Log tree value to see if it changed
-        // console.log('Tree Structure before Save:', JSON.parse(JSON.stringify(treeValue.value)));
-
         const payload = flattenTree(treeValue.value);
-        // console.log('Sending Flattened Payload:', payload);
         
         await axios.post('/settings/menu/reorder', { items: payload });
         
@@ -179,8 +174,6 @@ const saveOrder = async () => {
         console.error('Save Error:', e);
         const msg = e.response?.data?.message || e.message || 'Unknown error';
         toast.error('Gagal menyimpan: ' + msg);
-        // Fallback alert ensures user sees error even if toast fails
-        // alert('Gagal menyimpan: ' + msg); 
     } finally {
         isSaving.value = false;
     }

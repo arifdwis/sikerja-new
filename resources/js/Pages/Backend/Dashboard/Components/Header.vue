@@ -1,10 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 
-// Placeholder for search trigger if needed later
 const triggerSearch = () => {
-    // Implement search logic or modal if required match Si Cerdas behavior
-    console.log("Trigger search");
 };
 </script>
 <template>
