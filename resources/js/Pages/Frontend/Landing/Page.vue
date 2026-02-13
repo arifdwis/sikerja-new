@@ -72,12 +72,12 @@ const getFileExt = (href) => {
                             target="_blank"
                             class="group flex items-center gap-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-lg transition-all p-6"
                         >
-                            <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
                                 :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'"
                             >
                                 <Icon 
                                     icon="solar:document-bold" 
-                                    class="w-7 h-7"
+                                    class="w-6 h-6"
                                     :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
                                 />
                             </div>
@@ -114,7 +114,7 @@ const getFileExt = (href) => {
                             <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-4 h-4" />
                             Informasi Lainnya
                         </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <Link 
                                 v-for="(item, idx) in relatedPages" 
                                 :key="idx" 
