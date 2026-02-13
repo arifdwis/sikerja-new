@@ -79,13 +79,8 @@ class LandingController extends Controller
         if ($page->content) {
             preg_match_all('/<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/si', $page->content, $matches, PREG_SET_ORDER);
             foreach ($matches as $match) {
-                $href = $match[1];
-                // Rewrite /files/ to /storage/uploads/ where files actually live
-                if (str_starts_with($href, '/files/')) {
-                    $href = '/storage/uploads/' . substr($href, 7);
-                }
                 $fileLinks[] = [
-                    'href' => $href,
+                    'href' => $match[1],
                     'text' => strip_tags($match[2]),
                 ];
             }
