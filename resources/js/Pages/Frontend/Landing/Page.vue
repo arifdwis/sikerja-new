@@ -20,17 +20,52 @@ const relatedPages = computed(() => {
     return allPages.value.filter(p => p.url !== window.location.pathname).slice(0, 5)
 })
 
-const hasLongContent = computed(() => {
-    if (!props.page.content) return false
-    const text = props.page.content.replace(/<[^>]*>/g, '').trim()
-    return text.length > 200
-})
-
 const formattedDate = computed(() => {
     if (!props.page.created_at) return ''
     return new Date(props.page.created_at).toLocaleDateString('id-ID', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     })
+})
+
+const extractedLinks = computed(() => {
+    if (!props.page.content) return []
+    const div = document.createElement('div')
+    div.innerHTML = props.page.content
+    const anchors = div.querySelectorAll('a')
+    return Array.from(anchors).map(a => ({
+        href: a.getAttribute('href') || '',
+        text: a.textContent?.trim() || 'Dokumen',
+        title: a.getAttribute('title') || a.textContent?.trim() || 'Dokumen'
+    }))
+})
+
+const plainTextContent = computed(() => {
+    if (!props.page.content) return ''
+    const div = document.createElement('div')
+    div.innerHTML = props.page.content
+    div.querySelectorAll('a').forEach(a => a.remove())
+    return div.textContent?.trim() || ''
+})
+
+const isFileLink = (href) => {
+    return /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar)$/i.test(href)
+}
+
+const getFileIcon = (href) => {
+    if (/\.pdf$/i.test(href)) return 'solar:document-bold'
+    if (/\.(doc|docx)$/i.test(href)) return 'solar:document-text-bold'
+    if (/\.(xls|xlsx)$/i.test(href)) return 'solar:chart-square-bold'
+    if (/\.(ppt|pptx)$/i.test(href)) return 'solar:presentation-graph-bold'
+    return 'solar:file-bold'
+}
+
+const getFileExt = (href) => {
+    const match = href.match(/\.(\w+)$/i)
+    return match ? match[1].toUpperCase() : 'FILE'
+}
+
+const hasLongContent = computed(() => {
+    return plainTextContent.value.length > 200 && extractedLinks.value.length === 0
 })
 </script>
 
@@ -48,10 +83,56 @@ const formattedDate = computed(() => {
         <section class="flex-grow py-12 md:py-16">
             <div class="max-w-7xl mx-auto px-4 md:px-6">
 
-                <!-- Compact layout when content is short -->
-                <div v-if="!hasLongContent" class="max-w-4xl mx-auto">
-                    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                        <!-- Document info bar -->
+                <!-- Compact layout: content with download links -->
+                <div v-if="!hasLongContent" class="max-w-3xl mx-auto">
+
+                    <!-- Download cards when content has file links -->
+                    <div v-if="extractedLinks.length > 0" class="space-y-4">
+                        <a 
+                            v-for="(link, idx) in extractedLinks" 
+                            :key="idx"
+                            :href="link.href"
+                            target="_blank"
+                            class="group block bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-lg transition-all overflow-hidden"
+                        >
+                            <div class="flex items-center gap-5 p-5 md:p-6">
+                                <!-- File icon -->
+                                <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                                    :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20 group-hover:bg-red-100 dark:group-hover:bg-red-900/30' : 'bg-emerald-50 dark:bg-emerald-900/20 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30'"
+                                >
+                                    <Icon 
+                                        :icon="getFileIcon(link.href)" 
+                                        class="w-7 h-7 transition-colors"
+                                        :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
+                                    />
+                                </div>
+
+                                <!-- Info -->
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors text-base md:text-lg">
+                                        {{ link.title }}
+                                    </h3>
+                                    <div class="flex items-center gap-3 mt-1.5">
+                                        <span v-if="isFileLink(link.href)" class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                                            {{ getFileExt(link.href) }}
+                                        </span>
+                                        <span class="text-xs text-gray-400">{{ formattedDate }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Action button -->
+                                <div class="shrink-0">
+                                    <div class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-emerald-500 text-white group-hover:bg-emerald-600 shadow-sm group-hover:shadow-md">
+                                        <Icon :icon="isFileLink(link.href) ? 'solar:download-minimalistic-bold' : 'solar:eye-bold'" class="w-4 h-4" />
+                                        {{ isFileLink(link.href) ? 'Download' : 'Buka' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- Plain text content (no links) -->
+                    <div v-else class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
                         <div class="flex items-center gap-4 px-6 py-4 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-800/30">
                             <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
                                 <Icon icon="solar:document-text-bold" class="w-5 h-5 text-white" />
@@ -61,8 +142,6 @@ const formattedDate = computed(() => {
                                 <p v-if="formattedDate" class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">{{ formattedDate }}</p>
                             </div>
                         </div>
-
-                        <!-- Content -->
                         <div class="p-6">
                             <article class="prose prose-emerald dark:prose-invert max-w-none">
                                 <div v-html="page.content"></div>
@@ -70,13 +149,13 @@ const formattedDate = computed(() => {
                         </div>
                     </div>
 
-                    <!-- Related pages - horizontal cards -->
+                    <!-- Related pages -->
                     <div v-if="relatedPages.length" class="mt-8">
                         <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                             <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-4 h-4" />
                             Informasi Lainnya
                         </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <Link 
                                 v-for="(item, idx) in relatedPages" 
                                 :key="idx" 
