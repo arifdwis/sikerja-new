@@ -17,7 +17,7 @@ const currentYear = new Date().getFullYear()
                         <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
                             <Icon icon="solar:document-bold" class="w-5 h-5 text-white" />
                         </div>
-                        <span class="text-xl font-black text-white">SiCerdas</span>
+                        <span class="text-xl font-black text-white">SIKERJA</span>
                     </div>
                     <p class="leading-relaxed mb-6 max-w-sm">
                         Sistem Informasi Kerjasama Daerah Terintegrasi Pemerintah Kota Samarinda. Mewujudkan tata kelola kerjasama yang transparan, efektif, dan akuntabel.
@@ -68,7 +68,7 @@ const currentYear = new Date().getFullYear()
                         </li>
                         <li class="flex items-center gap-2.5 group">
                             <Icon icon="solar:letter-bold" class="w-4 h-4 text-emerald-500 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                            <a href="mailto:hukum@samarindakota.go.id" class="text-xs hover:text-emerald-400 transition-colors">hukum@samarindakota.go.id</a>
+                            <a href="mailto:kerjasama@samarindakota.go.id" class="text-xs hover:text-emerald-400 transition-colors">kerjasama@samarindakota.go.id</a>
                         </li>
                     </ul>
                 </div>
@@ -76,7 +76,7 @@ const currentYear = new Date().getFullYear()
 
             <div class="border-t border-gray-800/50 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-xs text-gray-500 text-center md:text-left">
-                    &copy; {{ currentYear }} SiCerdas - Pemerintah Kota Samarinda. All rights reserved.
+                    &copy; {{ currentYear }} SIKERJA - Pemerintah Kota Samarinda. All rights reserved.
                 </p>
                 <div class="flex gap-6 text-xs">
                     <a href="#" class="hover:text-emerald-400 transition-colors">Kebijakan Privasi</a>

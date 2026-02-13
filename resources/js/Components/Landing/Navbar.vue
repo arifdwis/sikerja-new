@@ -59,7 +59,7 @@ onUnmounted(() => {
                     <span :class="[
                         'text-xl font-black transition-colors',
                         isScrolled ? 'text-gray-900 dark:text-white' : 'text-white'
-                    ]">SiCerdas</span>
+                    ]">SIKERJA</span>
                 </Link>
 
                 <div class="hidden md:flex items-center gap-8">
