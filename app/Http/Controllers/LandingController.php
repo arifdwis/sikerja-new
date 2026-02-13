@@ -75,8 +75,20 @@ class LandingController extends Controller
     {
         $page = Laman::where('slug', $slug)->firstOrFail();
 
+        $fileLinks = [];
+        if ($page->content) {
+            preg_match_all('/<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/si', $page->content, $matches, PREG_SET_ORDER);
+            foreach ($matches as $match) {
+                $fileLinks[] = [
+                    'href' => $match[1],
+                    'text' => strip_tags($match[2]),
+                ];
+            }
+        }
+
         return Inertia::render('Frontend/Landing/Page', [
-            'page' => $page
+            'page' => $page,
+            'fileLinks' => $fileLinks,
         ]);
     }
 }

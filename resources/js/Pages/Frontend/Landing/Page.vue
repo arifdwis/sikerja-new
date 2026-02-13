@@ -10,6 +10,10 @@ const props = defineProps({
     page: {
         type: Object,
         required: true
+    },
+    fileLinks: {
+        type: Array,
+        default: () => []
     }
 })
 
@@ -28,10 +32,18 @@ const formattedDate = computed(() => {
 })
 
 const isShortContent = computed(() => {
+    if (props.fileLinks.length > 0) return true
     if (!props.page.content) return true
     const text = props.page.content.replace(/<[^>]*>/g, '').trim()
     return text.length <= 300
 })
+
+const isFileLink = (href) => /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar)$/i.test(href)
+
+const getFileExt = (href) => {
+    const match = href.match(/\.(\w+)$/i)
+    return match ? match[1].toUpperCase() : 'FILE'
+}
 </script>
 
 <template>
@@ -48,12 +60,55 @@ const isShortContent = computed(() => {
         <section class="flex-grow py-8 md:py-12">
             <div class="max-w-7xl mx-auto px-4 md:px-6">
 
-                <!-- Compact layout for short content -->
+                <!-- Compact layout for pages with file downloads -->
                 <div v-if="isShortContent" class="max-w-4xl mx-auto">
-                    <div class="page-content-compact bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                        <div v-html="page.content"></div>
+
+                    <!-- File download cards -->
+                    <div v-if="fileLinks.length > 0" class="space-y-3">
+                        <a 
+                            v-for="(link, idx) in fileLinks" 
+                            :key="idx"
+                            :href="link.href"
+                            target="_blank"
+                            class="group flex items-center gap-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-md transition-all p-4"
+                        >
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                                :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'"
+                            >
+                                <Icon 
+                                    icon="solar:document-bold" 
+                                    class="w-5 h-5"
+                                    :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
+                                />
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors text-sm line-clamp-2">
+                                    {{ link.text }}
+                                </h3>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span v-if="isFileLink(link.href)" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">
+                                        {{ getFileExt(link.href) }}
+                                    </span>
+                                    <span class="text-[11px] text-gray-400">{{ formattedDate }}</span>
+                                </div>
+                            </div>
+
+                            <div class="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 text-white group-hover:bg-emerald-600 transition-all">
+                                <Icon icon="solar:download-minimalistic-bold" class="w-3.5 h-3.5" />
+                                Download
+                            </div>
+                        </a>
                     </div>
 
+                    <!-- Plain text content (no file links) -->
+                    <div v-else class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
+                        <article class="prose prose-emerald dark:prose-invert max-w-none">
+                            <div v-html="page.content"></div>
+                        </article>
+                    </div>
+
+                    <!-- Related pages -->
                     <div v-if="relatedPages.length" class="mt-6">
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                             <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-3.5 h-3.5" />
@@ -128,52 +183,3 @@ const isShortContent = computed(() => {
 
     <Footer />
 </template>
-
-<style scoped>
-.page-content-compact :deep(a) {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-    border: 1px solid #a7f3d0;
-    border-radius: 10px;
-    color: #047857;
-    font-weight: 600;
-    font-size: 14px;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-.page-content-compact :deep(a):hover {
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-    border-color: #6ee7b7;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
-}
-.page-content-compact :deep(a)::before {
-    content: '';
-    display: inline-block;
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    background: #10b981;
-    border-radius: 8px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 18px;
-}
-.page-content-compact :deep(a)::after {
-    content: 'Download ▸';
-    margin-left: auto;
-    font-size: 12px;
-    font-weight: 700;
-    color: white;
-    background: #10b981;
-    padding: 6px 14px;
-    border-radius: 8px;
-    white-space: nowrap;
-}
-.page-content-compact :deep(a):hover::after {
-    background: #059669;
-}
-</style>
