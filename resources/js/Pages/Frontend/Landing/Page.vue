@@ -70,32 +70,32 @@ const getFileExt = (href) => {
                             :key="idx"
                             :href="link.href"
                             target="_blank"
-                            class="group flex items-center gap-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-md transition-all p-4"
+                            class="group flex items-center gap-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-lg transition-all p-6"
                         >
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                            <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
                                 :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'"
                             >
                                 <Icon 
                                     icon="solar:document-bold" 
-                                    class="w-5 h-5"
+                                    class="w-7 h-7"
                                     :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
                                 />
                             </div>
 
                             <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors text-sm line-clamp-2">
+                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors text-base line-clamp-2">
                                     {{ link.text }}
                                 </h3>
-                                <div class="flex items-center gap-2 mt-0.5">
-                                    <span v-if="isFileLink(link.href)" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span v-if="isFileLink(link.href)" class="text-xs font-bold px-2 py-0.5 rounded bg-red-100 text-red-600">
                                         {{ getFileExt(link.href) }}
                                     </span>
-                                    <span class="text-[11px] text-gray-400">{{ formattedDate }}</span>
+                                    <span class="text-xs text-gray-400">{{ formattedDate }}</span>
                                 </div>
                             </div>
 
-                            <div class="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 text-white group-hover:bg-emerald-600 transition-all">
-                                <Icon icon="solar:download-minimalistic-bold" class="w-3.5 h-3.5" />
+                            <div class="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white group-hover:bg-emerald-600 shadow-sm group-hover:shadow-md transition-all">
+                                <Icon icon="solar:download-minimalistic-bold" class="w-4 h-4" />
                                 Download
                             </div>
                         </a>
@@ -109,22 +109,22 @@ const getFileExt = (href) => {
                     </div>
 
                     <!-- Related pages -->
-                    <div v-if="relatedPages.length" class="mt-6">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                            <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-3.5 h-3.5" />
+                    <div v-if="relatedPages.length" class="mt-8">
+                        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-4 h-4" />
                             Informasi Lainnya
                         </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             <Link 
                                 v-for="(item, idx) in relatedPages" 
                                 :key="idx" 
                                 :href="item.url"
-                                class="group flex items-center gap-2.5 bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-800 hover:border-emerald-300 hover:shadow-sm transition-all"
+                                class="group flex items-center gap-3 bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800 hover:border-emerald-300 hover:shadow-md transition-all"
                             >
-                                <div class="w-7 h-7 rounded-md bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-colors">
-                                    <Icon icon="solar:document-text-linear" class="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                                <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-colors">
+                                    <Icon icon="solar:document-text-linear" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
                                 </div>
-                                <span class="text-xs text-gray-600 dark:text-gray-400 group-hover:text-emerald-600 transition-colors font-medium line-clamp-2">
+                                <span class="text-sm text-gray-600 dark:text-gray-400 group-hover:text-emerald-600 transition-colors font-medium line-clamp-2">
                                     {{ item.label }}
                                 </span>
                             </Link>
