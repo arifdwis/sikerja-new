@@ -55,7 +55,6 @@ const getFileIcon = (href) => {
     if (/\.pdf$/i.test(href)) return 'solar:document-bold'
     if (/\.(doc|docx)$/i.test(href)) return 'solar:document-text-bold'
     if (/\.(xls|xlsx)$/i.test(href)) return 'solar:chart-square-bold'
-    if (/\.(ppt|pptx)$/i.test(href)) return 'solar:presentation-graph-bold'
     return 'solar:file-bold'
 }
 
@@ -74,98 +73,106 @@ const hasLongContent = computed(() => {
     <Navbar />
 
     <main class="font-['Inter'] antialiased bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden min-h-screen flex flex-col">
+
+        <!-- Full hero header only for long content -->
         <PageHeader 
+            v-if="hasLongContent"
             :title="page.label" 
             :subtitle="formattedDate ? 'Dipublikasikan pada ' + formattedDate : ''"
             :breadcrumbs="[{ label: 'Informasi', url: '#' }, { label: page.label, url: '#' }]"
         />
 
-        <section class="flex-grow py-12 md:py-16">
+        <!-- Slim header for short content / download pages -->
+        <div v-else class="bg-gradient-to-r from-emerald-800 to-teal-700 pt-20 pb-6">
+            <div class="max-w-5xl mx-auto px-4 md:px-6">
+                <nav class="flex items-center text-sm text-emerald-200/80 mb-3">
+                    <Link href="/" class="hover:text-white transition-colors flex items-center gap-1">
+                        <Icon icon="solar:home-smile-bold" class="w-3.5 h-3.5" />
+                        Beranda
+                    </Link>
+                    <Icon icon="solar:alt-arrow-right-bold" class="w-3.5 h-3.5 mx-2 opacity-50" />
+                    <span class="text-emerald-300">Informasi</span>
+                    <Icon icon="solar:alt-arrow-right-bold" class="w-3.5 h-3.5 mx-2 opacity-50" />
+                    <span class="text-white truncate max-w-xs">{{ page.label }}</span>
+                </nav>
+                <h1 class="font-['Outfit'] text-xl md:text-2xl font-bold text-white leading-snug">{{ page.label }}</h1>
+                <p v-if="formattedDate" class="text-emerald-200 text-xs mt-1">{{ formattedDate }}</p>
+            </div>
+        </div>
+
+        <section class="flex-grow py-6 md:py-8">
             <div class="max-w-7xl mx-auto px-4 md:px-6">
 
                 <!-- Compact layout: content with download links -->
-                <div v-if="!hasLongContent" class="max-w-3xl mx-auto">
+                <div v-if="!hasLongContent" class="max-w-5xl mx-auto">
 
                     <!-- Download cards when content has file links -->
-                    <div v-if="extractedLinks.length > 0" class="space-y-4">
+                    <div v-if="extractedLinks.length > 0" class="space-y-3">
                         <a 
                             v-for="(link, idx) in extractedLinks" 
                             :key="idx"
                             :href="link.href"
                             target="_blank"
-                            class="group block bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-lg transition-all overflow-hidden"
+                            class="group flex items-center gap-4 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md transition-all p-4 md:p-5"
                         >
-                            <div class="flex items-center gap-5 p-5 md:p-6">
-                                <!-- File icon -->
-                                <div class="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-                                    :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20 group-hover:bg-red-100 dark:group-hover:bg-red-900/30' : 'bg-emerald-50 dark:bg-emerald-900/20 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30'"
-                                >
-                                    <Icon 
-                                        :icon="getFileIcon(link.href)" 
-                                        class="w-7 h-7 transition-colors"
-                                        :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
-                                    />
-                                </div>
+                            <!-- File icon -->
+                            <div class="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                                :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'"
+                            >
+                                <Icon 
+                                    :icon="getFileIcon(link.href)" 
+                                    class="w-5 h-5"
+                                    :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
+                                />
+                            </div>
 
-                                <!-- Info -->
-                                <div class="flex-1 min-w-0">
-                                    <h3 class="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors text-base md:text-lg">
-                                        {{ link.title }}
-                                    </h3>
-                                    <div class="flex items-center gap-3 mt-1.5">
-                                        <span v-if="isFileLink(link.href)" class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                                            {{ getFileExt(link.href) }}
-                                        </span>
-                                        <span class="text-xs text-gray-400">{{ formattedDate }}</span>
-                                    </div>
+                            <!-- Info -->
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors text-sm md:text-base line-clamp-2">
+                                    {{ link.title }}
+                                </h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span v-if="isFileLink(link.href)" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                                        {{ getFileExt(link.href) }}
+                                    </span>
+                                    <span class="text-[11px] text-gray-400">{{ formattedDate }}</span>
                                 </div>
+                            </div>
 
-                                <!-- Action button -->
-                                <div class="shrink-0">
-                                    <div class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-emerald-500 text-white group-hover:bg-emerald-600 shadow-sm group-hover:shadow-md">
-                                        <Icon :icon="isFileLink(link.href) ? 'solar:download-minimalistic-bold' : 'solar:eye-bold'" class="w-4 h-4" />
-                                        {{ isFileLink(link.href) ? 'Download' : 'Buka' }}
-                                    </div>
+                            <!-- Action button -->
+                            <div class="shrink-0">
+                                <div class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 text-white group-hover:bg-emerald-600 transition-all">
+                                    <Icon :icon="isFileLink(link.href) ? 'solar:download-minimalistic-bold' : 'solar:eye-bold'" class="w-3.5 h-3.5" />
+                                    {{ isFileLink(link.href) ? 'Download' : 'Buka' }}
                                 </div>
                             </div>
                         </a>
                     </div>
 
                     <!-- Plain text content (no links) -->
-                    <div v-else class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-                        <div class="flex items-center gap-4 px-6 py-4 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-800/30">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
-                                <Icon icon="solar:document-text-bold" class="w-5 h-5 text-white" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <h2 class="font-bold text-gray-900 dark:text-white truncate">{{ page.label }}</h2>
-                                <p v-if="formattedDate" class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">{{ formattedDate }}</p>
-                            </div>
-                        </div>
-                        <div class="p-6">
-                            <article class="prose prose-emerald dark:prose-invert max-w-none">
-                                <div v-html="page.content"></div>
-                            </article>
-                        </div>
+                    <div v-else class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6">
+                        <article class="prose prose-emerald dark:prose-invert max-w-none">
+                            <div v-html="page.content"></div>
+                        </article>
                     </div>
 
                     <!-- Related pages -->
-                    <div v-if="relatedPages.length" class="mt-8">
-                        <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                            <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-4 h-4" />
+                    <div v-if="relatedPages.length" class="mt-6">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                            <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-3.5 h-3.5" />
                             Informasi Lainnya
                         </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             <Link 
                                 v-for="(item, idx) in relatedPages" 
                                 :key="idx" 
                                 :href="item.url"
-                                class="group flex items-center gap-3 bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition-all"
+                                class="group flex items-center gap-2.5 bg-white dark:bg-gray-900 rounded-lg p-3 border border-gray-100 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all"
                             >
-                                <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30 flex items-center justify-center shrink-0 transition-colors">
-                                    <Icon icon="solar:document-text-linear" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                                <div class="w-7 h-7 rounded-md bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-colors">
+                                    <Icon icon="solar:document-text-linear" class="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-500 transition-colors" />
                                 </div>
-                                <span class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors font-medium line-clamp-2">
+                                <span class="text-xs text-gray-600 dark:text-gray-400 group-hover:text-emerald-600 transition-colors font-medium line-clamp-2">
                                     {{ item.label }}
                                 </span>
                             </Link>
