@@ -514,7 +514,7 @@ class PermohonanController extends Controller implements HasMiddleware
                 "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
                 "_Mohon monitor dashboard._";
 
-            $group = env('WA_GROUP_ID', '120363189423910876@g.us');
+            $group = config('services.whatsapp.group_id');
             if ($group) {
                 $wa->sendMessage($group, $adminMsg);
             }
@@ -606,7 +606,7 @@ class PermohonanController extends Controller implements HasMiddleware
                 "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
                 "_Mohon segera diperiksa._";
 
-            $group = env('WA_GROUP_ID', '120363189423910876@g.us');
+            $group = config('services.whatsapp.group_id');
             if ($group) {
                 $wa->sendMessage($group, $adminMsg);
             }

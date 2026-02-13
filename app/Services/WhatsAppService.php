@@ -16,14 +16,14 @@ class WhatsappService
      */
     public function sendMessage($target, $message)
     {
-        if (!filter_var(env('WA_GATEWAY_RUN', false), FILTER_VALIDATE_BOOLEAN)) {
+        if (!filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOLEAN)) {
             Log::info("WA Gateway disabled. Message to $target skipped.");
             return false;
         }
 
-        $url = env('WA_GATEWAY_URL');
-        $user = env('WA_GATEWAY_USER');
-        $pass = env('WA_GATEWAY_PASS');
+        $url = config('services.whatsapp.url');
+        $user = config('services.whatsapp.username');
+        $pass = config('services.whatsapp.password');
 
         if (!$url || !$user || !$pass) {
             Log::error("WA Gateway configuration missing.");

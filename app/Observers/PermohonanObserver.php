@@ -49,7 +49,7 @@ class PermohonanObserver
         }
 
         // 3. WA to Admin Group
-        $group = env('WA_GROUP_ID');
+        $group = config('services.whatsapp.group_id');
         if ($group) {
             $message = "*SIKERJA - Permohonan Baru*\n\n" .
                 "Instansi: {$permohonan->nama_instansi}\n" .
@@ -115,7 +115,7 @@ class PermohonanObserver
             }
 
             // 4. Notify Admin Group about the update
-            $group = env('WA_GROUP_ID');
+            $group = config('services.whatsapp.group_id');
             if ($group) {
                 $this->waService->sendMessage($group, $waMessageContent);
             }
