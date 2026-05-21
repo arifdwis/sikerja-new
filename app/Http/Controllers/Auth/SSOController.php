@@ -16,6 +16,27 @@ class SSOController extends Controller
 
     public function login()
     {
+        // Pre-attach broker session to SSO server before redirecting user to authorize.
+        // On first login (no broker cookie), Broker::__construct() calls attach() which
+        // aborts with HTTP 307 redirect to SSO /api/sso/attach. The browser follows it,
+        // SSO sets the broker session, then redirects back here with the cookie ready.
+        // On subsequent calls, the cookie exists and the constructor returns silently.
+        // Without this pre-attach, the attach redirect fires inside callback() and is
+        // swallowed by the try/catch, causing the well-known "harus login 2 kali" issue.
+        try {
+            new Broker();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            // Expected attach redirect — let Laravel convert it to a 307 response
+            // so the browser follows it and the queued cookie is sent along.
+            throw $e;
+        } catch (\Exception $e) {
+            // Config missing or unexpected init failure: fall back to manual redirect
+            // so the login button never breaks even if SSO config is incomplete.
+            Log::warning('SSO: Pre-attach broker init failed, continuing without it', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $queries = http_build_query([
             'name' => config('sso.broker_name'),
             'secret' => config('sso.broker_secret'),
