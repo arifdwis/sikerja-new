@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3'
 import Navbar from '@/Components/Landing/Navbar.vue'
 import PageHeader from '@/Components/Landing/PageHeader.vue'
 import Footer from '@/Components/Landing/Footer.vue'
+import ChatWidget from '@/Components/Landing/ChatWidget.vue'
 import { Icon } from '@iconify/vue'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
@@ -36,7 +37,7 @@ onMounted(() => {
                     <!-- Main Content -->
                     <div class="lg:col-span-8">
                         <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 p-8 md:p-12">
-                            <article class="prose prose-lg prose-emerald dark:prose-invert max-w-none">
+                            <article class="prose prose-lg prose-teal dark:prose-invert max-w-none">
                                 <div v-html="page.content"></div>
                             </article>
                         </div>
@@ -44,10 +45,10 @@ onMounted(() => {
 
                     <!-- Sidebar -->
                     <aside class="lg:col-span-4 space-y-8">
-                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
+                        <div class="bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
                             <h3 class="text-xl font-bold mb-4 relative z-10">Visi Kami</h3>
-                            <p class="text-emerald-50 mb-6 text-sm relative z-10 leading-relaxed">
+                            <p class="text-teal-50 mb-6 text-sm relative z-10 leading-relaxed">
                                 Mewujudkan Samarinda sebagai kota pusat peradaban yang maju dan berkelanjutan melalui sinergi kerjasama.
                             </p>
                         </div>
@@ -57,7 +58,7 @@ onMounted(() => {
                 <!-- Static Fallback -->
                 <div v-else class="grid lg:grid-cols-2 gap-16 items-center mb-24">
                     <div data-aos="fade-right">
-                        <span class="text-emerald-600 font-bold tracking-wider uppercase text-sm">Visi & Misi</span>
+                        <span class="text-teal-600 font-bold tracking-wider uppercase text-sm">Visi & Misi</span>
                         <h2 class="font-['Outfit'] text-3xl lg:text-4xl font-black mt-2 mb-6 text-gray-900 dark:text-white">
                             Mewujudkan Kerjasama Daerah yang Berkualitas dan Berdaya Saing
                         </h2>
@@ -66,7 +67,7 @@ onMounted(() => {
                         </p>
                         <div class="space-y-4">
                             <div class="flex gap-4">
-                                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex-shrink-0 flex items-center justify-center text-emerald-600">
+                                <div class="w-12 h-12 rounded-xl bg-teal-100 flex-shrink-0 flex items-center justify-center text-teal-600">
                                     <Icon icon="solar:target-bold" class="w-6 h-6" />
                                 </div>
                                 <div>
@@ -75,7 +76,7 @@ onMounted(() => {
                                 </div>
                             </div>
                             <div class="flex gap-4">
-                                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex-shrink-0 flex items-center justify-center text-emerald-600">
+                                <div class="w-12 h-12 rounded-xl bg-teal-100 flex-shrink-0 flex items-center justify-center text-teal-600">
                                     <Icon icon="solar:users-group-rounded-bold" class="w-6 h-6" />
                                 </div>
                                 <div>
@@ -87,16 +88,16 @@ onMounted(() => {
                     </div>
                     <div class="relative" data-aos="fade-left">
                         <div class="aspect-square bg-gray-100 rounded-3xl overflow-hidden relative">
-                            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-green-500/20"></div>
-                            <!-- Placeholder for an image -->
-                            <div class="absolute inset-0 flex items-center justify-center text-emerald-200">
-                                <Icon icon="solar:buildings-bold" class="w-32 h-32 opacity-20" />
+                            <div class="absolute inset-0 bg-gradient-to-br from-teal-500/20 to-cyan-500/20"></div>
+                            <!-- Logo SiKerja -->
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <img src="/foto/logo-sikerja.svg" alt="SiKerja" class="w-48 h-48 opacity-80 drop-shadow-lg" />
                             </div>
                         </div>
                         <!-- Floating Card -->
                         <div class="absolute -bottom-8 -left-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 max-w-xs">
                             <div class="flex items-center gap-3 mb-2">
-                                <Icon icon="solar:verified-check-bold" class="w-6 h-6 text-emerald-500" />
+                                <Icon icon="solar:verified-check-bold" class="w-6 h-6 text-teal-500" />
                                 <span class="font-bold">Teruji & Terpercaya</span>
                             </div>
                             <p class="text-xs text-gray-500">Telah memfasilitasi ratusan kesepakatan kerjasama strategis.</p>
@@ -112,4 +113,5 @@ onMounted(() => {
     </main>
 
     <Footer />
+    <ChatWidget />
 </template>

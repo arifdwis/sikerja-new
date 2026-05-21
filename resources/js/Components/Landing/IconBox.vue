@@ -34,7 +34,7 @@ const sizeClasses = {
 }
 
 const variantClasses = {
-    gradient: 'bg-gradient-to-br from-emerald-500 to-green-500 text-white',
+    gradient: 'bg-gradient-to-br from-teal-500 to-cyan-500 text-white',
     white: 'bg-white/20 backdrop-blur-md text-white',
     transparent: 'bg-white/10 backdrop-blur-md text-white'
 }

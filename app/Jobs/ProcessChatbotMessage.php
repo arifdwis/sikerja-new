@@ -1,0 +1,147 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\ChatbotFeedbackLog;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+class ProcessChatbotMessage implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(
+        public string $requestId,
+        public string $userMessage,
+        public array $messages,
+        public string $confidence,
+        public array $contextIds
+    ) {
+    }
+
+    public function handle(): void
+    {
+        $responseTtl = (int) config('services.ollama.response_cache_ttl', 900);
+        $ollamaUrl = rtrim(config('services.ollama.url', 'http://127.0.0.1:11434'), '/');
+        $ollamaModel = config('services.ollama.model', 'llama3.2');
+        $timeout = (int) config('services.ollama.timeout', 120);
+
+        try {
+            $response = Http::timeout($timeout)->post("{$ollamaUrl}/api/chat", [
+                'model' => $ollamaModel,
+                'messages' => $this->messages,
+                'stream' => false,
+                'options' => [
+                    'temperature' => 0.15,
+                    'top_p' => 0.9,
+                    'num_predict' => 500,
+                ],
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $reply = $data['message']['content'] ?? 'Maaf, saya tidak bisa memproses permintaan Anda saat ini.';
+
+                Cache::put("chatbot:response:{$this->requestId}", [
+                    'status' => 'done',
+                    'reply' => $reply,
+                ], $responseTtl);
+
+                if ($this->shouldLogAsFeedbackCandidate($this->confidence, $reply)) {
+                    $this->storeFeedbackCandidate(
+                        question: $this->userMessage,
+                        answer: $reply,
+                        confidence: $this->confidence,
+                        contextIds: $this->contextIds,
+                        failureReason: $this->confidence === 'rendah' ? 'low_confidence' : null
+                    );
+                }
+
+                return;
+            }
+
+            Cache::put("chatbot:response:{$this->requestId}", [
+                'status' => 'failed',
+                'reply' => 'Maaf, layanan AI sedang tidak tersedia. Silakan coba lagi nanti.',
+            ], $responseTtl);
+
+            $this->storeFeedbackCandidate(
+                question: $this->userMessage,
+                answer: null,
+                confidence: $this->confidence,
+                contextIds: $this->contextIds,
+                failureReason: 'ollama_api_error_' . $response->status()
+            );
+        } catch (\Throwable $e) {
+            Cache::put("chatbot:response:{$this->requestId}", [
+                'status' => 'failed',
+                'reply' => 'Maaf, Gagal ngehubungin Ollama. Silakan coba lagi nanti.',
+            ], $responseTtl);
+
+            Log::error('Chatbot async error: ' . $e->getMessage());
+
+            $this->storeFeedbackCandidate(
+                question: $this->userMessage,
+                answer: null,
+                confidence: $this->confidence,
+                contextIds: $this->contextIds,
+                failureReason: 'chatbot_exception'
+            );
+        }
+    }
+
+    private function shouldLogAsFeedbackCandidate(string $confidence, string $reply): bool
+    {
+        if ($confidence === 'rendah') {
+            return true;
+        }
+
+        $fallbackIndicators = [
+            'data belum tersedia',
+            'silakan hubungi bagian kerja sama',
+            'tidak ada konteks',
+            'tidak dapat saya jawab',
+            'maaf, saya tidak bisa',
+        ];
+
+        $normalizedReply = Str::lower($reply);
+        foreach ($fallbackIndicators as $indicator) {
+            if (Str::contains($normalizedReply, $indicator)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function storeFeedbackCandidate(
+        string $question,
+        ?string $answer,
+        string $confidence,
+        array $contextIds,
+        ?string $failureReason
+    ): void {
+        try {
+            ChatbotFeedbackLog::create([
+                'question' => $question,
+                'answer' => $answer,
+                'confidence' => $confidence,
+                'context_ids' => $contextIds,
+                'status' => 'needs_review',
+                'failure_reason' => $failureReason,
+                'source' => 'landing_widget',
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to store chatbot feedback candidate (async)', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+}

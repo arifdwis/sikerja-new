@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'vue-toastification';
@@ -29,6 +29,17 @@ const isReviewing = ref(false);
 const rejectDialog = ref(false);
 const rejectComment = ref('');
 
+// Approval tracking
+const approvalsCount = ref(0);
+const approvedBy = ref([]);
+const currentUserId = computed(() => usePage().props.auth?.user?.id);
+const hasCurrentUserApproved = computed(() => {
+    return approvedBy.value.some(u => u.id === currentUserId.value);
+});
+const canReview = computed(() => {
+    return props.isAdmin && props.file?.status !== 2 && !hasCurrentUserApproved.value;
+});
+
 // File re-upload state (for pemohon)
 const isUploading = ref(false);
 const fileInput = ref(null);
@@ -40,6 +51,22 @@ const fetchMessages = async () => {
     try {
         const response = await axios.get(route('permohonan.file.diskusi.index', props.file.uuid));
         messages.value = response.data;
+        
+        // Extract approval info from messages
+        if (props.file?.status === 1) {
+            const approvalMessages = response.data.filter(m => 
+                m.komentar && m.komentar.includes('Disetujui')
+            );
+            const uniqueApprovers = {};
+            approvalMessages.forEach(m => {
+                if (m.operator && !uniqueApprovers[m.operator.id]) {
+                    uniqueApprovers[m.operator.id] = { id: m.operator.id, name: m.operator.name };
+                }
+            });
+            approvedBy.value = Object.values(uniqueApprovers);
+            approvalsCount.value = approvedBy.value.length;
+        }
+        
         scrollToBottom();
     } catch (error) {
         console.error('Error fetching messages:', error);
@@ -82,11 +109,23 @@ const approveFile = async () => {
             komentar: null
         });
         emit('statusUpdated', response.data.file);
+        if (response.data.approvals_count !== undefined) {
+            approvalsCount.value = response.data.approvals_count;
+            approvedBy.value = response.data.approved_by || [];
+        }
         await fetchMessages();
         toast.success('Dokumen berhasil disetujui');
     } catch (error) {
-        console.error('Error approving file:', error);
-        toast.error('Gagal menyetujui dokumen. Pastikan migration sudah dijalankan.');
+        if (error.response?.status === 409) {
+            toast.warning(error.response.data.message || 'Anda sudah menyetujui dokumen ini.');
+            if (error.response.data.approvals_count !== undefined) {
+                approvalsCount.value = error.response.data.approvals_count;
+                approvedBy.value = error.response.data.approved_by || [];
+            }
+        } else {
+            console.error('Error approving file:', error);
+            toast.error('Gagal menyetujui dokumen.');
+        }
     } finally {
         isReviewing.value = false;
     }
@@ -175,9 +214,23 @@ const formatFileSize = (bytes) => {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 };
 
+// Fetch approval info for the file
+const fetchApprovalInfo = async () => {
+    if (!props.file?.uuid || !props.isAdmin) return;
+    try {
+        // We can get approval info by checking the messages
+        // For now, reset and let the next review call populate it
+        approvalsCount.value = 0;
+        approvedBy.value = [];
+    } catch (e) {
+        // silent
+    }
+};
+
 watch(() => props.file, (newFile) => {
     if (newFile?.uuid) {
         fetchMessages();
+        fetchApprovalInfo();
         selectedNewFile.value = null;
     }
 }, { immediate: true });
@@ -210,8 +263,8 @@ onMounted(() => {
                     <span class="px-3 py-1 text-xs font-bold rounded-full border" :class="getStatusLabel(file?.status).color">
                         {{ getStatusLabel(file?.status).label }}
                     </span>
-                    <!-- Admin Review Buttons -->
-                    <div v-if="isAdmin && file?.status === 0" class="flex gap-1">
+                    <!-- Admin Review Buttons (hidden if rejected or current user already approved) -->
+                    <div v-if="canReview" class="flex gap-1">
                         <button 
                             @click="approveFile"
                             :disabled="isReviewing"
@@ -318,14 +371,19 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Input Area -->
-        <div v-if="file?.status === 1" class="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center">
-             <div class="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-2 rounded-lg border border-green-100 dark:border-green-800/50">
-                <Icon icon="solar:check-circle-bold" class="w-5 h-5" />
-                <span class="text-sm font-medium">Dokumen ini sudah disetujui. Diskusi ditutup.</span>
+        <!-- Approved Info Banner (discussion stays open for other TKKSD reviewers) -->
+        <div v-if="file?.status === 1" class="px-4 pt-3">
+             <div class="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-2 px-3 rounded-lg border border-green-100 dark:border-green-800/50">
+                <Icon icon="solar:check-circle-bold" class="w-4 h-4 shrink-0" />
+                <span class="text-xs font-medium">
+                    Dokumen telah disetujui<span v-if="approvalsCount > 0"> oleh {{ approvalsCount }} TKKSD</span>.
+                    <span v-if="hasCurrentUserApproved" class="text-green-700 font-bold"> (Termasuk Anda)</span>
+                    <span v-else> Diskusi tetap terbuka untuk TKKSD lainnya.</span>
+                </span>
             </div>
         </div>
-        <div v-else class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <!-- Chat Input (always open) -->
+        <div class="p-3 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
             <div class="flex gap-2 items-end">
                 <textarea 
                     v-model="newMessage" 

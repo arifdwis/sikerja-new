@@ -98,39 +98,18 @@ class MenusSeeder extends Seeder
                         'order' => 1
                     ],
                     [
-                        'title' => 'Akumulatif Kerjasama',
-                        'route' => 'laporan.akumulatif',
-                        'icon' => 'solar:chart-square-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
-                        'order' => 2
-                    ],
-                    [
-                        'title' => 'Rekapitulasi Mitra',
-                        'route' => 'laporan.rekap-mitra',
-                        'icon' => 'solar:users-group-two-rounded-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
-                        'order' => 3
-                    ],
-                    [
-                        'title' => 'Persentase Perangkat Daerah',
-                        'route' => 'laporan.persentase-opd',
+                        'title' => 'Statistik Laporan',
+                        'route' => 'laporan.statistik',
                         'icon' => 'solar:pie-chart-2-linear',
                         'roles' => 'administrator,superadmin,tkksd',
-                        'order' => 4
-                    ],
-                    [
-                        'title' => 'Persentase Bidang Kerjasama',
-                        'route' => 'laporan.persentase-bidang',
-                        'icon' => 'solar:graph-new-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
-                        'order' => 5
+                        'order' => 2
                     ],
                     [
                         'title' => 'Monev Kerjasama',
                         'route' => 'monev.index',
                         'icon' => 'solar:clipboard-check-linear',
                         'roles' => 'administrator,superadmin,tkksd',
-                        'order' => 6
+                        'order' => 3
                     ],
                 ]
             ],
@@ -198,6 +177,13 @@ class MenusSeeder extends Seeder
                         'icon' => 'solar:clipboard-list-linear',
                         'roles' => 'administrator,superadmin',
                         'order' => 5
+                    ],
+                    [
+                        'title' => 'AI Feedback Log',
+                        'route' => 'settings.ai-feedback.index',
+                        'icon' => 'solar:chat-round-dots-linear',
+                        'roles' => 'superadmin',
+                        'order' => 6
                     ],
                 ]
             ],

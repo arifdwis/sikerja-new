@@ -20,12 +20,10 @@ class DashboardController extends Controller
         $user = $request->user();
         $isPemohon = $user->hasRole('pemohon');
 
-        // Redirect TKKSD directly to Pembahasan for simplified experience
         if ($user->hasRole('tkksd') && !$user->hasRole(['administrator', 'superadmin'])) {
             return redirect()->route('pembahasan.index');
         }
 
-        // Base Query
         $query = Permohonan::whereYear('created_at', $tahun);
 
         if ($kategoriId) {
@@ -36,20 +34,22 @@ class DashboardController extends Controller
             $query->whereMonth('created_at', $bulan);
         }
         if ($isPemohon) {
-            // Asumsi id_pemohon_0 adalah User ID dari pemohon (operator)
             $query->where('id_pemohon_0', $user->id);
-            // $query->where('id_pemohon_1', $user->pemohon->id); // Alternative if using profile ID
         }
 
-        // Statistik
+        $statusCounts = (clone $query)
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $stats = [
-            'total' => (clone $query)->count(),
-            'permohonan' => (clone $query)->where('status', Permohonan::STATUS_PERMOHONAN)->count(),
-            'pembahasan' => (clone $query)->where('status', Permohonan::STATUS_PEMBAHASAN)->count(),
-            'penjadwalan' => (clone $query)->where('status', Permohonan::STATUS_PENJADWALAN)->count(),
-            'disetujui' => (clone $query)->where('status', Permohonan::STATUS_DISETUJUI)->count(),
-            'selesai' => (clone $query)->where('status', Permohonan::STATUS_SELESAI)->count(),
-            'ditolak' => (clone $query)->where('status', Permohonan::STATUS_DITOLAK)->count(),
+            'total' => $statusCounts->sum(),
+            'permohonan' => $statusCounts[Permohonan::STATUS_PERMOHONAN] ?? 0,
+            'pembahasan' => $statusCounts[Permohonan::STATUS_PEMBAHASAN] ?? 0,
+            'penjadwalan' => $statusCounts[Permohonan::STATUS_PENJADWALAN] ?? 0,
+            'disetujui' => $statusCounts[Permohonan::STATUS_DISETUJUI] ?? 0,
+            'selesai' => $statusCounts[Permohonan::STATUS_SELESAI] ?? 0,
+            'ditolak' => $statusCounts[Permohonan::STATUS_DITOLAK] ?? 0,
         ];
 
         // Chart data: Trend per bulan (Current Year)
@@ -185,15 +185,11 @@ class DashboardController extends Controller
 
 
         // Chart data: Per status (For Admin mainly, but we pass structure anyway)
-        $chartStatus = collect(Permohonan::statusLabels())->map(function ($item, $status) use ($tahun, $isPemohon, $user) {
-            $q = Permohonan::whereYear('created_at', $tahun)->where('status', $status);
-            if ($isPemohon)
-                $q->where('id_pemohon_0', $user->id);
-
+        $chartStatus = collect(Permohonan::statusLabels())->map(function ($item, $status) use ($statusCounts) {
             return [
                 'status' => $item['label'],
                 'color' => $item['color'],
-                'total' => $q->count(),
+                'total' => $statusCounts[$status] ?? 0,
             ];
         })->values();
 

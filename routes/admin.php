@@ -26,6 +26,7 @@ Route::resource('validasi', ValidasiController::class)->only(['index', 'show', '
 // Laporan
 Route::prefix('laporan')->name('laporan.')->controller(LaporanController::class)->group(function () {
     Route::get('/', 'index')->name('index');
+    Route::get('/statistik', 'statistik')->name('statistik');
     Route::get('/akumulatif', 'akumulatif')->name('akumulatif');
     Route::get('/rekap-mitra', 'rekapMitra')->name('rekap-mitra');
     Route::get('/persentase-opd', 'persentaseOpd')->name('persentase-opd');
@@ -42,6 +43,7 @@ Route::prefix('monev')->name('monev.')->controller(\App\Http\Controllers\MonevCo
     Route::post('/', 'store')->name('store');
     Route::get('/{uuid}', 'show')->name('show');
     Route::post('/{uuid}/review', 'review')->name('review');
+    Route::post('/{uuid}/notify-pemohon', 'notifyPemohon')->name('notify-pemohon');
 });
 
 // Settings (Admin)
@@ -52,6 +54,11 @@ Route::get('pengaturan', function () {
 Route::prefix('settings')->name('settings.')->group(function () {
     Route::resource('users', App\Http\Controllers\UserController::class);
     Route::resource('roles', App\Http\Controllers\RoleController::class);
+
+    // AI Feedback Log (superadmin only)
+    Route::get('ai-feedback', [App\Http\Controllers\ChatbotFeedbackLogController::class, 'index'])
+        ->middleware('role:superadmin')
+        ->name('ai-feedback.index');
 
     // Roles Permission
     Route::get('roles/{role}/permission', [App\Http\Controllers\RoleController::class, 'permission'])->name('roles.permission');

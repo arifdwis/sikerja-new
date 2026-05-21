@@ -9,10 +9,20 @@ defineProps({
 const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID', {
+        weekday: 'long',
         day: 'numeric',
-        month: 'short',
+        month: 'long',
         year: 'numeric'
-    }).toUpperCase();
+    });
+};
+
+const formatTime = (timeString) => {
+    if (!timeString) return '-';
+    if (timeString.includes('T')) {
+        const d = new Date(timeString);
+        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
+    }
+    return timeString.substring(0, 5) + ' WITA';
 };
 </script>
 
@@ -47,7 +57,7 @@ const formatDate = (dateString) => {
                         </span>
                     </div>
                     <div v-if="data.penjadwalans[0].status === 1" class="text-xs text-gray-500 mt-1">
-                        {{ formatDate(data.penjadwalans[0].tanggal) }} • {{ data.penjadwalans[0].waktu?.substring(0,5) }}
+                        {{ formatDate(data.penjadwalans[0].tanggal) }} • {{ formatTime(data.penjadwalans[0].waktu) }}
                     </div>
                 </div>
             </div>

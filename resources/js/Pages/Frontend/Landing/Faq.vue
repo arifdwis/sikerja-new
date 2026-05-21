@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3'
 import Navbar from '@/Components/Landing/Navbar.vue'
 import PageHeader from '@/Components/Landing/PageHeader.vue'
 import Footer from '@/Components/Landing/Footer.vue'
+import ChatWidget from '@/Components/Landing/ChatWidget.vue'
 import FAQSection from '@/Components/Landing/FAQSection.vue' 
 import { onMounted } from 'vue'
 import AOS from 'aos'
@@ -32,4 +33,5 @@ onMounted(() => {
     </main>
 
     <Footer />
+    <ChatWidget />
 </template>

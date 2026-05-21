@@ -137,6 +137,10 @@ const openUploadDialog = (item) => {
         toast.error('Mohon tunggu validasi admin sebelum mengupload berkas.');
         return;
     }
+    if (item.files && item.files.length > 0) {
+        toast.error('Berkas sudah diupload dan sedang menunggu review.');
+        return;
+    }
     selectedItem.value = item;
     uploadDialog.value = true;
 };

@@ -1,11 +1,15 @@
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { router, usePage, Link } from '@inertiajs/vue3';
 import { Icon } from "@iconify/vue";
+import { eventBus } from '@/utils/eventBus';
 
 const page = usePage();
 const role = computed(() => page.props.auth?.role);
 const currentUrl = computed(() => page.url);
+
+// Sidebar collapse state — true = expanded (w-64), false = collapsed (w-16 icon-only)
+const isCollapsed = ref(JSON.parse(localStorage.getItem('sidebarCollapsed') || 'true'));
 
 const menuItems = computed(() => {
     const items = page.props.auth?.menu || [];
@@ -21,7 +25,6 @@ const isActive = (routeName) => {
          const normalizedCurrentUrl = currentUrl.value.split('?')[0].replace(/\/$/, '');
          return normalizedCurrentUrl === normalizedRoute || normalizedCurrentUrl.startsWith(normalizedRoute + '/');
     }
-    // Handle named routes using Ziggy
     try {
         return route().current(routeName + '*');
     } catch (e) {
@@ -35,6 +38,7 @@ const hasActiveChild = (item) => {
 };
 
 const toggleDropdown = (index) => {
+    if (!isCollapsed.value) return; // Don't toggle dropdowns when collapsed
     openDropdowns.value[index] = !openDropdowns.value[index];
 };
 
@@ -62,7 +66,14 @@ const getHref = (routeName) => {
      }
 };
 
+// Listen for sidebar toggle from Navbar
+const handleSidebar = (state) => {
+    isCollapsed.value = state;
+};
+
 onMounted(() => {
+    eventBus.on('toggle-sidebar', handleSidebar);
+    
     if (menuItems.value && Array.isArray(menuItems.value)) {
         menuItems.value.forEach((item, index) => {
             if (item && item.children && hasActiveChild(item)) {
@@ -71,12 +82,20 @@ onMounted(() => {
         });
     }
 });
+
+onUnmounted(() => {
+    eventBus.off('toggle-sidebar', handleSidebar);
+});
 </script>
 
 <template>
-    <aside class="fixed top-0 left-0 z-20 flex flex-col flex-shrink-0 w-64 h-full pt-16 font-normal duration-300 lg:flex transition-width bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700" aria-label="Sidebar">
+    <aside 
+        class="fixed top-0 left-0 z-20 flex flex-col flex-shrink-0 h-full pt-16 font-normal duration-300 lg:flex transition-all bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700" 
+        :class="isCollapsed ? 'w-64' : 'w-16'"
+        aria-label="Sidebar"
+    >
         <div class="relative flex flex-col flex-1 min-h-0 pt-0">
-            <div class="flex flex-col flex-1 pt-2 overflow-y-auto">
+            <div class="flex flex-col flex-1 pt-2 overflow-y-auto overflow-x-hidden">
                 <div class="flex-1 px-3 space-y-1 divide-dashed divide-y divide-gray-200 dark:divide-gray-700">
                     <ul class="py-2 space-y-2">
                         <li v-for="(item, index) in menuItems" :key="item.id || index">
@@ -84,31 +103,42 @@ onMounted(() => {
                             <template v-if="item.children && item.children.length > 0">
                                 <div 
                                     @click="toggleDropdown(index)" 
-                                    class="flex items-center justify-between py-2 px-2 text-base font-medium rounded-lg cursor-pointer transition-all duration-150 group"
-                                    :class="{
-                                        'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white': hasActiveChild(item) || openDropdowns[index],
-                                        'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200': !hasActiveChild(item) && !openDropdowns[index],
-                                    }"
+                                    class="flex items-center py-2 px-2 text-base font-medium rounded-lg cursor-pointer transition-all duration-150 group relative"
+                                    :class="[
+                                        isCollapsed ? 'justify-between' : 'justify-center',
+                                        {
+                                            'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white': hasActiveChild(item) || openDropdowns[index],
+                                            'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200': !hasActiveChild(item) && !openDropdowns[index],
+                                        }
+                                    ]"
+                                    :title="!isCollapsed ? item.title : ''"
                                 >
                                     <div class="flex items-center">
                                         <Icon 
-                                            class="w-6 h-6 transition duration-75" 
+                                            class="w-6 h-6 transition duration-75 shrink-0" 
                                             :class="{
                                                 'text-gray-900 dark:text-white': hasActiveChild(item) || openDropdowns[index],
                                                 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white': !hasActiveChild(item) && !openDropdowns[index],
                                             }" 
                                             :icon="item.icon" 
                                         />
-                                        <span class="ml-3">{{ item.title }}</span>
+                                        <span v-if="isCollapsed" class="ml-3 whitespace-nowrap">{{ item.title }}</span>
                                     </div>
                                     <Icon 
+                                        v-if="isCollapsed"
                                         icon="solar:alt-arrow-down-linear"
                                         class="w-4 h-4 transition-transform duration-200" 
                                         :class="{ 'rotate-180': openDropdowns[index] }"
                                     />
+                                    <!-- Tooltip when collapsed -->
+                                    <div v-if="!isCollapsed" class="absolute left-full ml-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
+                                        {{ item.title }}
+                                        <div class="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45"></div>
+                                    </div>
                                 </div>
-                                <!-- Dropdown children -->
+                                <!-- Dropdown children (only shown when expanded) -->
                                 <ul 
+                                    v-if="isCollapsed"
                                     v-show="openDropdowns[index]" 
                                     class="py-2 space-y-2 pl-4"
                                 >
@@ -140,22 +170,31 @@ onMounted(() => {
                             <template v-else>
                                 <div 
                                     @click="navigateTo(item.route)" 
-                                    class="flex items-center justify-between py-2 px-2 text-base font-medium rounded-lg cursor-pointer transition-all duration-150 group"
-                                    :class="{
-                                        'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white': isActive(item.route),
-                                        'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200': !isActive(item.route),
-                                    }"
+                                    class="flex items-center py-2 px-2 text-base font-medium rounded-lg cursor-pointer transition-all duration-150 group relative"
+                                    :class="[
+                                        isCollapsed ? 'justify-between' : 'justify-center',
+                                        {
+                                            'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white': isActive(item.route),
+                                            'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200': !isActive(item.route),
+                                        }
+                                    ]"
+                                    :title="!isCollapsed ? item.title : ''"
                                 >
                                     <div class="flex items-center">
                                         <Icon 
-                                            class="w-6 h-6 transition duration-75" 
+                                            class="w-6 h-6 transition duration-75 shrink-0" 
                                             :class="{
                                                 'text-gray-900 dark:text-white': isActive(item.route),
                                                 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white': !isActive(item.route),
                                             }" 
                                             :icon="item.icon" 
                                         />
-                                        <span class="ml-3">{{ item.title }}</span>
+                                        <span v-if="isCollapsed" class="ml-3 whitespace-nowrap">{{ item.title }}</span>
+                                    </div>
+                                    <!-- Tooltip when collapsed -->
+                                    <div v-if="!isCollapsed" class="absolute left-full ml-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-sm font-medium rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
+                                        {{ item.title }}
+                                        <div class="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45"></div>
                                     </div>
                                 </div>
                             </template>
@@ -166,9 +205,12 @@ onMounted(() => {
             
             <!-- Footer with version -->
             <div class="px-3 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                <div class="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
-                    <span>SiKerja v2.0</span>
-                    <span v-if="role" class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded capitalize">{{ role }}</span>
+                <div class="flex items-center text-xs text-gray-400 dark:text-gray-500" :class="isCollapsed ? 'justify-between' : 'justify-center'">
+                    <div class="flex items-center gap-1.5">
+                        <img src="/foto/logo-sikerja.svg" alt="SiKerja" class="w-5 h-5 rounded shrink-0" />
+                        <span v-if="isCollapsed">SiKerja v2.0</span>
+                    </div>
+                    <span v-if="role && isCollapsed" class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded capitalize">{{ role }}</span>
                 </div>
             </div>
         </div>

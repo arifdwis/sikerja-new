@@ -9,9 +9,9 @@ const props = defineProps({
     }
 })
 
-const activeFaq = ref(null)
+const activeFaq = ref(0)
 const toggle = (index) => {
-    activeFaq.value = activeFaq.value === index ? null : index
+    activeFaq.value = index
 }
 
 // Fallback static data if no dynamic data provided
@@ -27,25 +27,43 @@ const displayFaqs = computed(() => {
 </script>
 
 <template>
-    <section id="faq" class="py-16 bg-white dark:bg-gray-900">
+    <section id="faq" class="py-20 bg-white font-['Inter']">
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center mb-10" data-aos="fade-up">
-                <h2 class="text-4xl lg:text-5xl font-black mb-3 bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+                <h2 class="font-['Outfit'] text-4xl lg:text-5xl font-black tracking-tight mb-3 text-slate-900">
                     Pertanyaan Umum
                 </h2>
-                <p class="text-base text-gray-600 dark:text-gray-400">Temukan jawaban atas pertanyaan yang sering diajukan</p>
+                <p class="text-base text-slate-600">Pilih pertanyaan di sisi kiri, lalu baca jawaban detailnya tanpa membuka-tutup banyak panel.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-aos="fade-up" data-aos-delay="200">
-                <div v-for="(faq, index) in displayFaqs" :key="index" class="h-fit border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden transition-all hover:border-emerald-500">
-                    <button @click="toggle(index)" class="w-full px-6 py-5 flex items-center justify-between text-left bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                        <span class="text-base font-bold text-gray-900 dark:text-white pr-4">{{ faq.label }}</span>
-                        <Icon :icon="activeFaq === index ? 'solar:alt-arrow-up-bold' : 'solar:alt-arrow-down-bold'" class="w-6 h-6 text-emerald-600 flex-shrink-0 transition-transform" />
-                    </button>
-
-                    <div v-if="activeFaq === index" class="px-6 py-5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
-                        <div class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert prose-emerald max-w-none" v-html="faq.jawaban"></div>
+            <div class="grid lg:grid-cols-5 gap-6" data-aos="fade-up" data-aos-delay="200">
+                <div class="lg:col-span-2 bg-[#f8fafc] border border-slate-200 rounded-3xl p-4">
+                    <div class="space-y-2">
+                        <button
+                            v-for="(faq, index) in displayFaqs"
+                            :key="index"
+                            @click="toggle(index)"
+                            :class="[
+                                'w-full text-left px-4 py-4 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3',
+                                activeFaq === index
+                                    ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
+                                    : 'bg-white border-slate-200 text-slate-700 hover:border-amber-300 hover:bg-amber-50'
+                            ]"
+                        >
+                            <span class="text-sm font-bold leading-snug">{{ faq.label }}</span>
+                            <Icon :icon="activeFaq === index ? 'solar:alt-arrow-right-bold' : 'solar:alt-arrow-down-bold'" class="w-5 h-5 shrink-0" />
+                        </button>
                     </div>
+                </div>
+
+                <div class="lg:col-span-3 rounded-3xl border border-slate-200 bg-white shadow-sm p-8 lg:p-10 min-h-[320px]">
+                    <div class="inline-flex px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold uppercase tracking-wider mb-4">
+                        Jawaban Terpilih
+                    </div>
+                    <h3 class="text-2xl font-black text-slate-900 mb-4 leading-snug">
+                        {{ displayFaqs[activeFaq]?.label }}
+                    </h3>
+                    <div class="text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none prose-headings:text-slate-900 prose-a:text-sky-700" v-html="displayFaqs[activeFaq]?.jawaban"></div>
                 </div>
             </div>
         </div>

@@ -23,11 +23,22 @@ class LandingController extends Controller
 
         $faqs = Faq::take(5)->get();
 
+        $totalPermohonan = Permohonan::count();
+        $permohonanSelesai = Permohonan::where('status', Permohonan::STATUS_SELESAI)->count();
+        $permohonanAktif = Permohonan::whereNotIn('status', [
+            Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DITOLAK,
+        ])->count();
+
+        $mitraCount = User::whereHas('roles', function ($query) {
+            $query->where('name', '!=', 'Administrator');
+        })->count();
+
         $stats = [
-            'documents' => Permohonan::count(),
-            'opds' => User::count(), // Simply counting users for now as proxy for partners
-            'improvement' => 85,
-            'uptime' => '24/7'
+            'documents' => $totalPermohonan,
+            'opds' => $mitraCount,
+            'improvement' => $permohonanSelesai,
+            'uptime' => $permohonanAktif
         ];
 
         return Inertia::render('Frontend/Landing/Home', [

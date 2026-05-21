@@ -79,10 +79,10 @@ const fileTypes = [
     {
         key: 'draft_mou',
         label: 'Draft MoU / Perjanjian Kerjasama',
-        description: 'Draft kesepakatan kerjasama (opsional pada tahap ini)',
+        description: 'Draft kesepakatan kerjasama yang akan ditinjau bersama',
         icon: 'solar:document-add-bold',
         color: 'emerald',
-        required: false,
+        required: true,
     },
 ];
 
@@ -115,6 +115,17 @@ const getFileRef = (key) => {
                 <p class="text-amber-700 dark:text-amber-300 mt-1">
                     Format file yang diterima: PDF, DOC, DOCX (Maks. 10MB per file). 
                     Pastikan dokumen yang diupload sudah sesuai dan lengkap.
+                </p>
+            </div>
+        </div>
+
+        <!-- Requirement Note -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 flex gap-3">
+            <Icon icon="solar:checklist-minimalistic-bold" class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div class="text-sm">
+                <p class="font-medium text-blue-800 dark:text-blue-200">Semua dokumen wajib diupload</p>
+                <p class="text-blue-700 dark:text-blue-300 mt-1">
+                    Anda harus mengupload <strong>ketiga dokumen</strong> di bawah ini sebelum dapat melanjutkan ke tahap pembahasan. Tombol "Upload &amp; Lanjutkan" akan aktif setelah semua berkas terisi.
                 </p>
             </div>
         </div>
@@ -203,7 +214,7 @@ const getFileRef = (key) => {
                     label="Upload & Lanjutkan" 
                     icon="pi pi-upload"
                     :loading="form.processing"
-                    :disabled="!form.surat_permohonan || !form.proposal_kak"
+                    :disabled="!form.surat_permohonan || !form.proposal_kak || !form.draft_mou"
                 />
             </div>
         </form>

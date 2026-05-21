@@ -38,7 +38,7 @@ const sizeClasses = {
         <h2
             :class="[
                 sizeClasses[size].title,
-                'font-black mb-4 bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent'
+                'font-black mb-4 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent'
             ]"
         >
             {{ title }}

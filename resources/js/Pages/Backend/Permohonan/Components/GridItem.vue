@@ -50,7 +50,10 @@ const getUploadButtonLabel = (item) => {
 
 const canManageFiles = (item) => {
     if (props.isAdmin) return false;
+    // Block if files are already uploaded (pending review)
+    if (item.files && item.files.length > 0) return false;
     // Status 0: Menunggu Validasi (No Upload)
+    // Status 4: Selesai, Status 9: Ditolak
     // Use loose comparison because status might be string
     return item.status != 0 && item.status != 4 && item.status != 9;
 };
@@ -150,12 +153,19 @@ const canManageFiles = (item) => {
                     <button 
                         v-if="canManageFiles(item)"
                         @click.stop="$emit('upload', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all col-span-2"
-                        :class="item.files?.length > 0 ? 'bg-blue-800 text-white' : 'bg-orange-600 text-white'"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all col-span-2 bg-orange-600 text-white"
                     >
                         <Icon icon="solar:upload-bold" class="w-3.5 h-3.5" />
-                        <span>{{ getUploadButtonLabel(item) }}</span>
+                        <span>Upload Berkas</span>
                     </button>
+                    <!-- Info: files pending review -->
+                    <div 
+                        v-else-if="!isAdmin && item.files && item.files.length > 0 && item.status != 4 && item.status != 9"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-blue-700"
+                    >
+                        <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
+                        <span>Berkas sedang dalam pembahasan</span>
+                    </div>
                 </div>
             </div>
         </div>

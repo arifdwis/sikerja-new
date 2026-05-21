@@ -45,7 +45,8 @@ class WhatsappService
             }
 
             // Using Laravel Http Facade with Basic Auth (Matching Old App Guzzle Auth)
-            $response = Http::withBasicAuth($user, $pass)
+            $response = Http::withoutVerifying()
+                ->withBasicAuth($user, $pass)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',

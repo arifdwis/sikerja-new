@@ -16,8 +16,16 @@ defineProps({
             
             <div class="space-y-4">
                 <div>
+                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Nama Pemohon</p>
+                    <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">{{ data.pemohon1?.name || '-' }}</p>
+                </div>
+                <div v-if="data.pemohon1?.jabatan">
+                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Jabatan</p>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ data.pemohon1.jabatan }}</p>
+                </div>
+                <div>
                     <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Instansi</p>
-                    <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">{{ data.nama_instansi || '-' }}</p>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ data.nama_instansi || '-' }}</p>
                 </div>
                 <div v-if="data.alamat">
                     <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Alamat</p>
@@ -30,7 +38,7 @@ defineProps({
                     </div>
                     <div>
                         <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Kontak</p>
-                        <p class="text-sm">{{ data.telepon || data.email || '-' }}</p>
+                        <p class="text-sm break-all">{{ data.telepon || data.email || '-' }}</p>
                     </div>
                 </div>
             </div>
@@ -44,20 +52,30 @@ defineProps({
 
             <div class="space-y-4">
                 <div>
-                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Nama Pejabat</p>
+                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Nama Pemohon</p>
                     <p class="font-bold text-lg text-gray-900 dark:text-white leading-snug">
                         {{ data.pemohon2?.name || '-' }}
                     </p>
                 </div>
-                <div>
+                <div v-if="data.pemohon2?.jabatan">
                     <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Jabatan</p>
-                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ data.pemohon2?.jabatan || '-' }}</p>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ data.pemohon2.jabatan }}</p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Unit Kerja Mitra</p>
-                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                    <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Unit Kerja / Instansi</p>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
                         {{ data.pemohon2?.unit_kerja || 'Pemerintah Kota Samarinda' }}
                     </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Email</p>
+                        <p class="text-sm break-all">{{ data.pemohon2?.email || '-' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Kontak</p>
+                        <p class="text-sm break-all">{{ data.pemohon2?.phone || '-' }}</p>
+                    </div>
                 </div>
             </div>
         </div>

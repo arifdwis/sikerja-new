@@ -113,17 +113,15 @@ class ValidasiController extends Controller implements HasMiddleware
             // Try getting phone from User first, then Pemohon profile
             $targetPhone = null;
             $user = User::find($permohonan->id_pemohon_0);
+            $pemohonProfile = $permohonan->pemohon1;
             if ($user && !empty($user->phone)) {
                 $targetPhone = $user->phone;
-            } else {
-                $pemohonProfile = $permohonan->pemohon1;
-                if ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                    $targetPhone = $pemohonProfile->phone;
-                }
+            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
+                $targetPhone = $pemohonProfile->phone;
             }
 
             if ($targetPhone) {
-                $name = $user ? $user->name : ($pemohonProfile ? $pemohonProfile->name : 'Pemohon');
+                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
                 $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
                 $wa->sendMessage($targetPhone, $personalMsg);
             }

@@ -34,6 +34,10 @@ Route::controller(\App\Http\Controllers\LandingController::class)->group(functio
     Route::get('/page/{slug}', 'page')->name('landing.page');
 });
 
+// Chatbot API (Public)
+Route::post('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'chat'])->name('api.chatbot');
+Route::get('/api/chatbot/{requestId}', [\App\Http\Controllers\ChatbotController::class, 'status'])->name('api.chatbot.status');
+
 // API Routes (Public)
 Route::get('/api/kotas-all', function () {
     $provinsis = \App\Models\Provinsi::with('kotas')->orderBy('name')->get();

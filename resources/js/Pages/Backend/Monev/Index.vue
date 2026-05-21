@@ -15,6 +15,7 @@ import Tag from 'primevue/tag';
 import FileUpload from 'primevue/fileupload';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
+import { useToast } from 'vue-toastification';
 
 const props = defineProps({
     datas: Object,
@@ -23,6 +24,7 @@ const props = defineProps({
     filters: Object,
     isAdmin: Boolean,
 });
+const toast = useToast();
 
 // Filter/Search
 const filterQuery = ref(props.filters?.search || '');
@@ -124,6 +126,16 @@ const selectedMonev = ref(null);
 const openDetailModal = (monev) => {
     selectedMonev.value = monev;
     detailDialog.value = true;
+};
+
+const sendMonevNotification = () => {
+    if (!selectedMonev.value?.uuid) return;
+
+    router.post(route('monev.notify-pemohon', selectedMonev.value.uuid), {}, {
+        preserveScroll: true,
+        onSuccess: () => toast.success('Notifikasi hasil Monev dikirim ke pemohon.'),
+        onError: () => toast.error('Notifikasi hasil Monev gagal dikirim.'),
+    });
 };
 
 const getAnswerColor = (answer) => {
@@ -452,16 +464,25 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
 
                 <!-- Footer -->
                 <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                    <a 
-                        v-if="selectedMonev?.permohonan?.pemohon?.phone"
-                        :href="`https://wa.me/${selectedMonev.permohonan.pemohon.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`"
-                        target="_blank"
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                        <Icon icon="solar:phone-bold" class="w-4 h-4" />
-                        Hubungi Pemohon
-                    </a>
-                    <span v-else></span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a 
+                            v-if="selectedMonev?.permohonan?.pemohon?.phone"
+                            :href="`https://wa.me/${selectedMonev.permohonan.pemohon.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`"
+                            target="_blank"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <Icon icon="solar:phone-bold" class="w-4 h-4" />
+                            Hubungi Pemohon
+                        </a>
+                        <button
+                            v-if="isAdmin"
+                            @click="sendMonevNotification"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                            <Icon icon="solar:bell-bold" class="w-4 h-4" />
+                            Kirim Notifikasi
+                        </button>
+                    </div>
                     <button @click="detailDialog = false" class="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-sm font-medium rounded-lg transition-colors border border-slate-300">
                         Tutup
                     </button>

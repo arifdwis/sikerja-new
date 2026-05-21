@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Monev;
+use App\Models\Notifikasi;
 use App\Models\Permohonan;
 use App\Models\Pemohon;
+use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -37,7 +39,7 @@ class MonevController extends Controller implements HasMiddleware
             new Middleware('can:monev.menu', only: ['index']),
             new Middleware('can:monev.create', only: ['create', 'store']),
             new Middleware('can:monev.view', only: ['show']),
-            new Middleware('can:monev.review', only: ['review']),
+            new Middleware('can:monev.review', only: ['review', 'notifyPemohon']),
         ];
     }
 
@@ -204,6 +206,65 @@ class MonevController extends Controller implements HasMiddleware
         ]);
 
         return redirect()->back()->with('success', 'Monev berhasil direview.');
+    }
+
+    public function notifyPemohon(string $uuid, WhatsappService $whatsapp)
+    {
+        $monev = Monev::with(['permohonan.pemohon', 'permohonan.operator'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+        $permohonan = $monev->permohonan;
+
+        if (!$permohonan || !$permohonan->id_pemohon_0) {
+            return redirect()->back()->with('error', 'Pemohon untuk Monev ini tidak ditemukan.');
+        }
+
+        $followUpStatus = match ($monev->rekomendasi_lanjutan) {
+            'Dilanjutkan' => 'Layak dilanjutkan',
+            'Diperluas' => 'Layak diperluas',
+            'Dihentikan' => 'Tidak direkomendasikan dilanjutkan',
+            default => 'Rekomendasi tindak lanjut tersedia',
+        };
+
+        Notifikasi::create([
+            'id_user' => $permohonan->id_pemohon_0,
+            'id_permohonan' => $permohonan->id,
+            'from_user_id' => Auth::id(),
+            'type' => 'monev',
+            'title' => 'Hasil Monev Kerja Sama',
+            'message' => "Hasil Monev untuk {$permohonan->label}: {$followUpStatus}. Silakan lihat detail Monev untuk rekomendasi dan catatan evaluasi.",
+            'data' => [
+                'monev_uuid' => $monev->uuid,
+                'permohonan_uuid' => $permohonan->uuid,
+                'rekomendasi_lanjutan' => $monev->rekomendasi_lanjutan,
+            ],
+            'is_read' => false,
+        ]);
+
+        $pemohonUser = $permohonan->operator;
+        $targetPhone = $pemohonUser?->phone ?: $permohonan->pemohon?->phone;
+
+        if (!$targetPhone) {
+            return redirect()->back()->withErrors([
+                'notification' => 'Notifikasi aplikasi dibuat, tetapi nomor WhatsApp pemohon tidak ditemukan.',
+            ]);
+        }
+
+        $pemohonName = $permohonan->pemohon?->name ?: ($pemohonUser?->name ?: 'Pemohon');
+        $whatsappMessage = "*HASIL MONEV SIKERJA*\n\n" .
+            "Yth. Bpk/Ibu *{$pemohonName}*,\n\n" .
+            "Hasil Monitoring & Evaluasi untuk kerja sama *{$permohonan->label}* telah tersedia.\n" .
+            "Status tindak lanjut: *{$followUpStatus}*.\n\n" .
+            "Silakan pantau informasi pada SIKERJA untuk tindak lanjut berikutnya.\n\n" .
+            "_Pemerintah Kota Samarinda_";
+
+        if (!$whatsapp->sendMessage($targetPhone, $whatsappMessage)) {
+            return redirect()->back()->withErrors([
+                'notification' => 'Notifikasi aplikasi dibuat, tetapi pesan WhatsApp gagal dikirim. Periksa gateway WA dan nomor pemohon.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Notifikasi hasil Monev dan pesan WhatsApp dikirim ke pemohon.');
     }
 
     public function export(Request $request)

@@ -32,7 +32,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        $discussions = PermohonanPembahasan::with(['operator:id,name', 'file'])
+        $discussions = PermohonanPembahasan::with(['operator:id,name,nickname', 'file'])
             ->where('id_permohonan', $permohonan->id)
             ->orderBy('created_at', 'asc')
             ->get()
@@ -97,7 +97,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         $this->sendDiscussionNotification($permohonan, $user, $pembahasan);
 
         // Eager load for quick return
-        $pembahasan->load(['operator:id,name', 'file']);
+        $pembahasan->load(['operator:id,name,nickname', 'file']);
         $pembahasan->is_me = true;
         $pembahasan->formatted_time = $pembahasan->created_at->format('d M H:i');
 
@@ -118,7 +118,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        $discussions = PermohonanPembahasan::with(['operator:id,name'])
+        $discussions = PermohonanPembahasan::with(['operator:id,name,nickname'])
             ->where('id_file', $file->id)
             ->orderBy('created_at', 'asc')
             ->get()
@@ -158,7 +158,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         // Send notification
         $this->sendFileDiscussionNotification($permohonan, $file, $user, $pembahasan);
 
-        $pembahasan->load(['operator:id,name']);
+        $pembahasan->load(['operator:id,name,nickname']);
         $pembahasan->is_me = true;
         $pembahasan->formatted_time = $pembahasan->created_at->format('d M H:i');
 
@@ -185,7 +185,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         } else {
             // Pemohon sent message - notify admins
             $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-                $q->whereIn('name', ['admin', 'tkksd', 'verifikator']);
+                $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
             })->pluck('id');
 
             foreach ($adminIds as $adminId) {
@@ -215,7 +215,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         } else {
             // Pemohon sent message - notify all admins (or specific admin if assigned)
             $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-                $q->whereIn('name', ['admin', 'tkksd', 'verifikator']);
+                $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
             })->pluck('id');
             foreach ($adminIds as $adminId) {
                 \App\Models\Notifikasi::create([
@@ -261,6 +261,27 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         $file = PermohonanFile::where('uuid', $fileUuid)->firstOrFail();
         $permohonan = $file->permohonan;
 
+        // Check if this user already approved this file (prevent duplicate)
+        if ($request->status == 1) {
+            $alreadyApproved = PermohonanPembahasan::where('id_file', $file->id)
+                ->where('id_operator', $user->id)
+                ->where('komentar', 'LIKE', '%Disetujui%')
+                ->exists();
+
+            if ($alreadyApproved) {
+                // Get current approval info
+                $approvals = $this->getFileApprovals($file);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah menyetujui dokumen ini sebelumnya.',
+                    'already_approved' => true,
+                    'file' => $file->fresh(),
+                    'approvals_count' => $approvals['count'],
+                    'approved_by' => $approvals['users'],
+                ], 409);
+            }
+        }
+
         $statusLabel = $request->status == 1 ? 'Disetujui' : 'Ditolak';
 
         $file->update([
@@ -286,11 +307,36 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             'message' => "Dokumen \"{$file->label}\" untuk permohonan {$permohonan->kode} telah {$statusLabel}." . ($request->komentar ? " Catatan: {$request->komentar}" : ''),
         ]);
 
+        // Get approval info
+        $approvals = $this->getFileApprovals($file);
+
         return response()->json([
             'success' => true,
             'message' => "Dokumen berhasil {$statusLabel}",
-            'file' => $file->fresh()
+            'file' => $file->fresh(),
+            'approvals_count' => $approvals['count'],
+            'approved_by' => $approvals['users'],
         ]);
+    }
+
+    /**
+     * Get approval info for a file
+     */
+    private function getFileApprovals(PermohonanFile $file): array
+    {
+        $approvals = PermohonanPembahasan::where('id_file', $file->id)
+            ->where('komentar', 'LIKE', '%Disetujui%')
+            ->with('operator:id,name')
+            ->get()
+            ->unique('id_operator');
+
+        return [
+            'count' => $approvals->count(),
+            'users' => $approvals->map(fn($a) => [
+                'id' => $a->id_operator,
+                'name' => $a->operator->name ?? 'Unknown',
+            ])->values()->toArray(),
+        ];
     }
 
     /**
@@ -345,7 +391,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
 
         // Notify admins
         $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['admin', 'tkksd', 'verifikator']);
+            $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
         })->pluck('id');
 
         foreach ($adminIds as $adminId) {

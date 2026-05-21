@@ -107,10 +107,14 @@ class PermohonanObserver
 
                 // WA Notification
                 $pemohonUser = User::find($pemohonId);
-                if ($pemohonUser && $pemohonUser->phone) {
+                $pemohonProfile = $permohonan->pemohon;
+                $targetPhone = $pemohonUser?->phone ?: $pemohonProfile?->phone;
+
+                if ($targetPhone) {
                     // Personalized greeting for direct message
-                    $personalMsg = "Halo Bpk/Ibu *{$pemohonUser->name}*,\n\n" . $waMessageContent;
-                    $this->waService->sendMessage($pemohonUser->phone, $personalMsg);
+                    $pemohonName = $pemohonProfile?->name ?: ($pemohonUser?->name ?: 'Pemohon');
+                    $personalMsg = "Halo Bpk/Ibu *{$pemohonName}*,\n\n" . $waMessageContent;
+                    $this->waService->sendMessage($targetPhone, $personalMsg);
                 }
             }
 

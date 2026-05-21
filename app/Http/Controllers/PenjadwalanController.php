@@ -122,7 +122,7 @@ class PenjadwalanController extends Controller implements HasMiddleware
 
         // Send notification to Admin/TKKSD
         $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['admin', 'tkksd', 'verifikator']);
+            $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
         })->pluck('id');
 
         foreach ($adminIds as $adminId) {
@@ -132,7 +132,7 @@ class PenjadwalanController extends Controller implements HasMiddleware
                 'from_user_id' => $user->id,
                 'type' => 'penjadwalan',
                 'title' => 'Pengajuan Jadwal Baru',
-                'message' => "Jadwal baru diajukan untuk permohonan {$permohonan->kode} pada tanggal " . \Carbon\Carbon::parse($request->tanggal)->translatedFormat('d F Y'),
+                'message' => "Jadwal baru diajukan untuk permohonan {$permohonan->kode} pada " . \Carbon\Carbon::parse($request->tanggal)->translatedFormat('l, d F Y') . " pukul {$request->waktu} WITA",
             ]);
         }
 

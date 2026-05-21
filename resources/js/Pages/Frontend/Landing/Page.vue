@@ -3,6 +3,7 @@ import { Head, usePage, Link } from '@inertiajs/vue3'
 import Navbar from '@/Components/Landing/Navbar.vue'
 import PageHeader from '@/Components/Landing/PageHeader.vue'
 import Footer from '@/Components/Landing/Footer.vue'
+import ChatWidget from '@/Components/Landing/ChatWidget.vue'
 import { computed } from 'vue'
 import { Icon } from '@iconify/vue'
 
@@ -50,7 +51,7 @@ const getFileExt = (href) => {
     <Head :title="page.label" />
     <Navbar />
 
-    <main class="font-['Inter'] antialiased bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden min-h-screen flex flex-col">
+    <main class="font-['Inter'] antialiased bg-[#f4f6f8] text-gray-900 overflow-x-hidden min-h-screen flex flex-col">
         <PageHeader 
             :title="page.label" 
             :subtitle="formattedDate ? 'Dipublikasikan pada ' + formattedDate : ''"
@@ -70,20 +71,20 @@ const getFileExt = (href) => {
                             :key="idx"
                             :href="link.href"
                             target="_blank"
-                            class="group flex items-center gap-5 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-emerald-400 hover:shadow-lg transition-all p-6"
+                            class="group flex items-center gap-5 bg-white rounded-2xl border border-gray-200 hover:border-amber-400 hover:shadow-lg transition-all p-6"
                         >
                             <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                                :class="isFileLink(link.href) ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'"
+                                :class="isFileLink(link.href) ? 'bg-red-50' : 'bg-amber-50'"
                             >
                                 <Icon 
                                     icon="solar:document-bold" 
                                     class="w-6 h-6"
-                                    :class="isFileLink(link.href) ? 'text-red-500' : 'text-emerald-500'"
+                                    :class="isFileLink(link.href) ? 'text-red-500' : 'text-amber-500'"
                                 />
                             </div>
 
                             <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors text-base line-clamp-2">
+                                <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition-colors text-base line-clamp-2">
                                     {{ link.text }}
                                 </h3>
                                 <div class="flex items-center gap-2 mt-1">
@@ -94,7 +95,7 @@ const getFileExt = (href) => {
                                 </div>
                             </div>
 
-                            <div class="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white group-hover:bg-emerald-600 shadow-sm group-hover:shadow-md transition-all">
+                            <div class="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-amber-400 text-slate-900 group-hover:bg-amber-300 shadow-sm group-hover:shadow-md transition-all">
                                 <Icon icon="solar:download-minimalistic-bold" class="w-4 h-4" />
                                 Download
                             </div>
@@ -102,8 +103,8 @@ const getFileExt = (href) => {
                     </div>
 
                     <!-- Plain text content (no file links) -->
-                    <div v-else class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                        <article class="prose prose-emerald dark:prose-invert max-w-none">
+                    <div v-else class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                        <article class="prose max-w-none">
                             <div v-html="page.content"></div>
                         </article>
                     </div>
@@ -111,7 +112,7 @@ const getFileExt = (href) => {
                     <!-- Related pages -->
                     <div v-if="relatedPages.length" class="mt-8">
                         <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-                            <Icon icon="solar:documents-bold-duotone" class="text-emerald-500 w-4 h-4" />
+                            <Icon icon="solar:documents-bold-duotone" class="text-amber-500 w-4 h-4" />
                             Informasi Lainnya
                         </h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -119,12 +120,12 @@ const getFileExt = (href) => {
                                 v-for="(item, idx) in relatedPages" 
                                 :key="idx" 
                                 :href="item.url"
-                                class="group flex items-center gap-3 bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800 hover:border-emerald-300 hover:shadow-md transition-all"
+                                class="group flex items-center gap-3 bg-white rounded-xl p-4 border border-gray-100 hover:border-amber-300 hover:shadow-md transition-all"
                             >
-                                <div class="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 group-hover:bg-emerald-100 flex items-center justify-center shrink-0 transition-colors">
-                                    <Icon icon="solar:document-text-linear" class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 transition-colors" />
+                                <div class="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-amber-100 flex items-center justify-center shrink-0 transition-colors">
+                                    <Icon icon="solar:document-text-linear" class="w-4 h-4 text-gray-400 group-hover:text-amber-500 transition-colors" />
                                 </div>
-                                <span class="text-sm text-gray-600 dark:text-gray-400 group-hover:text-emerald-600 transition-colors font-medium line-clamp-2">
+                                <span class="text-sm text-gray-600 group-hover:text-amber-600 transition-colors font-medium line-clamp-2">
                                     {{ item.label }}
                                 </span>
                             </Link>
@@ -135,29 +136,28 @@ const getFileExt = (href) => {
                 <!-- Full layout when content is long -->
                 <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div class="lg:col-span-8">
-                        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-8 md:p-10">
-                            <article class="prose prose-lg prose-emerald dark:prose-invert max-w-none">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-10">
+                            <article class="prose prose-lg max-w-none">
                                 <div v-html="page.content"></div>
                             </article>
                         </div>
                     </div>
 
                     <aside class="lg:col-span-4 space-y-6">
-                        <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-8 -mt-8"></div>
+                        <div class="bg-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
                             <h3 class="text-lg font-bold mb-3 relative z-10">Butuh Bantuan?</h3>
-                            <p class="text-emerald-50 mb-5 text-sm relative z-10">
+                            <p class="text-slate-300 mb-5 text-sm relative z-10">
                                 Jika ada pertanyaan mengenai dokumen atau informasi ini, silakan hubungi kami.
                             </p>
-                            <Link href="/faq" class="inline-flex items-center gap-2 bg-white text-emerald-600 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all relative z-10">
+                            <Link href="/faq" class="inline-flex items-center gap-2 bg-amber-400 text-slate-900 px-4 py-2 rounded-xl text-sm font-bold shadow-sm hover:shadow-md transition-all relative z-10">
                                 <Icon icon="solar:question-circle-bold" />
                                 Lihat FAQ
                             </Link>
                         </div>
 
-                        <div v-if="relatedPages.length" class="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-5">
-                            <h3 class="text-base font-bold mb-3 flex items-center gap-2 text-gray-800 dark:text-white">
-                                <Icon icon="solar:document-text-bold-duotone" class="text-emerald-500" />
+                        <div v-if="relatedPages.length" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                            <h3 class="text-base font-bold mb-3 flex items-center gap-2 text-gray-800">
+                                <Icon icon="solar:document-text-bold-duotone" class="text-amber-500" />
                                 Informasi Terkait
                             </h3>
                             <div class="space-y-2">
@@ -165,10 +165,10 @@ const getFileExt = (href) => {
                                     v-for="(item, idx) in relatedPages" 
                                     :key="idx" 
                                     :href="item.url"
-                                    class="group flex items-start gap-3 p-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                    class="group flex items-start gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                                 >
-                                    <div class="mt-1.5 min-w-[4px] h-[4px] rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-colors"></div>
-                                    <span class="text-sm text-gray-600 dark:text-gray-400 group-hover:text-emerald-600 transition-colors font-medium">
+                                    <div class="mt-1.5 min-w-[4px] h-[4px] rounded-full bg-gray-300 group-hover:bg-amber-500 transition-colors"></div>
+                                    <span class="text-sm text-gray-600 group-hover:text-amber-600 transition-colors font-medium">
                                         {{ item.label }}
                                     </span>
                                 </Link>
@@ -182,4 +182,5 @@ const getFileExt = (href) => {
     </main>
 
     <Footer />
+    <ChatWidget />
 </template>

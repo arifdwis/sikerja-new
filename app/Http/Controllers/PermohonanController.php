@@ -489,17 +489,15 @@ class PermohonanController extends Controller implements HasMiddleware
             // Try getting phone from User first, then Pemohon profile
             $targetPhone = null;
             $user = User::find($permohonan->id_pemohon_0);
+            $pemohonProfile = $permohonan->pemohon1;
             if ($user && !empty($user->phone)) {
                 $targetPhone = $user->phone;
-            } else {
-                $pemohonProfile = $permohonan->pemohon1;
-                if ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                    $targetPhone = $pemohonProfile->phone;
-                }
+            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
+                $targetPhone = $pemohonProfile->phone;
             }
 
             if ($targetPhone) {
-                $name = $user ? $user->name : ($pemohonProfile ? $pemohonProfile->name : 'Pemohon');
+                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
                 $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
                 $wa->sendMessage($targetPhone, $personalMsg);
             }
@@ -682,7 +680,6 @@ class PermohonanController extends Controller implements HasMiddleware
         $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
 
         // Ensure user is admin/verifier
-        // Ensure user is admin/verifier
         if (!Auth::user()->hasRole(['administrator', 'superadmin', 'verifikator', 'tkksd'])) {
             abort(403, 'Unauthorized');
         }
@@ -691,6 +688,26 @@ class PermohonanController extends Controller implements HasMiddleware
             'status' => 'required|integer|in:1,2', // 1=Approved, 2=Rejected
             'komentar' => 'nullable|string',
         ]);
+
+        // Check if this user already approved this file (prevent duplicate)
+        if ($validated['status'] == 1) {
+            $alreadyApproved = PermohonanHistori::where('id_file', $file->id)
+                ->where('id_operator', Auth::id())
+                ->where('deskripsi', 'LIKE', '%Disetujui%')
+                ->exists();
+
+            if ($alreadyApproved) {
+                $approvals = $this->getFileApprovals($file);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda sudah menyetujui dokumen ini sebelumnya.',
+                    'already_approved' => true,
+                    'file' => $file,
+                    'approvals_count' => $approvals['count'],
+                    'approved_by' => $approvals['users'],
+                ], 409);
+            }
+        }
 
         $file->update([
             'status' => $validated['status'],
@@ -709,7 +726,34 @@ class PermohonanController extends Controller implements HasMiddleware
             'komentar' => $validated['komentar'] ?? null,
         ]);
 
-        return response()->json(['message' => 'Success', 'file' => $file]);
+        $approvals = $this->getFileApprovals($file);
+
+        return response()->json([
+            'message' => 'Success',
+            'file' => $file,
+            'approvals_count' => $approvals['count'],
+            'approved_by' => $approvals['users'],
+        ]);
+    }
+
+    /**
+     * Get approval info for a file
+     */
+    private function getFileApprovals(PermohonanFile $file): array
+    {
+        $approvals = PermohonanHistori::where('id_file', $file->id)
+            ->where('deskripsi', 'LIKE', '%Disetujui%')
+            ->with('operator:id,name,nickname')
+            ->get()
+            ->unique('id_operator');
+
+        return [
+            'count' => $approvals->count(),
+            'users' => $approvals->map(fn($a) => [
+                'id' => $a->id_operator,
+                'name' => $a->operator->name ?? 'Unknown',
+            ])->values()->toArray(),
+        ];
     }
 
     /**

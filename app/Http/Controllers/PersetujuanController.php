@@ -118,17 +118,15 @@ class PersetujuanController extends Controller implements HasMiddleware
             // Try getting phone from User first, then Pemohon profile
             $targetPhone = null;
             $user = User::find($permohonan->id_pemohon_0);
+            $pemohonProfile = $permohonan->pemohon1;
             if ($user && !empty($user->phone)) {
                 $targetPhone = $user->phone;
-            } else {
-                $pemohonProfile = $permohonan->pemohon1;
-                if ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                    $targetPhone = $pemohonProfile->phone;
-                }
+            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
+                $targetPhone = $pemohonProfile->phone;
             }
 
             if ($targetPhone) {
-                $name = $user ? $user->name : ($pemohonProfile ? $pemohonProfile->name : 'Pemohon');
+                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
                 $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
                 $wa->sendMessage($targetPhone, $personalMsg);
             }
@@ -177,12 +175,12 @@ class PersetujuanController extends Controller implements HasMiddleware
                     'status' => Permohonan::STATUS_SELESAI, // Status 4: Selesai
                 ]);
 
-                // Send Monev reminder to pemohon
+                // Notify pemohon that the completed cooperation enters Monev.
                 try {
                     if ($targetPhone) {
-                        $monevMsg = "📋 *PENGINGAT MONEV*\n\n";
-                        $monevMsg .= "Kerjasama *{$permohonan->label}* telah selesai.\n\n";
-                        $monevMsg .= "Silakan isi Form Monitoring & Evaluasi (Monev) melalui menu MONEV di SIKERJA untuk memberikan feedback pelaksanaan kerjasama.\n\n";
+                        $monevMsg = "📋 *INFORMASI MONEV*\n\n";
+                        $monevMsg .= "Kerjasama *{$permohonan->label}* telah berakhir.\n\n";
+                        $monevMsg .= "Kerjasama tersebut saat ini masuk dalam proses Monitoring & Evaluasi oleh admin SIKERJA.\n\n";
                         $monevMsg .= "_Terima kasih atas kerjasamanya._";
                         $wa->sendMessage($targetPhone, $monevMsg);
                     }

@@ -14,10 +14,20 @@ const toast = useToast();
 const formatDate = (dateString) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('id-ID', {
+        weekday: 'long',
         day: 'numeric',
-        month: 'short',
+        month: 'long',
         year: 'numeric'
-    }).toUpperCase();
+    });
+};
+
+const formatTime = (timeString) => {
+    if (!timeString) return '-';
+    if (timeString.includes('T')) {
+        const d = new Date(timeString);
+        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WITA';
+    }
+    return timeString.substring(0, 5) + ' WITA';
 };
 
 const handleJadwalApproval = (jadwal, status) => {
@@ -65,7 +75,7 @@ const handleJadwalApproval = (jadwal, status) => {
                 <div>
                     <p class="text-gray-500 text-xs">Waktu</p>
                     <p class="font-semibold">{{ formatDate(data.penjadwalans[0].tanggal) }}</p>
-                    <p>{{ data.penjadwalans[0].waktu }}</p>
+                    <p>{{ formatTime(data.penjadwalans[0].waktu) }}</p>
                 </div>
             </div>
             <div class="flex items-start gap-3">

@@ -33,7 +33,7 @@ defineProps({
 
 const variantClasses = {
     white: 'bg-white dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700',
-    gradient: 'bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-100 dark:border-emerald-800'
+    gradient: 'bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-100 dark:border-teal-800'
 }
 </script>
 
@@ -41,7 +41,7 @@ const variantClasses = {
     <div
         :class="[
             variantClasses[variant],
-            'group p-8 rounded-2xl hover:border-emerald-500 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2',
+            'group p-8 rounded-2xl hover:border-teal-500 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2',
             layout === 'horizontal' ? 'flex items-start gap-6' : ''
         ]"
         data-aos="fade-up"
@@ -56,7 +56,7 @@ const variantClasses = {
         <div :class="layout === 'vertical' ? 'text-center' : 'flex-1'">
             <h3
                 :class="[
-                    'font-black mb-3 group-hover:text-emerald-600 transition-colors',
+                    'font-black mb-3 group-hover:text-teal-600 transition-colors',
                     layout === 'vertical' ? 'text-xl' : 'text-lg'
                 ]"
             >

@@ -1,18 +1,15 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'vue-toastification';
-import Dialog from 'primevue/dialog';
-import Tag from 'primevue/tag';
-import Skeleton from 'primevue/skeleton';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Paginator from 'primevue/paginator';
 import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
+import Button from 'primevue/button';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
+import GridItem from '../Pembahasan/Components/PembahasanGridItem.vue';
+import ListItem from '../Permohonan/Components/ListItem.vue';
 import ApprovalModal from './Components/ApprovalModal.vue';
 import ActionDialogs from './Components/ActionDialogs.vue';
 import axios from 'axios';
@@ -54,6 +51,12 @@ watch([filterQuery, selectedKategori], () => {
 const viewMode = ref(localStorage.getItem('persetujuanViewMode') || 'grid');
 watch(viewMode, (newVal) => localStorage.setItem('persetujuanViewMode', newVal));
 
+// Grouped data (like Pembahasan)
+const groupedData = computed(() => {
+    const data = props.datas?.data || [];
+    return { 'Daftar Persetujuan': data };
+});
+
 // States
 const detailDialog = ref(false);
 const confirmDialog = ref(false);
@@ -63,22 +66,6 @@ const detailData = ref(null);
 const loadingDetail = ref(false);
 const processing = ref(false);
 const rejectReason = ref('');
-
-const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('id-ID', {
-         day: 'numeric', month: 'short', year: 'numeric'
-    }).toUpperCase();
-};
-
-const formatTime = (timeString) => {
-   if (!timeString) return '-';
-   if (timeString.includes('T') || timeString.includes(' ')) {
-      const date = new Date(timeString);
-      return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
-   }
-   return timeString.substring(0, 5);
-};
 
 // Actions
 const openDetailModal = async (item) => {
@@ -183,92 +170,30 @@ const submitPersetujuan = () => {
                     <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">Tidak ada jadwal yang menunggu persetujuan saat ini.</p>
                 </div>
 
-                <!-- Content -->
-                <div v-else class="mb-10">
-                    <!-- Grid View -->
-                    <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="item in datas.data" :key="item.id" 
-                            class="group relative rounded-lg border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 flex flex-col h-full"
-                        >
-                            <div class="p-5 flex flex-col h-full relative z-10">
-                                <div class="flex justify-between items-center mb-3">
-                                    <span class="bg-blue-50 text-blue-700 px-2 py-1 text-xs font-bold rounded border border-blue-200 uppercase tracking-wide">
-                                        {{ item.kategori?.label || 'Kerjasama' }}
-                                    </span>
-                                    <span class="bg-purple-100 text-purple-700 px-2 py-1 text-xs font-bold rounded border border-purple-200 uppercase tracking-wide flex items-center gap-1">
-                                        <Icon icon="solar:calendar-mark-bold" /> PERSETUJUAN
-                                    </span>
-                                </div>
-                                <div class="mb-2 text-xs text-gray-400 font-mono">
-                                    {{ item.nomor_permohonan || item.kode }}
-                                </div>
-                                <h4 @click="openDetailModal(item)" class="font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 hover:text-indigo-600 transition-colors cursor-pointer">
-                                    {{ item.label }}
-                                </h4>
-                                
-                                <div class="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                                     <Icon icon="solar:buildings-bold" class="w-4 h-4" /> {{ item.nama_instansi }}
-                                </div>
-
-                                <!-- Schedule Highlight -->
-                                <div v-if="item.penjadwalans && item.penjadwalans.length" class="mt-auto mb-4 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-                                    <div class="flex items-center gap-2 mb-1 text-indigo-800 font-bold text-xs uppercase">
-                                        <Icon icon="solar:calendar-date-bold" /> Jadwal Diajukan
-                                    </div>
-                                    <div class="text-sm font-semibold text-gray-800">{{ formatDate(item.penjadwalans[0].tanggal) }} • {{ formatTime(item.penjadwalans[0].waktu) }}</div>
-                                    <div class="text-xs text-gray-500 truncate">{{ item.penjadwalans[0].lokasi }}</div>
-                                </div>
-                                
-                                <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center gap-2">
-                                     <button @click="openDetailModal(item)" class="flex-1 py-2 text-xs font-bold text-gray-600 hover:text-cyan-600 bg-gray-50 hover:bg-cyan-50 rounded flex items-center justify-center gap-1 transition-colors">
-                                        <Icon icon="solar:eye-linear" /> Review
-                                    </button>
-                                     <button @click="openRejectDialog(item)" class="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded transition-colors" v-tooltip="'Tolak'">
-                                        <Icon icon="solar:close-circle-bold" class="w-4 h-4" />
-                                    </button>
-                                    <button @click="openConfirmDialog(item)" class="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded transition-colors" v-tooltip="'Setujui'">
-                                        <Icon icon="solar:check-circle-bold" class="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
+                <!-- Content (reusing Pembahasan layout) -->
+                <div v-else v-for="(items, groupTitle) in groupedData" :key="groupTitle" class="mb-10">
+                    <div class="flex justify-between gap-2 mb-4">
+                        <div class="border-l-4 border-blue-600 pl-2">
+                            <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200 uppercase">{{ groupTitle }}</h3>
                         </div>
+                        <span class="text-base font-semibold text-gray-800 dark:text-gray-200">{{ items.length }} Permohonan</span>
                     </div>
 
-                    <!-- List View -->
+                    <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <GridItem 
+                            v-for="item in items" 
+                            :key="item.id" 
+                            :item="item"
+                            @detail="openDetailModal($event)"
+                        />
+                    </div>
+
                     <div v-else class="space-y-3">
-                         <div v-for="item in datas.data" :key="item.id" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-all flex flex-col md:flex-row md:items-center gap-4 group">
-                             <div class="flex-1">
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="font-bold text-sm font-mono text-gray-500">{{ item.nomor_permohonan || item.kode }}</span>
-                                    <span class="bg-purple-100 text-purple-700 px-2 py-0.5 text-[10px] font-bold rounded border border-purple-200 uppercase">PERSETUJUAN</span>
-                                </div>
-                                <h4 @click="openDetailModal(item)" class="font-semibold text-gray-950 dark:text-white hover:text-indigo-600 cursor-pointer transition-colors capitalize text-lg">
-                                    {{ item.label }}
-                                </h4>
-                                 <div class="text-sm text-gray-500 mt-1 flex gap-2 items-center">
-                                      <Icon icon="solar:calendar-date-bold" class="w-4 h-4 text-indigo-500" />
-                                     <span class="font-medium text-indigo-600" v-if="item.penjadwalans[0]">
-                                         {{ formatDate(item.penjadwalans[0].tanggal) }} {{ formatTime(item.penjadwalans[0].waktu) }}
-                                     </span>
-                                     <span class="text-gray-300 mx-2">•</span>
-                                     <span>{{ item.nama_instansi }}</span> 
-                                </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <Button icon="pi pi-eye" severity="secondary" @click="openDetailModal(item)" />
-                                <Button icon="pi pi-times" severity="danger" @click="openRejectDialog(item)" />
-                                <Button icon="pi pi-check" severity="success" @click="openConfirmDialog(item)" />
-                            </div>
-                         </div>
-                    </div>
-
-                     <!-- Paginator -->
-                     <div class="mt-4">
-                        <Paginator 
-                            :totalRecords="datas?.total || 0" 
-                            :rows="10" 
-                            @page="params => router.get(datas.next_page_url)" 
-                            template="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink" 
+                        <ListItem 
+                            v-for="item in items" 
+                            :key="item.id" 
+                            :item="item"
+                            @detail="openDetailModal($event)"
                         />
                     </div>
                 </div>

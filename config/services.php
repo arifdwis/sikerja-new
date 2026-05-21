@@ -44,4 +44,9 @@ return [
         'admin_group_id' => env('WA_ADMIN_GROUP_ID', '120363189423910876@g.us'),
     ],
 
+    'ollama' => [
+        'url' => env('OLLAMA_URL', 'http://localhost:11434'),
+        'model' => env('OLLAMA_MODEL', 'llama3.2'),
+    ],
+
 ];

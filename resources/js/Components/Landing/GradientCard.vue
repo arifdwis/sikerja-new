@@ -3,7 +3,7 @@ defineProps({
     variant: {
         type: String,
         default: 'teal-to-sky',
-        validator: (value) => ['emerald-to-green', 'green-to-emerald'].includes(value)
+        validator: (value) => ['teal-to-cyan', 'cyan-to-teal'].includes(value)
     },
     padding: {
         type: String,
@@ -20,8 +20,8 @@ defineProps({
 })
 
 const gradientClasses = {
-    'emerald-to-green': 'from-emerald-500 to-green-500',
-    'green-to-emerald': 'from-green-500 to-emerald-500'
+    'teal-to-cyan': 'from-teal-500 to-cyan-500',
+    'cyan-to-teal': 'from-cyan-500 to-teal-500'
 }
 </script>
 

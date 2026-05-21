@@ -42,20 +42,21 @@ const getFileStatusClass = (file) => {
         <div v-if="loading" class="p-6 space-y-4"><Skeleton height="20rem" /></div>
         <div v-else-if="data" class="flex flex-col h-[85vh]">
             <!-- Header Info -->
-            <div class="p-4 bg-white dark:bg-gray-800 border-b flex justify-between items-center shadow-sm z-10">
-            <div>
-                <h2 class="font-bold text-lg text-gray-900">{{ data.label }}</h2>
-                <div class="flex items-center gap-2 text-sm text-gray-500">
+            <div class="p-4 bg-white dark:bg-gray-800 border-b shadow-sm z-10">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3">
+            <div class="min-w-0 flex-1">
+                <h2 class="font-bold text-lg text-gray-900 line-clamp-2">{{ data.label }}</h2>
+                <div class="flex items-center gap-2 text-sm text-gray-500 mt-1">
                         <span class="font-mono">{{ data.nomor_permohonan || data.kode }}</span>
                         <span>•</span>
                         <span>{{ data.nama_instansi }}</span>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                    <div v-if="allFilesApproved" class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-bold border border-green-100">
+            <div class="flex items-center gap-3 shrink-0">
+                    <div v-if="allFilesApproved" class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-bold border border-green-100 whitespace-nowrap">
                         <Icon icon="solar:check-circle-bold" /> Semua Dokumen Disetujui
                     </div>
-                    <div v-else class="flex items-center gap-2 text-orange-600 bg-orange-50 px-3 py-1 rounded-full text-xs font-bold border border-orange-100">
+                    <div v-else class="flex items-center gap-2 text-orange-600 bg-orange-50 px-3 py-1 rounded-full text-xs font-bold border border-orange-100 whitespace-nowrap">
                         <Icon icon="solar:clock-circle-bold" /> Dokumen Belum Lengkap
                     </div>
 
@@ -68,13 +69,14 @@ const getFileStatusClass = (file) => {
                 />
             </div>
             </div>
+            </div>
 
             <!-- Content -->
             <div class="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3 bg-gray-50 dark:bg-gray-900">
                 <!-- Left: Files List -->
                 <div class="lg:col-span-1 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
                     <div class="p-3 border-b border-gray-100 bg-gray-50/50">
-                        <span class="text-xs font-bold uppercase text-gray-500 tracking-wider">Dadaftar Dokumen</span>
+                        <span class="text-xs font-bold uppercase text-gray-500 tracking-wider">Daftar Dokumen</span>
                     </div>
                     <div class="flex-1 overflow-y-auto p-3 space-y-2">
                         <button

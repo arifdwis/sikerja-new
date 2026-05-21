@@ -29,8 +29,29 @@ const typeOptions = [
     { label: 'Request Meeting Langsung', value: 'langsung' }
 ];
 
+const formatTimeToString = (val) => {
+    if (val instanceof Date) {
+        return val.getHours().toString().padStart(2, '0') + ':' + val.getMinutes().toString().padStart(2, '0');
+    }
+    return val;
+};
+
+const formatDateToString = (val) => {
+    if (val instanceof Date) {
+        const year = val.getFullYear();
+        const month = String(val.getMonth() + 1).padStart(2, '0');
+        const day = String(val.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    return val;
+};
+
 const submit = () => {
-    form.post(route('penjadwalan.store'), {
+    form.transform((data) => ({
+        ...data,
+        tanggal: formatDateToString(data.tanggal),
+        waktu: formatTimeToString(data.waktu)
+    })).post(route('penjadwalan.store'), {
         onSuccess: () => {
             emit('submitted');
             emit('close');

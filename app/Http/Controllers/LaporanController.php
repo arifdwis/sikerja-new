@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\Kategori;
+use App\Models\Pemohon;
+use App\Models\User;
 
 class LaporanController extends Controller
 {
@@ -30,7 +33,16 @@ class LaporanController extends Controller
 
         $kategoris = Kategori::select('id', 'label')->orderBy('label')->get();
 
-        $query = Permohonan::with(['kategori', 'pemohon', 'kota'])
+        $query = Permohonan::select([
+            'id',
+            'uuid',
+            'label',
+            'nama_instansi',
+            'id_kategori',
+            'tanggal_mulai',
+            'tanggal_berakhir',
+        ])
+            ->with(['kategori:id,label'])
             ->whereNotNull('tanggal_mulai')
             ->whereNotNull('tanggal_berakhir')
             ->where('status', Permohonan::STATUS_SELESAI); // Only monitor finished agreements? Or all active? Usually 'Selesai' means Signed/Active.
@@ -126,6 +138,102 @@ class LaporanController extends Controller
         ]);
     }
 
+    public function statistik(Request $request)
+    {
+        // 1. Laporan Akumulatif
+        $akumulatifQuery = Permohonan::query()
+            ->where('status', Permohonan::STATUS_SELESAI)
+            ->selectRaw('YEAR(tanggal_mulai) as tahun')
+            ->selectRaw('COUNT(*) as total_kerjasama')
+            ->selectRaw('SUM(CASE WHEN tanggal_berakhir >= CURDATE() THEN 1 ELSE 0 END) as aktif')
+            ->selectRaw('SUM(CASE WHEN tanggal_berakhir < CURDATE() THEN 1 ELSE 0 END) as selesai')
+            ->groupBy('tahun')
+            ->orderByDesc('tahun');
+
+        if ($request->has('tahun') && $request->tahun) {
+            $akumulatifQuery->whereYear('tanggal_mulai', $request->tahun);
+        }
+
+        $akumulatifData = $akumulatifQuery->get();
+
+        // 2. Rekap Mitra (Top 20)
+        $rekapMitraQuery = Permohonan::query()
+            ->where('status', Permohonan::STATUS_SELESAI)
+            ->select('nama_instansi as mitra')
+            ->selectRaw('COUNT(*) as total_kerjasama')
+            ->groupBy('nama_instansi')
+            ->orderByDesc('total_kerjasama')
+            ->limit(20);
+
+        $rekapMitraData = $rekapMitraQuery->get()->map(function ($item, $index) {
+            $item->id = $index + 1;
+            $item->jenis = '-';
+            return $item;
+        });
+
+        // 3. Persentase OPD
+        $totalSelesai = Permohonan::where('status', Permohonan::STATUS_SELESAI)->count();
+        if ($totalSelesai == 0) $totalSelesai = 1;
+
+        $opdCounts = Permohonan::where('status', Permohonan::STATUS_SELESAI)
+            ->select('id_pemohon_0', DB::raw('count(*) as total'))
+            ->groupBy('id_pemohon_0')
+            ->get();
+
+        $opdIds = $opdCounts->pluck('id_pemohon_0')->filter()->values();
+        $pemohonByOperator = Pemohon::whereIn('id_operator', $opdIds)->get()->keyBy('id_operator');
+        $userById = User::whereIn('id', $opdIds)->get()->keyBy('id');
+
+        $persentaseOpdData = $opdCounts
+            ->map(function ($row) use ($pemohonByOperator, $userById, $totalSelesai) {
+                $pemohon = $pemohonByOperator->get($row->id_pemohon_0);
+                $user = $userById->get($row->id_pemohon_0);
+
+                $name = 'N/A';
+                if ($pemohon) {
+                    $name = $pemohon->unit_kerja ?? $pemohon->nama_instansi;
+                }
+                if (!$name && $user) {
+                    $name = $user->name;
+                }
+
+                $count = (int) $row->total;
+                return [
+                    'opd' => $name ?? 'Unknown',
+                    'realisasi' => $count,
+                    'persentase' => round(($count / $totalSelesai) * 100, 2)
+                ];
+            })
+            ->values()
+            ->sortByDesc('realisasi')
+            ->values();
+
+        // 4. Persentase Bidang
+        $persentaseBidangData = Kategori::withCount([
+            'permohonans' => function ($q) {
+                $q->where('status', Permohonan::STATUS_SELESAI);
+            }
+        ])
+            ->get()
+            ->map(function ($file) use ($totalSelesai) {
+                return [
+                    'bidang' => $file->label,
+                    'jumlah' => $file->permohonans_count,
+                    'persentase' => round(($file->permohonans_count / $totalSelesai) * 100, 2)
+                ];
+            })
+            ->sortByDesc('jumlah')
+            ->values();
+
+        return Inertia::render('Backend/Laporan/Statistik', [
+            'akumulatifData' => $akumulatifData,
+            'rekapMitraData' => $rekapMitraData,
+            'persentaseOpdData' => $persentaseOpdData,
+            'persentaseBidangData' => $persentaseBidangData,
+            'filters' => $request->all(),
+        ]);
+    }
+
     public function akumulatif(Request $request)
     {
         $query = Permohonan::query()
@@ -178,31 +286,39 @@ class LaporanController extends Controller
         if ($total == 0)
             $total = 1;
 
-        $data = Permohonan::with(['pemohon', 'operator']) // Load pemohon to get unit_kerja
-            ->where('status', Permohonan::STATUS_SELESAI)
-            ->get()
+        $opdCounts = Permohonan::where('status', Permohonan::STATUS_SELESAI)
+            ->select('id_pemohon_0', DB::raw('count(*) as total'))
             ->groupBy('id_pemohon_0')
-            ->map(function ($group) use ($total) {
-                $first = $group->first();
+            ->get();
 
-                // Prioritize Pemohon's Unit Kerja, then Nama Instansi, then Operator Name
+        $opdIds = $opdCounts->pluck('id_pemohon_0')->filter()->values();
+        $pemohonByOperator = Pemohon::whereIn('id_operator', $opdIds)->get()->keyBy('id_operator');
+        $userById = User::whereIn('id', $opdIds)->get()->keyBy('id');
+
+        $data = $opdCounts
+            ->map(function ($row) use ($pemohonByOperator, $userById, $total) {
+                $pemohon = $pemohonByOperator->get($row->id_pemohon_0);
+                $user = $userById->get($row->id_pemohon_0);
+
                 $name = 'N/A';
-                if ($first->pemohon) {
-                    $name = $first->pemohon->unit_kerja ?? $first->pemohon->nama_instansi;
+                if ($pemohon) {
+                    $name = $pemohon->unit_kerja ?? $pemohon->nama_instansi;
                 }
 
-                if (!$name && $first->operator) {
-                    $name = $first->operator->name;
+                if (!$name && $user) {
+                    $name = $user->name;
                 }
 
-                $count = $group->count();
+                $count = (int) $row->total;
 
                 return [
                     'opd' => $name ?? 'Unknown',
                     'realisasi' => $count,
                     'persentase' => round(($count / $total) * 100, 2)
                 ];
-            })->values()->sortByDesc('realisasi');
+            })
+            ->values()
+            ->sortByDesc('realisasi');
 
         return Inertia::render('Backend/Laporan/PersentaseOpd', [
             'data' => $data->values(),
