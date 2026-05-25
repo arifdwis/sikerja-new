@@ -40,17 +40,21 @@ class RiwayatController extends Controller implements HasMiddleware
         $user = auth()->user();
         $query = Permohonan::with(['kategori', 'pemohon1', 'operator', 'provinsi', 'kota']);
 
+        // Riwayat berisi semua permohonan yang sudah "tidak aktif lagi di alur":
+        // - 6 = Pelaksanaan Kerjasama (sudah dieksekusi, sedang berjalan)
+        // - 7 = Selesai (kerjasama sudah selesai dengan monev final)
+        // - 9 = Ditolak
+        $finalStatuses = [
+            Permohonan::STATUS_PELAKSANAAN,
+            Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DITOLAK,
+        ];
+
         // Jika pemohon, hanya tampilkan miliknya
         if ($user->hasRole('pemohon')) {
             $query->where('id_pemohon_0', $user->id);
-            // Pemohon bisa melihat semua status untuk tracking history mereka sendiri?
-            // Atau hanya yang selesai? Biasanya "Riwayat" menu means past data.
-            // Let's stick to finished/rejected for "Riwayat" menu, assuming active ones are in Dashboard/Index.
-            $query->whereIn('status', [Permohonan::STATUS_SELESAI, Permohonan::STATUS_DITOLAK]);
-        } else {
-            // Admin/TKKSD melihat semua yang sudah selesai/ditolak
-            $query->whereIn('status', [Permohonan::STATUS_SELESAI, Permohonan::STATUS_DITOLAK]);
         }
+        $query->whereIn('status', $finalStatuses);
 
         $query->latest();
 

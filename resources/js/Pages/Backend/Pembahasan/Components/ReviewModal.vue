@@ -22,8 +22,8 @@ const allFilesApproved = computed(() => {
 });
 
 const getFileStatusClass = (file) => {
-    if (file.status === 1) return 'border-green-500 bg-green-50 dark:bg-green-900/20';
-    if (file.status === 2) return 'border-red-500 bg-red-50 dark:bg-red-900/20';
+    if (file.status === 1) return 'border-emerald-200 bg-white dark:bg-gray-800';
+    if (file.status === 2) return 'border-red-200 bg-white dark:bg-gray-800';
     return 'border-gray-200 bg-white dark:bg-gray-800';
 };
 </script>
@@ -56,7 +56,7 @@ const getFileStatusClass = (file) => {
                     <div v-if="allFilesApproved" class="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-bold border border-green-100 whitespace-nowrap">
                         <Icon icon="solar:check-circle-bold" /> Semua Dokumen Disetujui
                     </div>
-                    <div v-else class="flex items-center gap-2 text-orange-600 bg-orange-50 px-3 py-1 rounded-full text-xs font-bold border border-orange-100 whitespace-nowrap">
+                    <div v-else class="flex items-center gap-2 text-slate-600 bg-slate-50 px-3 py-1 rounded-full text-xs font-bold border border-slate-200 whitespace-nowrap">
                         <Icon icon="solar:clock-circle-bold" /> Dokumen Belum Lengkap
                     </div>
 
@@ -79,6 +79,13 @@ const getFileStatusClass = (file) => {
                         <span class="text-xs font-bold uppercase text-gray-500 tracking-wider">Daftar Dokumen</span>
                     </div>
                     <div class="flex-1 overflow-y-auto p-3 space-y-2">
+                        <!-- Empty state ketika belum ada dokumen yang ter-upload -->
+                        <div v-if="!data.files?.length" class="flex flex-col items-center justify-center py-10 text-center text-gray-500">
+                            <Icon icon="solar:folder-error-bold-duotone" class="w-12 h-12 text-gray-300 mb-2" />
+                            <p class="text-sm font-medium text-gray-600">Belum ada dokumen</p>
+                            <p class="text-xs text-gray-400 mt-1">Pemohon belum mengupload dokumen kerjasama (Surat, KAK, atau MoU).</p>
+                        </div>
+
                         <button
                         v-for="file in data.files" 
                         :key="file.id"
@@ -86,7 +93,7 @@ const getFileStatusClass = (file) => {
                         class="w-full text-left p-3 rounded-lg border-2 transition-all group"
                         :class="[
                             getFileStatusClass(file),
-                            selectedFile?.id === file.id ? 'ring-2 ring-blue-500 ring-offset-2' : 'hover:border-blue-300'
+                            selectedFile?.id === file.id ? 'ring-2 ring-slate-700 ring-offset-2' : 'hover:border-slate-300'
                         ]"
                     >
                         <div class="flex items-start gap-3">
@@ -96,7 +103,7 @@ const getFileStatusClass = (file) => {
                                 class="w-5 h-5 mt-0.5 shrink-0"
                             />
                             <div class="min-w-0">
-                                <p class="text-sm font-bold text-gray-800 dark:text-white truncate group-hover:text-blue-600 transition-colors">{{ file.label }}</p>
+                                <p class="text-sm font-bold text-gray-800 dark:text-white truncate group-hover:text-slate-900 transition-colors">{{ file.label }}</p>
                                 <p class="text-xs text-gray-500 truncate mt-0.5">
                                     Status: <span class="font-medium">{{ file.status === 1 ? 'Disetujui' : (file.status === 2 ? 'Ditolak' : 'Review') }}</span>
                                 </p>
@@ -116,11 +123,23 @@ const getFileStatusClass = (file) => {
                         @statusUpdated="$emit('status-update', $event)"
                     />
                 </div>
-                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400 p-8">
+                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400 p-8 text-center">
                         <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                        <Icon icon="solar:cursor-bold-duotone" class="w-8 h-8 text-gray-300" />
+                            <Icon
+                                :icon="data.files?.length ? 'solar:cursor-bold-duotone' : 'solar:upload-bold-duotone'"
+                                class="w-8 h-8 text-gray-300"
+                            />
                         </div>
-                        <p>Pilih dokumen di sebelah kiri untuk melihat detail dan memulai diskusi.</p>
+                        <p v-if="data.files?.length" class="text-sm">
+                            Pilih dokumen di sebelah kiri untuk melihat detail dan memulai diskusi.
+                        </p>
+                        <div v-else class="max-w-sm">
+                            <p class="text-base font-semibold text-gray-600">Menunggu upload dokumen pemohon</p>
+                            <p class="text-xs text-gray-500 mt-2">
+                                Pemohon belum mengupload dokumen kerjasama. Setelah pemohon upload Surat Permohonan, KAK, dan MoU,
+                                Anda dapat memberikan masukan/diskusi pada masing-masing dokumen di sini.
+                            </p>
+                        </div>
                 </div>
                 </div>
             </div>

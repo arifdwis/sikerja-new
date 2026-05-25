@@ -30,6 +30,8 @@ Route::controller(\App\Http\Controllers\LandingController::class)->group(functio
     Route::get('/alur', 'workflow')->name('landing.workflow');
     Route::get('/jenis-kerjasama', 'products')->name('landing.products');
     Route::get('/faq', 'faq')->name('landing.faq');
+    // Infografis publik (Req 15)
+    Route::get('/infografis', 'infografis')->name('landing.infografis');
     // Generic page route
     Route::get('/page/{slug}', 'page')->name('landing.page');
 });
@@ -71,3 +73,11 @@ Route::middleware(['auth', 'pemohon.profile'])->group(function () {
 
 
 require __DIR__ . '/auth.php';
+
+// Template dokumen tetap (Req 3) — tersedia untuk semua user terautentikasi
+Route::middleware('auth')->group(function () {
+    Route::get('/templates/{type}', [\App\Http\Controllers\TemplateController::class, 'download'])
+        ->name('template.download');
+    Route::get('/templates', [\App\Http\Controllers\TemplateController::class, 'list'])
+        ->name('template.list');
+});

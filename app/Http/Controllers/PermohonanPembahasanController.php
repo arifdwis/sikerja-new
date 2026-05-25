@@ -12,6 +12,16 @@ use Illuminate\Routing\Controllers\Middleware;
 
 class PermohonanPembahasanController extends Controller implements HasMiddleware
 {
+    /**
+     * Helper: ambil ID penerima notifikasi diskusi (admin whitelist + TKKSD).
+     */
+    protected function adminTkksdRecipientIds()
+    {
+        $adminIds = \App\Models\User::adminNotificationRecipients()->pluck('id');
+        $tkksdIds = \App\Models\User::whereHas('roles', fn($q) => $q->where('slug', 'tkksd'))->pluck('id');
+        return $adminIds->merge($tkksdIds)->unique();
+    }
+
     public static function middleware(): array
     {
         return [
@@ -118,7 +128,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        $discussions = PermohonanPembahasan::with(['operator:id,name,nickname'])
+        $discussions = PermohonanPembahasan::with(['operator:id,name,nickname', 'operator.roles:id,slug,name'])
             ->where('id_file', $file->id)
             ->orderBy('created_at', 'asc')
             ->get()
@@ -184,9 +194,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             ]);
         } else {
             // Pemohon sent message - notify admins
-            $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-                $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
-            })->pluck('id');
+            $adminIds = $this->adminTkksdRecipientIds();
 
             foreach ($adminIds as $adminId) {
                 \App\Models\Notifikasi::create([
@@ -214,9 +222,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             $message = "Ada balasan baru dari Admin/TKKSD untuk permohonan {$permohonan->kode}";
         } else {
             // Pemohon sent message - notify all admins (or specific admin if assigned)
-            $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-                $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
-            })->pluck('id');
+            $adminIds = $this->adminTkksdRecipientIds();
             foreach ($adminIds as $adminId) {
                 \App\Models\Notifikasi::create([
                     'id_user' => $adminId,
@@ -297,6 +303,16 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             'komentar' => "Dokumen \"{$file->label}\" {$statusLabel}. " . ($request->komentar ? "Catatan: {$request->komentar}" : ''),
         ]);
 
+        // Catat juga di permohonan_histori dengan role_operator (Req 4 — identitas approver/rejector)
+        \App\Models\PermohonanHistori::create([
+            'id_permohonan' => $permohonan->id,
+            'id_operator'   => $user->id,
+            'id_file'       => $file->id,
+            'role_operator' => $user->role_name,
+            'deskripsi'     => "Dokumen \"{$file->label}\" {$statusLabel} oleh " . ($user->role_name ?? 'Reviewer'),
+            'komentar'      => $request->komentar,
+        ]);
+
         // Notify the pemohon
         \App\Models\Notifikasi::create([
             'id_user' => $permohonan->id_pemohon_0,
@@ -320,21 +336,24 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
     }
 
     /**
-     * Get approval info for a file
+     * Get approval info for a file (termasuk role reviewer — Req 4).
      */
     private function getFileApprovals(PermohonanFile $file): array
     {
         $approvals = PermohonanPembahasan::where('id_file', $file->id)
             ->where('komentar', 'LIKE', '%Disetujui%')
-            ->with('operator:id,name')
+            ->with(['operator:id,name', 'operator.roles:id,slug,name'])
             ->get()
             ->unique('id_operator');
 
         return [
             'count' => $approvals->count(),
             'users' => $approvals->map(fn($a) => [
-                'id' => $a->id_operator,
-                'name' => $a->operator->name ?? 'Unknown',
+                'id'         => $a->id_operator,
+                'name'       => $a->operator->name ?? 'Unknown',
+                'role'       => $a->operator?->roles?->first()?->name ?? 'Reviewer',
+                'role_slug'  => $a->operator?->roles?->first()?->slug,
+                'reviewed_at' => $a->created_at?->format('d M Y H:i'),
             ])->values()->toArray(),
         ];
     }
@@ -390,9 +409,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         ]);
 
         // Notify admins
-        $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-            $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
-        })->pluck('id');
+        $adminIds = $this->adminTkksdRecipientIds();
 
         foreach ($adminIds as $adminId) {
             \App\Models\Notifikasi::create([

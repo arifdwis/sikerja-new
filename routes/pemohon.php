@@ -32,3 +32,11 @@ Route::get('monev/export', [MonevController::class, 'export'])->name('monev.expo
 Route::post('monev', [MonevController::class, 'store'])->name('monev.store');
 Route::get('monev/{uuid}', [MonevController::class, 'show'])->name('monev.show');
 Route::post('monev/{uuid}/review', [MonevController::class, 'review'])->name('monev.review');
+
+// Upload PKS final (Req 7) - Pemohon
+Route::post('permohonan/{uuid}/pks', [\App\Http\Controllers\PksController::class, 'store'])
+    ->name('permohonan.pks.store');
+
+// Upload dokumen tertandatangani (Req 9) - Pemohon
+Route::post('permohonan/{uuid}/ttd', [\App\Http\Controllers\PenandatangananController::class, 'uploadTtd'])
+    ->name('permohonan.ttd.store');

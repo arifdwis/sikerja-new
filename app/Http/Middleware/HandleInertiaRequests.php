@@ -121,6 +121,48 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        // TKKSD Lokus Kerjasama — akses Dashboard, Kerjasama (Aktif/Selesai), dan Monev
+        if (in_array('tkksd_lokus', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles)) {
+            return [
+                [
+                    'id' => 'dashboard-tkksd-lokus',
+                    'title' => 'Dashboard',
+                    'route' => 'dashboard',
+                    'icon' => 'solar:home-smile-bold-duotone',
+                    'children' => []
+                ],
+                [
+                    'id' => 'kerjasama-tkksd-lokus',
+                    'title' => 'Kerjasama',
+                    'route' => null,
+                    'icon' => 'solar:document-add-bold-duotone',
+                    'children' => [
+                        [
+                            'id' => 'kerjasama-aktif',
+                            'title' => 'Aktif',
+                            'route' => '/tkksd-lokus/kerjasama/aktif',
+                            'icon' => 'solar:rocket-bold-duotone',
+                            'children' => [],
+                        ],
+                        [
+                            'id' => 'kerjasama-selesai',
+                            'title' => 'Selesai',
+                            'route' => '/tkksd-lokus/kerjasama/selesai',
+                            'icon' => 'solar:check-circle-bold-duotone',
+                            'children' => [],
+                        ],
+                    ],
+                ],
+                [
+                    'id' => 'monev-tkksd-lokus',
+                    'title' => 'Monitoring & Evaluasi',
+                    'route' => 'monev.index',
+                    'icon' => 'solar:clipboard-list-bold-duotone',
+                    'children' => []
+                ],
+            ];
+        }
+
         return $this->buildMenuTree($menus, null, $roles);
     }
 

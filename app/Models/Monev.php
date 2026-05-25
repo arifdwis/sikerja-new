@@ -35,6 +35,17 @@ class Monev extends Model
         'saran_rekomendasi',
         // Bukti
         'file_bukti',
+        // Rating (Req 13)
+        'rating',
+        // Tipe: reguler / manual (Req 16)
+        'tipe',
+        // Submitter role + user (Req baru: pemohon/admin/tkksd_lokus monev mandiri-paralel)
+        'submitter_role',
+        'submitter_user_id',
+        // TKKSD Lokus review (Req 11)
+        'id_tkksd_lokus',
+        'tkksd_approved_at',
+        'tkksd_catatan',
         // Status
         'status',
         'catatan_admin',
@@ -45,7 +56,9 @@ class Monev extends Model
     protected $casts = [
         'tanggal_evaluasi' => 'date',
         'reviewed_at' => 'datetime',
+        'tkksd_approved_at' => 'datetime',
         'status' => 'integer',
+        'rating' => 'integer',
     ];
 
     // Status Constants
@@ -62,7 +75,16 @@ class Monev extends Model
                 $model->uuid = (string) Str::uuid();
             }
             if (empty($model->kode_monev)) {
-                $model->kode_monev = 'MON/' . date('Y') . '/' . str_pad(static::count() + 1, 4, '0', STR_PAD_LEFT);
+                // Pakai MAX(id) bukan count() untuk hindari duplikat saat ada delete/race
+                $year = date('Y');
+                $lastNumber = (int) static::whereYear('created_at', $year)
+                    ->whereNotNull('kode_monev')
+                    ->where('kode_monev', 'like', "MON/{$year}/%")
+                    ->get()
+                    ->map(fn($m) => (int) substr($m->kode_monev, -4))
+                    ->max();
+                $next = max($lastNumber + 1, static::max('id') + 1);
+                $model->kode_monev = 'MON/' . $year . '/' . str_pad($next, 4, '0', STR_PAD_LEFT);
             }
         });
     }
@@ -81,6 +103,22 @@ class Monev extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    /**
+     * User yang submit monev (siapa pun: pemohon/tkksd_lokus/admin).
+     */
+    public function submitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitter_user_id');
+    }
+
+    /**
+     * TKKSD Lokus yang menyetujui evaluasi pemohon
+     */
+    public function tkksdLokus(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'id_tkksd_lokus');
     }
 
     // Accessors

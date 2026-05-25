@@ -23,6 +23,10 @@ const props = defineProps({
     filters: Object,
     share: Object,
     roles: Array, 
+    opds: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const ssoFilter = ref(null); 
@@ -299,6 +303,7 @@ const onPageChange = (e) => {
             :user="editingUser" 
             :is-edit="isEdit" 
             :roles="roles" 
+            :opds="opds"
             @success="resetModal"
         />
     </AuthenticatedLayout>

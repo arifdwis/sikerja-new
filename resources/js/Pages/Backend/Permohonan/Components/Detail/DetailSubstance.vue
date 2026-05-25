@@ -17,22 +17,26 @@ const formatDate = (dateString) => {
 
 <template>
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 bg-gray-50/50">
-            <Icon icon="solar:document-text-bold" class="text-gray-400" />
-            <h3 class="font-bold text-gray-800 dark:text-gray-200">Substansi Kerjasama</h3>
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50">
+            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                <span class="p-1.5 rounded-lg bg-slate-600 text-white">
+                    <Icon icon="solar:document-text-bold" class="w-4 h-4" />
+                </span>
+                Substansi Kerjasama
+            </h3>
         </div>
-        <div class="p-6 space-y-8">
+        <div class="p-5 space-y-6">
             <div class="grid grid-cols-1 gap-6">
                 <div>
-                    <h4 class="text-sm font-bold text-blue-600 mb-2">Latar Belakang</h4>
+                    <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Latar Belakang</h4>
                     <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ data.latar_belakang }}</p>
                 </div>
                 <div>
-                    <h4 class="text-sm font-bold text-blue-600 mb-2">Maksud & Tujuan</h4>
+                    <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Maksud & Tujuan</h4>
                     <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ data.maksud_tujuan }}</p>
                 </div>
                 <div>
-                    <h4 class="text-sm font-bold text-blue-600 mb-2">Ruang Lingkup</h4>
+                    <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Ruang Lingkup</h4>
                     <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ data.ruang_lingkup }}</p>
                 </div>
             </div>

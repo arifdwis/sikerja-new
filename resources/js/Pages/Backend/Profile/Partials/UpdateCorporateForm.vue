@@ -5,17 +5,32 @@ import Textarea from 'primevue/textarea';
 import Dropdown from 'primevue/dropdown';
 import Button from 'primevue/button';
 import { useToast } from "vue-toastification";
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 
 const toast = useToast();
 const page = usePage();
 const corporate = page.props.corporate;
+const opds = page.props.opds || [];          // dari ProfileController.edit()
+const userIdOpd = page.props.userIdOpd;      // dari users.id_opd
 
 // Load all kotas grouped by provinsi
 const kotasByProvinsi = ref([]);
 const loadingKotas = ref(true);
 
+// Mode: pilih dari list OPD vs ketik manual
+// Default: jika user sudah punya id_opd ATAU corporate.name cocok dengan salah satu OPD → mode "pilih"
+const findMatchingOpd = (name) => {
+    if (!name) return null;
+    return opds.find(o => o.nama?.toUpperCase() === name.toUpperCase());
+};
+const initialOpd = userIdOpd
+    ? opds.find(o => o.id === userIdOpd)
+    : findMatchingOpd(corporate?.name);
+
+const isManualMode = ref(!initialOpd && !!corporate?.name);
+
 const form = useForm({
+    id_opd: initialOpd?.id ?? null,
     name: corporate?.name || '',
     kota_id: corporate?.kota_id ? Number(corporate.kota_id) : null,
     postal_code: corporate?.postal_code || '',
@@ -24,6 +39,28 @@ const form = useForm({
     email: corporate?.email || '',
     website: corporate?.website || '',
 });
+
+// Saat user memilih OPD dari dropdown, isi otomatis nama
+watch(() => form.id_opd, (newId) => {
+    if (newId) {
+        const opd = opds.find(o => o.id === newId);
+        if (opd) {
+            form.name = opd.nama;
+        }
+    }
+});
+
+const switchToManual = () => {
+    isManualMode.value = true;
+    form.id_opd = null;
+    // Tidak reset form.name agar user bisa edit dari nilai sebelumnya
+};
+
+const switchToPick = () => {
+    isManualMode.value = false;
+    form.name = '';
+    form.id_opd = null;
+};
 
 // Load kotas on mount
 onMounted(async () => {
@@ -62,13 +99,70 @@ const submit = () => {
 
         <form @submit.prevent="submit" class="mt-6 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Nama Instansi -->
+                <!-- Nama Instansi: dropdown OPD atau manual -->
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Nama Instansi <span class="text-red-500">*</span>
-                    </label>
-                    <InputText v-model="form.name" class="w-full" placeholder="Contoh: Dinas Pariwisata" />
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Nama Instansi <span class="text-red-500">*</span>
+                        </label>
+                        <button
+                            v-if="!isManualMode"
+                            type="button"
+                            @click="switchToManual"
+                            class="text-xs text-blue-600 hover:underline"
+                        >
+                            Tidak ada di daftar? Ketik manual
+                        </button>
+                        <button
+                            v-else
+                            type="button"
+                            @click="switchToPick"
+                            class="text-xs text-blue-600 hover:underline"
+                        >
+                            Pilih dari daftar OPD
+                        </button>
+                    </div>
+
+                    <!-- Mode pilih dari daftar OPD (default untuk Pemkot) -->
+                    <Dropdown
+                        v-if="!isManualMode"
+                        v-model="form.id_opd"
+                        :options="opds"
+                        optionLabel="nama"
+                        optionValue="id"
+                        class="w-full"
+                        placeholder="Pilih OPD / Satuan Kerja"
+                        filter
+                        showClear
+                        :emptyFilterMessage="'Tidak ditemukan. Klik &quot;Ketik manual&quot; di atas.'"
+                    >
+                        <template #option="slotProps">
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium">{{ slotProps.option.nama }}</span>
+                                <span v-if="slotProps.option.singkatan" class="text-xs text-gray-500">({{ slotProps.option.singkatan }})</span>
+                            </div>
+                        </template>
+                    </Dropdown>
+
+                    <!-- Mode ketik manual (untuk pihak luar Pemkot Samarinda) -->
+                    <InputText
+                        v-else
+                        v-model="form.name"
+                        class="w-full"
+                        placeholder="Contoh: Universitas Mulawarman"
+                    />
+
                     <small v-if="form.errors.name" class="text-red-500">{{ form.errors.name }}</small>
+                    <small v-if="form.errors.id_opd" class="text-red-500">{{ form.errors.id_opd }}</small>
+
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span v-if="!isManualMode">
+                            Pilih OPD/Satuan Kerja dari daftar Pemkot Samarinda.
+                        </span>
+                        <span v-else>
+                            Untuk instansi luar Pemkot Samarinda, ketik nama lengkap.
+                        </span>
+                    </p>
                 </div>
 
                 <!-- Kabupaten/Kota dengan optgroup -->

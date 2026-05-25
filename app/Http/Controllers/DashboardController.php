@@ -13,16 +13,35 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+
+        // Routing per role: setiap peran punya dashboard sendiri sesuai kebutuhan kerjanya.
+        if ($user->hasRole('pemohon') && !$user->hasRole(['administrator', 'superadmin'])) {
+            return $this->dashboardPemohon($request);
+        }
+
+        if ($user->hasRole('tkksd_lokus') && !$user->hasRole(['administrator', 'superadmin'])) {
+            return $this->dashboardTkksdLokus($request);
+        }
+
+        if ($user->hasRole('tkksd') && !$user->hasRole(['administrator', 'superadmin'])) {
+            return $this->dashboardTkksd($request);
+        }
+
+        return $this->dashboardAdmin($request);
+    }
+
+    /**
+     * Dashboard untuk Admin / Superadmin / Administrator.
+     * Memuat statistik global, chart trend, kategori, lokasi, top instansi, dll.
+     */
+    protected function dashboardAdmin(Request $request)
+    {
         $tahun = $request->get('tahun', date('Y'));
         $kategoriId = $request->get('kategori_id');
         $bulan = $request->get('bulan');
 
         $user = $request->user();
-        $isPemohon = $user->hasRole('pemohon');
-
-        if ($user->hasRole('tkksd') && !$user->hasRole(['administrator', 'superadmin'])) {
-            return redirect()->route('pembahasan.index');
-        }
 
         $query = Permohonan::whereYear('created_at', $tahun);
 
@@ -32,9 +51,6 @@ class DashboardController extends Controller
 
         if ($bulan) {
             $query->whereMonth('created_at', $bulan);
-        }
-        if ($isPemohon) {
-            $query->where('id_pemohon_0', $user->id);
         }
 
         $statusCounts = (clone $query)
@@ -47,7 +63,7 @@ class DashboardController extends Controller
             'permohonan' => $statusCounts[Permohonan::STATUS_PERMOHONAN] ?? 0,
             'pembahasan' => $statusCounts[Permohonan::STATUS_PEMBAHASAN] ?? 0,
             'penjadwalan' => $statusCounts[Permohonan::STATUS_PENJADWALAN] ?? 0,
-            'disetujui' => $statusCounts[Permohonan::STATUS_DISETUJUI] ?? 0,
+            'disetujui' => $statusCounts[Permohonan::STATUS_PELAKSANAAN] ?? 0,
             'selesai' => $statusCounts[Permohonan::STATUS_SELESAI] ?? 0,
             'ditolak' => $statusCounts[Permohonan::STATUS_DITOLAK] ?? 0,
         ];
@@ -63,45 +79,6 @@ class DashboardController extends Controller
         // Chart data: Trend per bulan (Last Year)
         // Chart data: Trend per bulan (Last Year)
         $trendLastYear = Permohonan::whereYear('created_at', $tahun - 1);
-        if ($isPemohon) {
-            $trendLastYear->where('id_pemohon_0', $user->id);
-        }
-
-        // Expiring Agreements Alert (e.g., expiring in 30 days)
-        $alerts = [];
-        if ($isPemohon) {
-            $expiringSoon = Permohonan::where('id_pemohon_0', $user->id)
-                ->where('status', Permohonan::STATUS_SELESAI) // Assuming only active ones matter
-                ->whereNotNull('tanggal_berakhir')
-                ->where('tanggal_berakhir', '>', now())
-                ->where('tanggal_berakhir', '<=', now()->addDays(30))
-                ->get();
-
-            foreach ($expiringSoon as $item) {
-                $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($item->tanggal_berakhir));
-                $alerts[] = [
-                    'type' => 'warning',
-                    'message' => "Kerjasama '{$item->label}' akan berakhir dalam {$daysLeft} hari lagi ({$item->tanggal_berakhir}).",
-                    'link' => route('permohonan.show', $item->uuid)
-                ];
-            }
-
-            // Check for Expired but not renewed?
-            $expired = Permohonan::where('id_pemohon_0', $user->id)
-                ->where('status', Permohonan::STATUS_SELESAI)
-                ->whereNotNull('tanggal_berakhir')
-                ->where('tanggal_berakhir', '<', now())
-                ->limit(3)
-                ->get();
-
-            foreach ($expired as $item) {
-                $alerts[] = [
-                    'type' => 'error',
-                    'message' => "Kerjasama '{$item->label}' telah berakhir pada {$item->tanggal_berakhir}.",
-                    'link' => route('permohonan.show', $item->uuid)
-                ];
-            }
-        }
 
         $trendLastYear = $trendLastYear
             ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
@@ -167,9 +144,6 @@ class DashboardController extends Controller
         };
 
         $baseCatQuery = Permohonan::whereYear('created_at', $tahun);
-        if ($isPemohon) {
-            $baseCatQuery->where('id_pemohon_0', $user->id);
-        }
 
         $allCategories = $getCategoryCounts($baseCatQuery);
 
@@ -271,29 +245,6 @@ class DashboardController extends Controller
 
         $filterCategories = Kategori::select('id', 'label')->orderBy('label')->get();
 
-        if ($isPemohon) {
-            $kategoris = Kategori::all();
-            $provinsis = \App\Models\Provinsi::all();
-            $pemohon = $user->pemohon;
-            $corporate = $user->corporate;
-            $pemohonanList = Permohonan::where('id_pemohon_0', $user->id) // Or logic to get available signers
-                ->orWhere('id_pemohon_1', $user->id)
-                ->get(); // Simplified for now, refine as needed for PPKSD-2
-
-            return Inertia::render('Backend/DashboardPemohon', [
-                'stats' => $stats,
-                'chartTrend' => $chartTrend,
-                'chartStatus' => $chartStatus,
-                'permohonanTerbaru' => $permohonanTerbaru,
-                'kategoris' => $kategoris,
-                'provinsis' => $provinsis,
-                'pemohon' => $pemohon,
-                'corporate' => $corporate,
-                'pemohonanList' => $pemohonanList,
-                'alerts' => $alerts,
-            ]);
-        }
-
         return Inertia::render('Backend/Dashboard', [
             'stats' => $stats,
             'chartTrend' => $chartTrend,
@@ -310,6 +261,225 @@ class DashboardController extends Controller
             'bulan' => $bulan,
             'availableYears' => $availableYears,
             'filterCategories' => $filterCategories,
+        ]);
+    }
+
+    /**
+     * Dashboard untuk Pemohon — hanya data miliknya sendiri.
+     */
+    protected function dashboardPemohon(Request $request)
+    {
+        $user = $request->user();
+        $tahun = $request->get('tahun', date('Y'));
+
+        $query = Permohonan::where('id_pemohon_0', $user->id)
+            ->whereYear('created_at', $tahun);
+
+        $statusCounts = (clone $query)
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $stats = [
+            'total' => $statusCounts->sum(),
+            'permohonan' => $statusCounts[Permohonan::STATUS_PERMOHONAN] ?? 0,
+            'pembahasan' => $statusCounts[Permohonan::STATUS_PEMBAHASAN] ?? 0,
+            'penjadwalan' => $statusCounts[Permohonan::STATUS_PENJADWALAN] ?? 0,
+            'pelaksanaan' => $statusCounts[Permohonan::STATUS_PELAKSANAAN] ?? 0,
+            'selesai' => $statusCounts[Permohonan::STATUS_SELESAI] ?? 0,
+            'ditolak' => $statusCounts[Permohonan::STATUS_DITOLAK] ?? 0,
+        ];
+
+        $bulanLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+        $trendCurrent = (clone $query)
+            ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
+            ->groupBy('bulan')
+            ->orderBy('bulan')
+            ->pluck('total', 'bulan')
+            ->toArray();
+        $chartTrend = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $chartTrend[] = ['bulan' => $bulanLabels[$i - 1], 'total' => $trendCurrent[$i] ?? 0];
+        }
+
+        $chartStatus = collect(Permohonan::statusLabels())->map(fn($info, $code) => [
+            'status' => $info['label'],
+            'color' => $info['color'],
+            'total' => $statusCounts[$code] ?? 0,
+        ])->values();
+
+        $permohonanTerbaru = (clone $query)
+            ->with(['kategori', 'operator'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        // Alerts kerjasama yang akan/sudah berakhir
+        $alerts = [];
+        $expiringSoon = Permohonan::where('id_pemohon_0', $user->id)
+            ->whereIn('status', [Permohonan::STATUS_PELAKSANAAN, Permohonan::STATUS_SELESAI])
+            ->whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '>', now())
+            ->where('tanggal_berakhir', '<=', now()->addDays(30))
+            ->get();
+        foreach ($expiringSoon as $item) {
+            $daysLeft = now()->diffInDays(\Carbon\Carbon::parse($item->tanggal_berakhir));
+            $alerts[] = [
+                'type' => 'warning',
+                'message' => "Kerjasama '{$item->label}' akan berakhir dalam {$daysLeft} hari ({$item->tanggal_berakhir}).",
+                'link' => route('permohonan.show', $item->uuid),
+            ];
+        }
+
+        $expired = Permohonan::where('id_pemohon_0', $user->id)
+            ->whereIn('status', [Permohonan::STATUS_PELAKSANAAN, Permohonan::STATUS_SELESAI])
+            ->whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '<=', now())
+            ->whereDoesntHave('monev')
+            ->limit(5)
+            ->get();
+        foreach ($expired as $item) {
+            $alerts[] = [
+                'type' => 'error',
+                'message' => "Kerjasama '{$item->label}' telah berakhir, silakan lakukan Monev.",
+                'link' => route('monev.index'),
+            ];
+        }
+
+        return Inertia::render('Backend/DashboardPemohon', [
+            'stats' => $stats,
+            'chartTrend' => $chartTrend,
+            'chartStatus' => $chartStatus,
+            'permohonanTerbaru' => $permohonanTerbaru,
+            'kategoris' => Kategori::all(),
+            'provinsis' => \App\Models\Provinsi::all(),
+            'pemohon' => $user->pemohon,
+            'corporate' => $user->corporate,
+            'pemohonanList' => Permohonan::where('id_pemohon_0', $user->id)
+                ->orWhere('id_pemohon_1', $user->id)
+                ->get(),
+            'alerts' => $alerts,
+        ]);
+    }
+
+    /**
+     * Dashboard untuk TKKSD (validator/pembahas).
+     * Fokus: antrean validasi & pembahasan yang menunggu tindakannya.
+     */
+    protected function dashboardTkksd(Request $request)
+    {
+        $user = $request->user();
+        $tahun = $request->get('tahun', date('Y'));
+
+        $base = Permohonan::whereYear('created_at', $tahun);
+
+        $stats = [
+            'menunggu_validasi' => (clone $base)->where('status', Permohonan::STATUS_PERMOHONAN)->count(),
+            'pembahasan' => (clone $base)->where('status', Permohonan::STATUS_PEMBAHASAN)->count(),
+            'persetujuan_jadwal' => (clone $base)->where('status', Permohonan::STATUS_PENJADWALAN)->count(),
+            'penandatanganan' => (clone $base)->whereIn('status', [
+                Permohonan::STATUS_JADWAL_DISETUJUI,
+                Permohonan::STATUS_MENUNGGU_TANDATANGAN,
+                Permohonan::STATUS_PASCA_TANDATANGAN,
+            ])->count(),
+            'pelaksanaan' => (clone $base)->where('status', Permohonan::STATUS_PELAKSANAAN)->count(),
+            'ditolak' => (clone $base)->where('status', Permohonan::STATUS_DITOLAK)->count(),
+        ];
+
+        $bulanLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+        $statusCountsByMonth = (clone $base)
+            ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan')
+            ->toArray();
+        $chartTrend = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $chartTrend[] = ['bulan' => $bulanLabels[$i - 1], 'total' => $statusCountsByMonth[$i] ?? 0];
+        }
+
+        // Antrean tindakan TKKSD — tertua duluan
+        $needsValidasi = Permohonan::with(['kategori', 'operator', 'kota'])
+            ->where('status', Permohonan::STATUS_PERMOHONAN)
+            ->oldest()
+            ->limit(5)
+            ->get();
+
+        $needsPembahasan = Permohonan::with(['kategori', 'operator', 'kota'])
+            ->where('status', Permohonan::STATUS_PEMBAHASAN)
+            ->oldest()
+            ->limit(5)
+            ->get();
+
+        $needsJadwal = Permohonan::with(['kategori', 'operator', 'kota', 'penjadwalans'])
+            ->where('status', Permohonan::STATUS_PENJADWALAN)
+            ->oldest()
+            ->limit(5)
+            ->get();
+
+        return Inertia::render('Backend/DashboardTkksd', [
+            'stats' => $stats,
+            'chartTrend' => $chartTrend,
+            'needsValidasi' => $needsValidasi,
+            'needsPembahasan' => $needsPembahasan,
+            'needsJadwal' => $needsJadwal,
+            'tahun' => (int) $tahun,
+        ]);
+    }
+
+    /**
+     * Dashboard untuk TKKSD Lokus Kerjasama.
+     * Hanya tampilkan monev yang menunggu approval dan kerjasama OPD-nya.
+     */
+    protected function dashboardTkksdLokus(Request $request)
+    {
+        $user = $request->user();
+        $opdId = $user->id_opd;
+        $opd = $opdId ? \App\Models\Opd::find($opdId) : null;
+
+        $kerjasamaQuery = Permohonan::query()
+            ->whereHas('opds', fn($q) => $q->where('opd.id', $opdId))
+            ->whereIn('status', [Permohonan::STATUS_PELAKSANAAN, Permohonan::STATUS_SELESAI]);
+
+        $monevQuery = \App\Models\Monev::query()
+            ->whereHas('permohonan.opds', fn($q) => $q->where('opd.id', $opdId));
+
+        $stats = [
+            'kerjasama_aktif' => (clone $kerjasamaQuery)->where('status', Permohonan::STATUS_PELAKSANAAN)->count(),
+            'kerjasama_selesai' => (clone $kerjasamaQuery)->where('status', Permohonan::STATUS_SELESAI)->count(),
+            'monev_menunggu' => (clone $monevQuery)
+                ->where('status', \App\Models\Monev::STATUS_SUBMITTED)
+                ->whereNull('tkksd_approved_at')
+                ->count(),
+            'monev_disetujui' => (clone $monevQuery)
+                ->whereNotNull('tkksd_approved_at')
+                ->count(),
+        ];
+
+        // Monev yang menunggu review user ini (TKKSD Lokus)
+        $pendingMonev = \App\Models\Monev::with(['permohonan.kategori', 'permohonan.opds', 'pemohon'])
+            ->whereHas('permohonan.opds', fn($q) => $q->where('opd.id', $opdId))
+            ->where('status', \App\Models\Monev::STATUS_SUBMITTED)
+            ->whereNull('tkksd_approved_at')
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        // Kerjasama OPD yang sudah lewat tanggal_berakhir tapi belum dimonev — perlu didorong ke pemohon
+        $perluDimonev = Permohonan::with(['kategori', 'operator'])
+            ->whereHas('opds', fn($q) => $q->where('opd.id', $opdId))
+            ->whereIn('status', [Permohonan::STATUS_PELAKSANAAN, Permohonan::STATUS_SELESAI])
+            ->whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '<=', now())
+            ->whereDoesntHave('monev')
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        return Inertia::render('Backend/DashboardTkksdLokus', [
+            'stats' => $stats,
+            'opd' => $opd,
+            'pendingMonev' => $pendingMonev,
+            'perluDimonev' => $perluDimonev,
         ]);
     }
 }

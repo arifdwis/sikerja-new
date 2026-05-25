@@ -97,7 +97,7 @@ const getSeverity = (alertLevel) => {
             </h2>
         </template>
 
-        <section class="py-12">
+        <section class="py-8">
             <div class="mx-auto max-w-full px-6 lg:px-8">
                 
                 <!-- Breadcrumb -->
@@ -107,39 +107,50 @@ const getSeverity = (alertLevel) => {
                 <StatsCards :summary="summary" />
 
                 <!-- Control Bar -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div class="relative w-full sm:w-1/2">
-                            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input v-model="filterQuery" type="text" placeholder="Cari laporan..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-green-500 rounded-lg text-sm dark:bg-gray-700" />
+                <div class="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div class="flex items-start gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-100">
+                                <Icon icon="solar:monitor-bold" class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-900 dark:text-white">Monitoring Kerjasama</h3>
+                                <p class="text-sm text-slate-500 dark:text-gray-300">Pantau kerjasama aktif, mendekati akhir masa berlaku, dan yang sudah berakhir.</p>
+                            </div>
                         </div>
-                        <a :href="route('laporan.cetak-semua')" target="_blank" class="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
+                        <div class="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
+                        <div class="relative w-full sm:w-80">
+                            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input v-model="filterQuery" type="text" placeholder="Cari laporan..." class="h-11 w-full rounded-lg border border-gray-300 py-0 pl-10 pr-4 text-sm focus:border-slate-500 focus:ring-slate-500 dark:bg-gray-700" />
+                        </div>
+                        <a :href="route('laporan.cetak-semua')" target="_blank" class="flex h-11 w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition-colors hover:bg-slate-700 sm:w-auto">
                             <Icon icon="solar:printer-bold" /> Cetak Detail (Semua)
                         </a>
                     </div>
                 </div>
+                </div>
 
                 <!-- Main Content -->
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-xl border border-gray-100 dark:border-gray-700 p-6">
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-6">
                     <TabView class="w-full">
                         
                         <!-- Segera Berakhir Tab -->
                         <TabPanel>
                              <template #header>
                                 <div class="flex items-center gap-2">
-                                    <Icon icon="solar:bell-bing-bold" class="w-4 h-4 text-yellow-500" />
+                                    <Icon icon="solar:bell-bing-bold" class="w-4 h-4 text-slate-500" />
                                     <span>Segera Berakhir</span>
                                     <Tag :value="laporan.segera_berakhir.length" severity="warning" />
                                 </div>
                             </template>
                             
-                            <div class="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg flex items-start gap-4" v-if="laporan.segera_berakhir.length > 0">
-                                <div class="bg-yellow-100 p-2 rounded-full text-yellow-600">
+                            <div class="mb-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4" v-if="laporan.segera_berakhir.length > 0">
+                                <div class="rounded-lg bg-white p-2 text-slate-600 shadow-sm">
                                     <Icon icon="solar:bell-bing-bold-duotone" class="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-yellow-800 text-lg">Perhatian Diperlukan</h4>
-                                    <p class="text-sm text-yellow-700 mt-1">Terdapat <span class="font-bold">{{ laporan.segera_berakhir.length }}</span> kerjasama yang akan berakhir dalam waktu kurang dari 90 hari.</p>
+                                    <h4 class="text-base font-semibold text-slate-900">Perhatian Diperlukan</h4>
+                                    <p class="mt-1 text-sm text-slate-600">Terdapat <span class="font-bold">{{ laporan.segera_berakhir.length }}</span> kerjasama yang akan berakhir dalam waktu kurang dari 90 hari.</p>
                                 </div>
                             </div>
                             
@@ -147,7 +158,7 @@ const getSeverity = (alertLevel) => {
                                 <template #empty>Tidak ada data.</template>
                                 <Column field="judul" header="Judul Kerjasama" sortable>
                                     <template #body="{ data }">
-                                        <div class="font-bold text-gray-800 dark:text-white hover:text-blue-600 cursor-pointer text-base" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
+                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
                                         <div class="text-xs text-gray-500 mt-1">{{ data.kategori }}</div>
                                     </template>
                                 </Column>
@@ -188,7 +199,7 @@ const getSeverity = (alertLevel) => {
                         <TabPanel>
                             <template #header>
                                 <div class="flex items-center gap-2">
-                                    <Icon icon="solar:play-bold" class="w-4 h-4 text-green-500" />
+                                    <Icon icon="solar:play-bold" class="w-4 h-4 text-slate-500" />
                                     <span>Berlangsung</span>
                                     <Tag :value="laporan.berlangsung.length" severity="success" />
                                 </div>
@@ -198,7 +209,7 @@ const getSeverity = (alertLevel) => {
                                 <template #empty>Tidak ada data kerjasama berlangsung.</template>
                                 <Column field="judul" header="Judul Kerjasama" sortable>
                                         <template #body="{ data }">
-                                        <div class="font-bold text-gray-800 dark:text-white hover:text-blue-600 cursor-pointer text-base" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
+                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
                                         <div class="text-xs text-gray-500 mt-1">{{ data.kategori }}</div>
                                     </template>
                                 </Column>
@@ -236,19 +247,19 @@ const getSeverity = (alertLevel) => {
                         <TabPanel>
                             <template #header>
                                 <div class="flex items-center gap-2">
-                                    <Icon icon="solar:close-circle-bold" class="w-4 h-4 text-red-500" />
+                                    <Icon icon="solar:close-circle-bold" class="w-4 h-4 text-slate-500" />
                                     <span>Telah Berakhir</span>
                                     <Tag :value="laporan.berakhir.length" severity="danger" />
                                 </div>
                             </template>
 
-                            <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg flex items-start gap-4">
-                                <div class="bg-red-100 p-2 rounded-full text-red-600">
+                            <div class="mb-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="rounded-lg bg-white p-2 text-slate-600 shadow-sm">
                                     <Icon icon="solar:close-circle-bold-duotone" class="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-red-800 text-lg">Kerjasama Berakhir</h4>
-                                    <p class="text-sm text-red-700 mt-1">Daftar kerjasama yang telah melewati masa berlaku.</p>
+                                    <h4 class="text-base font-semibold text-slate-900">Kerjasama Berakhir</h4>
+                                    <p class="mt-1 text-sm text-slate-600">Daftar kerjasama yang telah melewati masa berlaku.</p>
                                 </div>
                             </div>
                             
@@ -256,7 +267,7 @@ const getSeverity = (alertLevel) => {
                                 <template #empty>Tidak ada data.</template>
                                 <Column field="judul" header="Judul Kerjasama" sortable>
                                         <template #body="{ data }">
-                                        <div class="font-bold text-gray-800 dark:text-white hover:text-blue-600 cursor-pointer text-base" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
+                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
                                     </template>
                                 </Column>
                                 <Column field="instansi" header="Instansi" sortable></Column>

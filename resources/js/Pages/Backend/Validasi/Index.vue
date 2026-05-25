@@ -5,18 +5,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'vue-toastification';
 import Dialog from 'primevue/dialog';
-import Tag from 'primevue/tag';
-import Skeleton from 'primevue/skeleton';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
+import ControlBar from '../Permohonan/Components/ControlBar.vue';
 import GridItem from '../Pembahasan/Components/PembahasanGridItem.vue';
 import ListItem from '../Permohonan/Components/ListItem.vue';
-import DetailHeader from '../Permohonan/Components/Detail/DetailHeader.vue';
-import DetailParties from '../Permohonan/Components/Detail/DetailParties.vue';
-import DetailSubstance from '../Permohonan/Components/Detail/DetailSubstance.vue';
-import DetailDocuments from '../Permohonan/Components/Detail/DetailDocuments.vue';
-import DetailContact from '../Permohonan/Components/Detail/DetailContact.vue';
+import DetailModal from '../Permohonan/Components/DetailModal.vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -46,9 +41,27 @@ watch(filterQuery, (val) => {
 const viewMode = ref(localStorage.getItem('validasiViewMode') || 'grid');
 watch(viewMode, (newVal) => localStorage.setItem('validasiViewMode', newVal));
 
-// Grouped data (like Pembahasan)
+const groupBy = ref(localStorage.getItem('validasiGroupBy') || 'latest');
+watch(groupBy, (newVal) => localStorage.setItem('validasiGroupBy', newVal));
+
 const groupedData = computed(() => {
     const data = props.datas?.data || [];
+    if (groupBy.value === 'kategori') {
+        return data.reduce((groups, item) => {
+            const key = item.kategori?.label || 'Tanpa Kategori';
+            (groups[key] = groups[key] || []).push(item);
+            return groups;
+        }, {});
+    }
+
+    if (groupBy.value === 'status') {
+        return data.reduce((groups, item) => {
+            const key = item.status_label?.label || 'Menunggu Validasi';
+            (groups[key] = groups[key] || []).push(item);
+            return groups;
+        }, {});
+    }
+
     return { 'Daftar Validasi': data };
 });
 
@@ -146,30 +159,18 @@ const submitRevisi = () => {
             <div class="mx-auto max-w-full px-6 lg:px-8">
                 <Breadcrumb class="mb-6" :crumbs="[{ label: 'Dashboard', route: 'dashboard' }, { label: share.title, route: null }]" />
 
-                <!-- Control Bar -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div class="relative w-full sm:w-80">
-                            <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input v-model="filterQuery" type="text" placeholder="Cari permohonan..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-cyan-500 rounded-lg text-sm dark:bg-gray-700" />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
-                                <button @click="viewMode = 'grid'" :class="viewMode === 'grid' ? 'bg-white shadow-sm text-cyan-600' : 'text-gray-500'" class="p-2 rounded-md transition-all">
-                                    <Icon icon="lucide:layout-grid" class="w-4 h-4" />
-                                </button>
-                                <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-white shadow-sm text-cyan-600' : 'text-gray-500'" class="p-2 rounded-md transition-all">
-                                    <Icon icon="lucide:list" class="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ControlBar
+                    v-model:filterQuery="filterQuery"
+                    v-model:viewMode="viewMode"
+                    v-model:groupBy="groupBy"
+                    searchPlaceholder="Cari permohonan..."
+                    :showCreate="false"
+                />
 
                 <!-- Empty State -->
                 <div v-if="!datas.data.length" class="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
-                     <div class="w-24 h-24 bg-cyan-50 dark:bg-cyan-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Icon icon="solar:inbox-line-bold-duotone" class="w-12 h-12 text-cyan-400" />
+                     <div class="w-24 h-24 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Icon icon="solar:inbox-line-bold-duotone" class="w-12 h-12 text-gray-400" />
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Tidak ada Permohonan</h3>
                     <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">Belum ada permohonan baru yang masuk untuk divalidasi.</p>
@@ -205,38 +206,15 @@ const submitRevisi = () => {
             </div>
         </section>
 
-        <!-- Detail Modal (same as Permohonan detail, with sticky action footer) -->
-        <Dialog v-model:visible="detailDialog" modal header="Detail Lengkap Permohonan" :style="{ width: '1100px' }" :breakpoints="{ '1199px': '95vw' }" maximizable :contentStyle="{ overflow: 'hidden', padding: 0, display: 'flex', flexDirection: 'column', height: '80vh' }">
-             <div v-if="loadingDetail" class="space-y-6 p-6">
-                <div class="grid grid-cols-2 gap-6">
-                    <Skeleton height="15rem" class="w-full rounded-xl" />
-                    <Skeleton height="15rem" class="w-full rounded-xl" />
-                </div>
-                <Skeleton height="25rem" class="w-full rounded-xl" />
-             </div>
-             <div v-else-if="detailData" class="flex flex-col h-full">
-                <!-- Scrollable Content -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-gray-50/50 dark:bg-gray-900/50">
-                    <DetailHeader :data="detailData" />
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                        <div class="xl:col-span-2 space-y-8">
-                            <DetailParties :data="detailData" />
-                            <DetailSubstance :data="detailData" />
-                        </div>
-                        <div class="space-y-6">
-                            <DetailDocuments :data="detailData" />
-                            <DetailContact :data="detailData" />
-                        </div>
-                    </div>
-                </div>
-                <!-- Action Footer (sticky, always visible) -->
-                <div class="shrink-0 bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <DetailModal v-model:visible="detailDialog" :loading="loadingDetail" :data="detailData">
+            <template #footer>
+                <div class="flex shrink-0 justify-end gap-3 border-t border-gray-200 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:border-gray-700 dark:bg-gray-800">
                     <Button label="Tutup" severity="secondary" text @click="detailDialog = false" />
                     <Button label="Revisi" icon="pi pi-times" severity="danger" @click="openRevisi(detailData)" />
                     <Button label="Validasi Permohonan" icon="pi pi-check" severity="success" @click="openValidasi(detailData)" />
                 </div>
-            </div>
-        </Dialog>
+            </template>
+        </DetailModal>
 
          <!-- Dialog Validasi -->
         <Dialog v-model:visible="validasiDialog" modal header="Konfirmasi Validasi" :style="{ width: '400px' }">

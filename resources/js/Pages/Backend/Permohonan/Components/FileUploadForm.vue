@@ -1,15 +1,20 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Icon } from '@iconify/vue';
 import Button from 'primevue/button';
 import FileUpload from 'primevue/fileupload';
+import { useToast } from 'vue-toastification';
+
+const toast = useToast();
 
 const props = defineProps({
     permohonan: Object,
 });
 
 const emit = defineEmits(['close', 'success']);
+
+const alreadyUploaded = computed(() => (props.permohonan?.files?.length ?? 0) > 0);
 
 const form = useForm({
     surat_permohonan: null,
@@ -24,11 +29,29 @@ const draftMouFile = ref(null);
 
 const handleFileSelect = (event, field) => {
     const file = event.files ? event.files[0] : (event.target?.files ? event.target.files[0] : null);
-    
     if (!file) return;
-    
+
+    // Validasi format ditetapkan (Req 3): PDF untuk Surat & KAK, DOC/DOCX untuk MoU
+    const fileType = fileTypes.find(ft => ft.key === field);
+    if (fileType) {
+        const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+        const allowed = fileType.accept.split(',');
+        if (!allowed.includes(ext)) {
+            toast.error(
+                `${fileType.label} hanya menerima format ${fileType.format}. ` +
+                `File "${file.name}" tidak diizinkan.`
+            );
+            return;
+        }
+        // Validasi ukuran 10 MB
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error(`Ukuran file maksimal 10 MB. File ${file.name} (${formatFileSize(file.size)}) terlalu besar.`);
+            return;
+        }
+    }
+
     form[field] = file;
-    
+
     if (field === 'surat_permohonan') suratPermohonanFile.value = file;
     if (field === 'proposal_kak') proposalKakFile.value = file;
     if (field === 'draft_mou') draftMouFile.value = file;
@@ -50,6 +73,11 @@ const formatFileSize = (bytes) => {
 };
 
 const submit = () => {
+    if (alreadyUploaded.value) {
+        toast.error('Berkas sudah diupload. Upload perbaikan hanya tersedia pada dokumen yang diminta revisi.');
+        return;
+    }
+
     form.post(route('permohonan.upload', props.permohonan.uuid), {
         forceFormData: true,
         preserveScroll: true,
@@ -64,6 +92,9 @@ const fileTypes = [
         key: 'surat_permohonan',
         label: 'Surat Permohonan Kerjasama',
         description: 'Surat resmi permohonan kerjasama dari instansi/lembaga',
+        format: 'PDF',
+        accept: '.pdf',
+        mimes: ['application/pdf'],
         icon: 'solar:document-bold',
         color: 'blue',
         required: true,
@@ -72,6 +103,9 @@ const fileTypes = [
         key: 'proposal_kak',
         label: 'Proposal / Kerangka Acuan Kerja (KAK)',
         description: 'Dokumen proposal atau KAK yang menjelaskan detail kerjasama',
+        format: 'PDF',
+        accept: '.pdf',
+        mimes: ['application/pdf'],
         icon: 'solar:clipboard-list-bold',
         color: 'orange',
         required: true,
@@ -80,6 +114,9 @@ const fileTypes = [
         key: 'draft_mou',
         label: 'Draft MoU / Perjanjian Kerjasama',
         description: 'Draft kesepakatan kerjasama yang akan ditinjau bersama',
+        format: 'DOC / DOCX',
+        accept: '.doc,.docx',
+        mimes: ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         icon: 'solar:document-add-bold',
         color: 'emerald',
         required: true,
@@ -105,6 +142,16 @@ const getFileRef = (key) => {
             <p class="text-sm text-gray-500 mt-2">
                 Silakan upload dokumen yang diperlukan untuk melanjutkan proses pembahasan kerjasama.
             </p>
+        </div>
+
+        <div v-if="alreadyUploaded" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 flex gap-3">
+            <Icon icon="solar:lock-keyhole-bold" class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div class="text-sm">
+                <p class="font-medium text-blue-800 dark:text-blue-200">Berkas awal sudah terkirim</p>
+                <p class="text-blue-700 dark:text-blue-300 mt-1">
+                    Tunggu hasil review. Upload perbaikan hanya tersedia pada dokumen yang diminta revisi.
+                </p>
+            </div>
         </div>
 
         <!-- Info Alert -->
@@ -150,12 +197,21 @@ const getFileRef = (key) => {
 
                     <!-- Content -->
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 class="font-semibold text-gray-900 dark:text-white">{{ fileType.label }}</h4>
                             <span v-if="fileType.required" class="text-red-500 text-xs font-bold">*Wajib</span>
                             <span v-else class="text-gray-400 text-xs">(Opsional)</span>
+                            <!-- Format ditetapkan (Req 3) -->
+                            <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider"
+                                :class="`bg-${fileType.color}-100 text-${fileType.color}-700 dark:bg-${fileType.color}-900/30 dark:text-${fileType.color}-300`">
+                                <Icon icon="solar:lock-bold" class="w-3 h-3" />
+                                {{ fileType.format }}
+                            </span>
                         </div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ fileType.description }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            Format file yang diterima: <span class="font-semibold">{{ fileType.format }}</span> · Maks. 10 MB
+                        </p>
 
                         <!-- File Preview or Upload Button -->
                         <div class="mt-3">
@@ -182,7 +238,8 @@ const getFileRef = (key) => {
                                 <FileUpload 
                                     mode="basic" 
                                     :auto="false"
-                                    accept=".pdf,.doc,.docx"
+                                    :disabled="alreadyUploaded"
+                                    :accept="fileType.accept"
                                     :maxFileSize="10000000"
                                     @select="(e) => handleFileSelect(e, fileType.key)"
                                     chooseLabel="Pilih File"
@@ -214,7 +271,7 @@ const getFileRef = (key) => {
                     label="Upload & Lanjutkan" 
                     icon="pi pi-upload"
                     :loading="form.processing"
-                    :disabled="!form.surat_permohonan || !form.proposal_kak || !form.draft_mou"
+                    :disabled="alreadyUploaded || !form.surat_permohonan || !form.proposal_kak || !form.draft_mou"
                 />
             </div>
         </form>

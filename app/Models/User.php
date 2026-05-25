@@ -34,6 +34,7 @@ class User extends Authenticatable
         'level',
         'gender',
         'date_birth',
+        'id_opd',
     ];
 
     /**
@@ -95,6 +96,15 @@ class User extends Authenticatable
     public function corporate()
     {
         return $this->hasOne(Corporate::class, 'id_operator');
+    }
+
+    /**
+     * OPD yang terhubung ke user (untuk role tkksd_lokus dan pemohon internal Pemkot).
+     * Diisi otomatis saat login SSO jika unit_id user cocok dengan OPD.
+     */
+    public function opd()
+    {
+        return $this->belongsTo(Opd::class, 'id_opd');
     }
 
     /**
@@ -172,5 +182,26 @@ class User extends Authenticatable
         return $this->roles()->whereHas('permissions', function ($query) use ($permission) {
             $query->where('name', $permission);
         })->exists();
+    }
+
+    /**
+     * Scope: penerima notifikasi admin.
+     *
+     * Bila `services.admin_notification_recipients` di-set, hanya akun dengan
+     * email yang cocok di whitelist itu yang dipilih (bahkan jika sistem punya
+     * banyak akun administrator). Bila kosong, fallback ke semua user
+     * ber-role administrator/superadmin.
+     */
+    public function scopeAdminNotificationRecipients($query)
+    {
+        $whitelist = config('services.admin_notification_recipients', []);
+
+        if (!empty($whitelist)) {
+            return $query->whereIn('email', $whitelist);
+        }
+
+        return $query->whereHas('roles', function ($q) {
+            $q->whereIn('slug', ['administrator', 'superadmin']);
+        });
     }
 }

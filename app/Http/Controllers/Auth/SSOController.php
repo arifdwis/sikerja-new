@@ -211,11 +211,52 @@ class SSOController extends Controller
                 }
             }
 
+            // Auto-link user ke OPD berdasarkan unit_id/unit_name dari SSO (Req 1.2)
+            $this->linkUserToOpd($user, $sso);
+
             Auth::login($user, true);
             Log::info('SSO: Auth::login called', ['auth_check' => Auth::check(), 'user_id' => Auth::id()]);
 
         } catch (\Exception $e) {
             Log::error('SSO syncUserFromSSO Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Auto-link user ke tabel `opd` berdasarkan data unit kerja dari SSO (Req 1.2).
+     * Mencocokkan singkatan atau nama OPD dengan unit_name/unit_id dari payload SSO.
+     */
+    protected function linkUserToOpd(User $user, array $sso): void
+    {
+        try {
+            // Skip jika user sudah punya id_opd
+            if (!empty($user->id_opd)) {
+                return;
+            }
+
+            $unitName = $sso['unit_name'] ?? $sso['unit_kerja'] ?? null;
+            if (!$unitName) {
+                return;
+            }
+
+            $opd = \App\Models\Opd::active()
+                ->where('nama', strtoupper($unitName))
+                ->orWhere('singkatan', strtoupper($unitName))
+                ->orWhere('nama', 'LIKE', '%' . $unitName . '%')
+                ->first();
+
+            if ($opd) {
+                $user->update(['id_opd' => $opd->id]);
+                Log::info('SSO: User linked to OPD', [
+                    'user_id' => $user->id,
+                    'opd_id' => $opd->id,
+                    'opd_nama' => $opd->nama,
+                ]);
+            } else {
+                Log::info('SSO: No matching OPD for unit_name', ['unit_name' => $unitName]);
+            }
+        } catch (\Exception $e) {
+            Log::error('SSO linkUserToOpd Error: ' . $e->getMessage());
         }
     }
 

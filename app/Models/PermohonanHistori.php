@@ -13,6 +13,7 @@ class PermohonanHistori extends Model
         'uuid',
         'id_permohonan',
         'id_operator',
+        'role_operator',
         'id_file',
         'deskripsi',
         'deskripsi_perbaikan',

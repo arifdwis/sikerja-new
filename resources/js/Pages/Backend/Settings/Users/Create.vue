@@ -11,12 +11,17 @@ import axios from 'axios';
 import InputText from 'primevue/inputtext';
 
 const toast = useToast();
-const props = defineProps(['roles', 'share']);
+const props = defineProps(['roles', 'opds', 'share']);
 
 // Map roles to format needed by select
 const roleOptions = props.roles.map(role => ({
     value: role.id,
     name: role.name
+}));
+
+const opdOptions = (props.opds || []).map(opd => ({
+    value: opd.id,
+    name: opd.singkatan ? `${opd.nama} (${opd.singkatan})` : opd.nama,
 }));
 
 const form = useForm({
@@ -25,8 +30,17 @@ const form = useForm({
   password: '',
   password_confirmation: '',
   role_id: '',
+  id_opd: null,
   uid: null, // Field khusus untuk SSO User ID
 });
+
+// Cek apakah role yang dipilih adalah tkksd_lokus → field OPD wajib
+import { computed } from 'vue';
+const selectedRoleSlug = computed(() => {
+    const role = props.roles.find(r => r.id == form.role_id);
+    return role?.slug;
+});
+const requireOpd = computed(() => selectedRoleSlug.value === 'tkksd_lokus');
 
 const validationStatus = ref({
   name: null,
@@ -226,6 +240,23 @@ const submit = () => {
             <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">
               Role menentukan hak akses pengguna dalam aplikasi. Pastikan memilih role yang sesuai.
             </p>
+
+            <!-- Field OPD: muncul saat role = tkksd_lokus (Req 11.8) -->
+            <div v-if="requireOpd" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <label class="block text-sm font-medium mb-1">
+                    OPD yang Diwakili <span class="text-red-500">*</span>
+                </label>
+                <fwb-select
+                    v-model="form.id_opd"
+                    :options="opdOptions"
+                    placeholder="Pilih OPD"
+                    required
+                />
+                <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                    Akun TKKSD Lokus terhubung ke satu OPD dan hanya akan melihat monev kerjasama yang melibatkan OPD ini.
+                </p>
+                <p v-if="form.errors.id_opd" class="text-red-500 text-xs mt-1">{{ form.errors.id_opd }}</p>
+            </div>
           </div>
         </form>
       </div>

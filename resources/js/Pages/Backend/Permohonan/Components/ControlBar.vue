@@ -4,7 +4,23 @@ import { Icon } from '@iconify/vue';
 defineProps({
     filterQuery: String,
     viewMode: String,
-    groupBy: String
+    groupBy: String,
+    searchPlaceholder: {
+        type: String,
+        default: 'Cari kode / label permohonan...'
+    },
+    showCreate: {
+        type: Boolean,
+        default: true
+    },
+    showGrouping: {
+        type: Boolean,
+        default: true
+    },
+    createLabel: {
+        type: String,
+        default: 'Pengajuan Baru'
+    }
 });
 
 defineEmits(['update:filterQuery', 'update:viewMode', 'update:groupBy', 'create']);
@@ -20,12 +36,13 @@ defineEmits(['update:filterQuery', 'update:viewMode', 'update:groupBy', 'create'
                         :value="filterQuery" 
                         @input="$emit('update:filterQuery', $event.target.value)"
                         type="text" 
-                        placeholder="Cari kode / label permohonan..." 
+                        :placeholder="searchPlaceholder" 
                         class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 dark:bg-gray-700" 
                     />
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Group By:</span>
+                <slot name="filters" />
+                <div v-if="showGrouping" class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Kelompok:</span>
                     <button @click="$emit('update:groupBy', 'latest')" :class="groupBy === 'latest' ? 'bg-blue-600 border-blue-500 text-blue-50' : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-600'" class="px-3 py-1.5 rounded-md text-sm font-medium border transition-colors">
                         Terbaru
                     </button>
@@ -38,9 +55,9 @@ defineEmits(['update:filterQuery', 'update:viewMode', 'update:groupBy', 'create'
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <button @click="$emit('create')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
+                <button v-if="showCreate" @click="$emit('create')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm transition-colors">
                     <Icon icon="lucide:plus" class="w-4 h-4" />
-                    <span>Pengajuan Baru</span>
+                    <span>{{ createLabel }}</span>
                 </button>
                 <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
                     <button @click="$emit('update:viewMode', 'grid')" :class="viewMode === 'grid' ? 'bg-white dark:bg-gray-800 shadow-sm text-gray-800 dark:text-white' : 'text-gray-500 hover:text-gray-700'" class="p-2 rounded-md transition-all">

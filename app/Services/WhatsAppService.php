@@ -8,6 +8,73 @@ use Illuminate\Support\Facades\Log;
 class WhatsappService
 {
     /**
+     * Send WhatsApp message to admin (administrator/superadmin).
+     * 
+     * Saat development (notify_admin_enabled=false), admin TIDAK terima notif
+     * sehingga inbox admin tidak penuh dengan data uji.
+     *
+     * @param string $phone
+     * @param string $message
+     * @return bool
+     */
+    public function sendToAdmin(string $phone, string $message): bool
+    {
+        $adminEnabled = filter_var(
+            config('services.whatsapp.notify_admin_enabled', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (!$adminEnabled) {
+            Log::info("WA admin notif disabled (development mode). Skip $phone.");
+            return false;
+        }
+
+        return $this->sendMessage($phone, $message);
+    }
+
+    /**
+     * Send WhatsApp message to admin/notify group.
+     * 
+     * Saat sistem masih dalam tahap pengembangan (notify_group_enabled=false),
+     * pesan dialihkan ke nomor pribadi developer (dev_redirect_phone) dengan
+     * prefix "[DEV]" agar mudah dibedakan.
+     *
+     * Penggunaan: ganti $wa->sendMessage(config('services.whatsapp.group_id'), $msg)
+     * dengan       $wa->sendToGroup($msg)
+     *
+     * @param string $message
+     * @param string|null $groupKey 'group_id' atau 'admin_group_id' (default: group_id)
+     * @return bool
+     */
+    public function sendToGroup(string $message, ?string $groupKey = 'group_id'): bool
+    {
+        $groupEnabled = filter_var(
+            config('services.whatsapp.notify_group_enabled', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if ($groupEnabled) {
+            $groupId = config("services.whatsapp.{$groupKey}");
+            if (!$groupId) {
+                Log::warning("WA group_id ({$groupKey}) tidak diset.");
+                return false;
+            }
+            return $this->sendMessage($groupId, $message);
+        }
+
+        // DEV mode: redirect ke nomor pribadi
+        $devPhone = config('services.whatsapp.dev_redirect_phone');
+        if (!$devPhone) {
+            Log::warning('WA dev_redirect_phone tidak diset, group notif dilewati.');
+            return false;
+        }
+
+        $devMessage = "[DEV — Group Notif Dialihkan]\n" . $message;
+        Log::info("WA group notif redirected to dev phone {$devPhone}");
+        return $this->sendMessage($devPhone, $devMessage);
+    }
+
+    /**
      * Send WhatsApp message directly (Sync)
      * 
      * @param string $target Target number or Group ID

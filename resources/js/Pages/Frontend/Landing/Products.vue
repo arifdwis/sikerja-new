@@ -4,7 +4,6 @@ import Navbar from '@/Components/Landing/Navbar.vue'
 import PageHeader from '@/Components/Landing/PageHeader.vue'
 import Footer from '@/Components/Landing/Footer.vue'
 import ChatWidget from '@/Components/Landing/ChatWidget.vue'
-import FeatureCard from '@/Components/Landing/FeatureCard.vue' // Reusing reused comp if available or structure manually
 import { Icon } from '@iconify/vue'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
@@ -28,7 +27,7 @@ const products = [
     <Head title="Bentuk Kerjasama Sikerja" />
     <Navbar />
 
-    <main class="font-['Inter'] antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden">
+    <main class="font-['Inter'] antialiased bg-[#f4f6f8] dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden">
         <PageHeader 
             title="Bentuk Kerjasama" 
             subtitle="Jenis-jenis dokumen dan bentuk kerjasama yang difasilitasi"
@@ -39,8 +38,8 @@ const products = [
             <div class="max-w-7xl mx-auto px-6">
                 <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     <div v-for="(item, i) in products" :key="i" class="group bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl hover:-translate-y-2 transition-all duration-300" data-aos="fade-up" :data-aos-delay="i*50">
-                        <div class="w-16 h-16 bg-teal-50 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-teal-500 transition-colors duration-300">
-                            <Icon :icon="item.icon" class="w-8 h-8 text-teal-600 group-hover:text-white transition-colors" />
+                        <div class="w-16 h-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-amber-400 transition-colors duration-300">
+                            <Icon :icon="item.icon" class="w-8 h-8 text-amber-700 group-hover:text-slate-900 transition-colors" />
                         </div>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">{{ item.name }}</h3>
                         <p class="text-gray-600 dark:text-gray-400 leading-relaxed">{{ item.desc }}</p>

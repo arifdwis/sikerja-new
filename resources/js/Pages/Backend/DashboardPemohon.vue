@@ -43,17 +43,23 @@ const statusColors = {
     0: 'bg-teal-50 text-teal-700 border-teal-200',
     1: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     2: 'bg-blue-50 text-blue-700 border-blue-200',
-    3: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    4: 'bg-green-50 text-green-700 border-green-200',
+    3: 'bg-violet-50 text-violet-700 border-violet-200',
+    4: 'bg-purple-50 text-purple-700 border-purple-200',
+    5: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+    6: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    7: 'bg-green-50 text-green-700 border-green-200',
     9: 'bg-red-50 text-red-700 border-red-200',
 };
 
 const statusLabels = {
-    0: 'Permohonan',
+    0: 'Menunggu Validasi',
     1: 'Pembahasan',
-    2: 'Penjadwalan',
-    3: 'Persetujuan', 
-    4: 'Selesai',
+    2: 'Menunggu Jadwal Penandatanganan',
+    3: 'Upload PKS Final',
+    4: 'Menunggu Penandatanganan',
+    5: 'Validasi Dokumen Pasca-TTD',
+    6: 'Pelaksanaan Kerjasama',
+    7: 'Selesai',
     9: 'Ditolak',
 };
 </script>

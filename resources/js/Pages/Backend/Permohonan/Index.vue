@@ -11,7 +11,6 @@ import Tag from 'primevue/tag';
 import Skeleton from 'primevue/skeleton';
 import CreateForm from './Components/CreateForm.vue';
 import TrackingCard from './Components/TrackingCard.vue';
-import FileDiskusiSection from './Components/FileDiskusiSection.vue';
 import ControlBar from './Components/ControlBar.vue';
 import PermohonanList from './Components/PermohonanList.vue';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
@@ -27,6 +26,14 @@ const props = defineProps({
     pemohonanList: Array,
     statusLabels: Object,
     kategoris: Array,
+    opds: {
+        type: Array,
+        default: () => []
+    },
+    userOpd: {
+        type: Object,
+        default: null
+    },
     share: Object,
     filters: Object,
 });
@@ -74,25 +81,15 @@ const editDialog = ref(false);
 const trackingSidebar = ref(false);
 const detailDialog = ref(false);
 const uploadDialog = ref(false);
-const fileDiskusiDialog = ref(false);
 const selectedItem = ref(null);
-const selectedFile = ref(null);
 const detailData = ref(null);
 const loadingDetail = ref(false);
 
-const openFileDiskusi = (file) => {
-    selectedFile.value = file;
-    fileDiskusiDialog.value = true;
-};
-
-const handleFileStatusUpdate = (updatedFile) => {
-    if (detailData.value?.files) {
-        const index = detailData.value.files.findIndex(f => f.id === updatedFile.id);
-        if (index !== -1) {
-            detailData.value.files[index] = updatedFile;
-        }
+onMounted(() => {
+    if (props.filters?.detail) {
+        openDetailModal({ uuid: props.filters.detail });
     }
-};
+});
 
 const openCreateModal = () => createDialog.value = true;
 const closeCreateModal = () => createDialog.value = false;
@@ -123,26 +120,47 @@ const openDetailModal = async (item) => {
     detailDialog.value = true;
     loadingDetail.value = true;
     try {
-        const response = await axios.get(route(props.share.prefix + '.show', item.uuid));
+        // Cache busting + accept JSON header agar respons selalu segar (penting setelah aksi PKS approve / TTD validate)
+        const response = await axios.get(route(props.share.prefix + '.show', item.uuid), {
+            params: { _: Date.now() },
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
         detailData.value = response.data;
     } catch (error) {
         console.error("Failed to fetch details", error);
     } finally {
         loadingDetail.value = false;
     }
+    // Pastikan list permohonan di belakang juga ter-refresh sehingga
+    // permohonan berpindah dari grup status lama ke status baru.
+    router.reload({ only: ['permohonan'] });
 };
 
-const openUploadDialog = (item) => {
+const openUploadDialog = async (item) => {
     if (item.status == 0) {
         toast.error('Mohon tunggu validasi admin sebelum mengupload berkas.');
         return;
     }
     if (item.files && item.files.length > 0) {
-        toast.error('Berkas sudah diupload dan sedang menunggu review.');
+        toast.error('Berkas sudah diupload. Upload ulang hanya tersedia saat dokumen diminta revisi.');
         return;
     }
-    selectedItem.value = item;
-    uploadDialog.value = true;
+
+    try {
+        const response = await axios.get(route(props.share.prefix + '.show', item.uuid));
+        const latestItem = response.data;
+
+        if (latestItem.files?.length > 0) {
+            toast.error('Berkas sudah diupload. Tunggu review atau upload perbaikan dari dokumen yang diminta revisi.');
+            router.reload({ only: ['permohonan'] });
+            return;
+        }
+
+        selectedItem.value = latestItem;
+        uploadDialog.value = true;
+    } catch (error) {
+        toast.error('Gagal memeriksa berkas terbaru. Silakan coba lagi.');
+    }
 };
 
 const handleUploadSuccess = () => {
@@ -151,14 +169,21 @@ const handleUploadSuccess = () => {
     router.reload({ only: ['permohonan'] });
 };
 
+const handleDetailUploadSuccess = () => {
+    detailDialog.value = false;
+    router.reload({ only: ['permohonan'] });
+};
+
 const goToDetail = (item) => {
     openDetailModal(item);
 };
 
 const isAdmin = computed(() => {
-    const userRole = page.props.auth?.user?.roles?.[0]?.name;
-    // Update role names to match DB (administrator, superadmin) + keep compatibility
-    return ['administrator', 'admin', 'superadmin', 'super-admin', 'verifikator', 'tkksd'].includes(userRole);
+    // HandleInertiaRequests menyediakan auth.role (slug terakhir) dan auth.roles (array slug)
+    const role = page.props.auth?.role;
+    const roles = page.props.auth?.roles || [];
+    const adminSlugs = ['administrator', 'admin', 'superadmin', 'super-admin', 'verifikator', 'tkksd'];
+    return adminSlugs.includes(role) || roles.some((r) => adminSlugs.includes(r));
 });
 
 const groupedData = computed(() => {
@@ -222,6 +247,8 @@ const groupedData = computed(() => {
                 <CreateForm 
                     :kategoris="props.kategoris || []" 
                     :provinsis="props.provinsis" 
+                    :opds="props.opds || []"
+                    :userOpd="props.userOpd"
                     :pemohon="props.pemohon"
                     :corporate="props.corporate"
                     :pemohonanList="props.pemohonanList"
@@ -238,6 +265,8 @@ const groupedData = computed(() => {
                     :initialData="selectedItem"
                     :kategoris="props.kategoris || []" 
                     :provinsis="props.provinsis" 
+                    :opds="props.opds || []"
+                    :userOpd="props.userOpd"
                     :pemohon="props.pemohon"
                     :corporate="props.corporate"
                     :pemohonanList="props.pemohonanList"
@@ -277,18 +306,8 @@ const groupedData = computed(() => {
             :loading="loadingDetail"
             :data="detailData"
             :isAdmin="isAdmin"
-            @open-file-diskusi="openFileDiskusi"
             @refresh="openDetailModal(detailData)" 
+            @upload-complete="handleDetailUploadSuccess"
         />
-
-        <Dialog v-model:visible="fileDiskusiDialog" modal header="Diskusi Dokumen" :style="{ width: '600px' }" :breakpoints="{ '960px': '95vw' }">
-            <FileDiskusiSection 
-                v-if="selectedFile"
-                :file="selectedFile"
-                :permohonan="detailData"
-                :isAdmin="false"
-                @statusUpdated="handleFileStatusUpdate"
-            />
-        </Dialog>
     </AuthenticatedLayout>
 </template>

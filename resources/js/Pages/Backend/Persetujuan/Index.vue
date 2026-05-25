@@ -8,6 +8,7 @@ import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
+import ControlBar from '../Permohonan/Components/ControlBar.vue';
 import GridItem from '../Pembahasan/Components/PembahasanGridItem.vue';
 import ListItem from '../Permohonan/Components/ListItem.vue';
 import ApprovalModal from './Components/ApprovalModal.vue';
@@ -51,9 +52,27 @@ watch([filterQuery, selectedKategori], () => {
 const viewMode = ref(localStorage.getItem('persetujuanViewMode') || 'grid');
 watch(viewMode, (newVal) => localStorage.setItem('persetujuanViewMode', newVal));
 
-// Grouped data (like Pembahasan)
+const groupBy = ref(localStorage.getItem('persetujuanGroupBy') || 'latest');
+watch(groupBy, (newVal) => localStorage.setItem('persetujuanGroupBy', newVal));
+
 const groupedData = computed(() => {
     const data = props.datas?.data || [];
+    if (groupBy.value === 'kategori') {
+        return data.reduce((groups, item) => {
+            const key = item.kategori?.label || 'Tanpa Kategori';
+            (groups[key] = groups[key] || []).push(item);
+            return groups;
+        }, {});
+    }
+
+    if (groupBy.value === 'status') {
+        return data.reduce((groups, item) => {
+            const key = item.status_label?.label || 'Menunggu Persetujuan';
+            (groups[key] = groups[key] || []).push(item);
+            return groups;
+        }, {});
+    }
+
     return { 'Daftar Persetujuan': data };
 });
 
@@ -138,33 +157,22 @@ const submitPersetujuan = () => {
             <div class="mx-auto max-w-full px-6 lg:px-8">
                 <Breadcrumb class="mb-6" :crumbs="[{ label: 'Dashboard', route: 'dashboard' }, { label: share.title, route: null }]" />
 
-                <!-- Control Bar -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                            <div class="relative w-full sm:w-80">
-                                <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input v-model="filterQuery" type="text" placeholder="Cari permohonan..." class="pl-10 pr-4 py-2.5 w-full border border-gray-300 focus:border-indigo-500 rounded-lg text-sm dark:bg-gray-700" />
-                            </div>
-                            <Dropdown v-model="selectedKategori" :options="kategoris" optionLabel="label" optionValue="id" placeholder="Semua Kategori" class="w-full sm:w-48" showClear />
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg border border-gray-200 dark:border-gray-600">
-                                <button @click="viewMode = 'grid'" :class="viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500'" class="p-2 rounded-md transition-all">
-                                    <Icon icon="lucide:layout-grid" class="w-4 h-4" />
-                                </button>
-                                <button @click="viewMode = 'list'" :class="viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500'" class="p-2 rounded-md transition-all">
-                                    <Icon icon="lucide:list" class="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <ControlBar
+                    v-model:filterQuery="filterQuery"
+                    v-model:viewMode="viewMode"
+                    v-model:groupBy="groupBy"
+                    searchPlaceholder="Cari permohonan..."
+                    :showCreate="false"
+                >
+                    <template #filters>
+                        <Dropdown v-model="selectedKategori" :options="kategoris" optionLabel="label" optionValue="id" placeholder="Semua Kategori" class="w-full sm:w-48" showClear />
+                    </template>
+                </ControlBar>
 
                 <!-- Empty State -->
                 <div v-if="!datas.data.length" class="bg-white dark:bg-gray-800 rounded-2xl p-16 text-center border-2 border-dashed border-gray-200 dark:border-gray-700">
-                     <div class="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Icon icon="solar:calendar-date-bold-duotone" class="w-12 h-12 text-indigo-400" />
+                     <div class="w-24 h-24 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Icon icon="solar:calendar-date-bold-duotone" class="w-12 h-12 text-gray-400" />
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Tidak ada Persetujuan</h3>
                     <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">Tidak ada jadwal yang menunggu persetujuan saat ini.</p>

@@ -7,7 +7,19 @@ defineProps({
     groupedData: Object,
     viewMode: String,
     isAdmin: Boolean,
-    hasData: Boolean
+    hasData: Boolean,
+    showCreate: {
+        type: Boolean,
+        default: true,
+    },
+    emptyTitle: {
+        type: String,
+        default: 'Belum ada Permohonan',
+    },
+    emptyDescription: {
+        type: String,
+        default: 'Anda belum memiliki riwayat permohonan kerjasama. Buat permohonan baru untuk memulai kerjasama.',
+    },
 });
 
 defineEmits(['create', 'detail', 'edit', 'schedule', 'tracking', 'upload']);
@@ -19,9 +31,9 @@ defineEmits(['create', 'detail', 'edit', 'schedule', 'tracking', 'upload']);
             <div class="w-24 h-24 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Icon icon="solar:documents-minimalistic-bold-duotone" class="w-12 h-12 text-gray-400" />
             </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Belum ada Permohonan</h3>
-            <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8">Anda belum memiliki riwayat permohonan kerjasama. Buat permohonan baru untuk memulai kerjasama.</p>
-            <button @click="$emit('create')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-medium inline-flex items-center gap-2">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ emptyTitle }}</h3>
+            <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8">{{ emptyDescription }}</p>
+            <button v-if="showCreate" @click="$emit('create')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-sm font-medium inline-flex items-center gap-2">
                 <Icon icon="lucide:plus" class="w-4 h-4" />
                 Buat Permohonan Baru
             </button>

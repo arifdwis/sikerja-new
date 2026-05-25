@@ -27,6 +27,7 @@ class ProfileController extends Controller
         $corporate = null;
         $provinsis = [];
         $kotas = [];
+        $opds = [];
 
         // Load pemohon and corporate data if user is pemohon role
         if ($user->hasRole('pemohon')) {
@@ -41,6 +42,9 @@ class ProfileController extends Controller
                     $kotas = Kota::where('province_id', $kota->province_id)->orderBy('name')->get(['id', 'name']);
                 }
             }
+
+            // Daftar OPD untuk dropdown satuan kerja (Req 1.1, 11.2)
+            $opds = \App\Models\Opd::active()->orderBy('nama')->get(['id', 'nama', 'singkatan']);
         }
 
         return Inertia::render('Backend/Profile/Edit', [
@@ -50,6 +54,9 @@ class ProfileController extends Controller
             'corporate' => $corporate,
             'provinsis' => $provinsis,
             'kotas' => $kotas,
+            'opds' => $opds,
+            // user.id_opd untuk auto-select dropdown
+            'userIdOpd' => $user->id_opd,
         ]);
     }
 
@@ -71,6 +78,7 @@ class ProfileController extends Controller
 
     /**
      * Update biodata pemohon.
+     * Field id_opd akan disinkronkan ke users.id_opd dan pemohon.unit_kerja.
      */
     public function updateBiodata(Request $request): RedirectResponse
     {
@@ -83,6 +91,9 @@ class ProfileController extends Controller
             'email' => 'required|email|max:255',
             'kota_id' => 'nullable|integer',
             'address' => 'nullable|string',
+            // id_opd jadi sumber utama untuk satuan kerja Pemkot
+            // unit_kerja masih dipakai untuk pemohon non-Pemkot (manual input)
+            'id_opd' => 'nullable|exists:opd,id',
             'unit_kerja' => 'required|string|max:255',
             'nip' => 'nullable|string|max:30',
             'jabatan' => 'required|string|max:100',
@@ -90,10 +101,28 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        // Find or create pemohon record
+        // Sinkronkan id_opd ke tabel users (Req 1.2 — auto-link)
+        if (array_key_exists('id_opd', $validated)) {
+            $user->update(['id_opd' => $validated['id_opd']]);
+        }
+
+        // unit_kerja di tabel pemohon tetap diisi:
+        // - Jika id_opd dipilih, pakai nama OPD
+        // - Jika tidak (mitra luar), pakai input manual
+        if (!empty($validated['id_opd'])) {
+            $opd = \App\Models\Opd::find($validated['id_opd']);
+            if ($opd) {
+                $validated['unit_kerja'] = $opd->nama;
+            }
+        }
+
+        // Hapus id_opd dari array agar tidak masuk ke pemohon (kolom tidak ada di tabel pemohon)
+        $pemohonData = $validated;
+        unset($pemohonData['id_opd']);
+
         Pemohon::updateOrCreate(
             ['id_operator' => $user->id],
-            $validated
+            $pemohonData
         );
 
         return Redirect::route('profile.edit')->with('success', 'Data biodata berhasil disimpan.');
@@ -105,7 +134,8 @@ class ProfileController extends Controller
     public function updateCorporate(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'id_opd' => 'nullable|exists:opd,id',
+            'name' => 'required_without:id_opd|nullable|string|max:255',
             'kota_id' => 'nullable|integer',
             'postal_code' => 'required|string|max:10',
             'address' => 'required|string',
@@ -116,16 +146,32 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Jika user pilih dari dropdown OPD, sinkronkan name + users.id_opd
+        if (!empty($validated['id_opd'])) {
+            $opd = \App\Models\Opd::find($validated['id_opd']);
+            if ($opd) {
+                $validated['name'] = $opd->nama;
+                $user->update(['id_opd' => $opd->id]);
+            }
+        } else {
+            // Jika ketik manual, lepas link id_opd di tabel users
+            $user->update(['id_opd' => null]);
+        }
+
+        // Hapus id_opd dari array agar tidak masuk ke corporate (kolom tidak ada)
+        $corporateData = $validated;
+        unset($corporateData['id_opd']);
+
         // Get kota name if kota_id provided
-        if (!empty($validated['kota_id'])) {
-            $kota = Kota::find($validated['kota_id']);
-            $validated['kota'] = $kota ? $kota->name : null;
+        if (!empty($corporateData['kota_id'])) {
+            $kota = Kota::find($corporateData['kota_id']);
+            $corporateData['kota'] = $kota ? $kota->name : null;
         }
 
         // Find or create corporate record
         Corporate::updateOrCreate(
             ['id_operator' => $user->id],
-            array_merge($validated, ['status' => 1])
+            array_merge($corporateData, ['status' => 1])
         );
 
         return Redirect::route('profile.edit')->with('success', 'Data satuan kerja berhasil disimpan.');

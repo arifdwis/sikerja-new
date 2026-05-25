@@ -69,3 +69,35 @@ Route::prefix('settings')->name('settings.')->group(function () {
     Route::post('menu/reorder', [App\Http\Controllers\MenuController::class, 'reorder'])->name('menu.reorder');
     Route::resource('log-activity', App\Http\Controllers\LogActivityController::class)->only(['index', 'show', 'destroy']);
 });
+
+// PKS workflow (Admin) - Req 9 & 10
+Route::post('permohonan/{uuid}/pks/admin', [\App\Http\Controllers\PksController::class, 'adminUpload'])
+    ->name('permohonan.pks.admin');
+Route::put('permohonan/{uuid}/pks/approve', [\App\Http\Controllers\PksController::class, 'approve'])
+    ->name('permohonan.pks.approve');
+
+// Validasi dokumen tertandatangani (Admin) - Req 9
+Route::put('permohonan/{uuid}/ttd/validate', [\App\Http\Controllers\PenandatangananController::class, 'validateTtd'])
+    ->name('permohonan.ttd.validate');
+
+// Master OPD (Admin only) - Req 12.4
+Route::resource('master/opd', \App\Http\Controllers\Master\OpdController::class)
+    ->only(['index', 'store', 'update', 'destroy'])
+    ->names('master.opd');
+
+// Kerjasama Manual (Admin only) - Req 17
+Route::resource('kerjasama-manual', \App\Http\Controllers\KerjasamaManualController::class)
+    ->parameters(['kerjasama-manual' => 'uuid']);
+
+// Monev manual (Admin only) - Req 16
+Route::post('monev/manual', [\App\Http\Controllers\MonevController::class, 'storeManual'])
+    ->name('monev.manual.store');
+
+
+// Tahap Penandatanganan (status 3, 4, 5) — admin lihat list permohonan yang sedang dalam proses tanda tangan
+Route::get('penandatanganan', [\App\Http\Controllers\PermohonanController::class, 'index'])
+    ->name('penandatanganan.index');
+
+// Tahap Pelaksanaan (status 6) — kerjasama yang sedang aktif berjalan
+Route::get('pelaksanaan', [\App\Http\Controllers\PermohonanController::class, 'index'])
+    ->name('pelaksanaan.index');

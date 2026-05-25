@@ -35,27 +35,45 @@ const diffForHumans = (dateString) => {
 
 const getStatusColor = (status) => {
     const colors = {
-        0: { bg: 'bg-yellow-400', text: 'text-yellow-950', border: 'border-yellow-400' },
-        1: { bg: 'bg-blue-400', text: 'text-blue-950', border: 'border-blue-400' },
-        2: { bg: 'bg-purple-400', text: 'text-purple-950', border: 'border-purple-400' },
-        4: { bg: 'bg-green-400', text: 'text-green-950', border: 'border-green-400' },
-        9: { bg: 'bg-red-400', text: 'text-red-950', border: 'border-red-400' },
+        0: { bg: 'bg-amber-300',    text: 'text-amber-950',    border: 'border-amber-500' },
+        1: { bg: 'bg-sky-300',      text: 'text-sky-950',      border: 'border-sky-500' },
+        2: { bg: 'bg-blue-400',     text: 'text-blue-950',     border: 'border-blue-600' },
+        3: { bg: 'bg-violet-400',   text: 'text-violet-950',   border: 'border-violet-600' },
+        4: { bg: 'bg-pink-300',     text: 'text-pink-950',     border: 'border-pink-500' },
+        5: { bg: 'bg-orange-300',   text: 'text-orange-950',   border: 'border-orange-500' },
+        6: { bg: 'bg-teal-300',     text: 'text-teal-950',     border: 'border-teal-500' },
+        7: { bg: 'bg-emerald-400',  text: 'text-emerald-950',  border: 'border-emerald-600' },
+        9: { bg: 'bg-red-300',      text: 'text-red-950',      border: 'border-red-500' },
     };
-    return colors[status] || { bg: 'bg-gray-400', text: 'text-gray-950', border: 'border-gray-400' };
+    return colors[status] || { bg: 'bg-gray-300', text: 'text-gray-950', border: 'border-gray-500' };
 };
 
 const getUploadButtonLabel = (item) => {
     return (item.files && item.files.length > 0) ? 'Kelola Berkas' : 'Upload Berkas';
 };
 
+/**
+ * Upload berkas (Surat Permohonan, KAK, MoU) hanya boleh saat status 1 (Dalam Pembahasan).
+ * Setelah masuk Penjadwalan (status 2+), berkas dikunci sesuai Req 7.4.
+ *
+ * Catatan:
+ * - Status 0 = Menunggu Validasi → admin yang upload, pemohon menunggu
+ * - Status 1 = Dalam Pembahasan → pemohon upload berkas pertama kali
+ * - Status >= 2 = Penjadwalan/Penandatanganan/Pelaksanaan → upload PKS & TTD
+ *   pakai tombol terpisah di halaman Detail
+ * - Status 9 = Ditolak → pemohon klik "Revisi & Ajukan Ulang", bukan upload
+ */
 const canManageFiles = (item) => {
     if (props.isAdmin) return false;
-    // Block if files are already uploaded (pending review)
+
+    const status = Number(item.status);
+    if (status !== 1) return false;
+
+    // Jika file sudah diupload dan masih dalam review, jangan tampilkan tombol upload lagi.
+    // (Pemohon harus tunggu admin review dulu, baru bisa upload revisi.)
     if (item.files && item.files.length > 0) return false;
-    // Status 0: Menunggu Validasi (No Upload)
-    // Status 4: Selesai, Status 9: Ditolak
-    // Use loose comparison because status might be string
-    return item.status != 0 && item.status != 4 && item.status != 9;
+
+    return true;
 };
 </script>
 
@@ -91,6 +109,18 @@ const canManageFiles = (item) => {
                 </h4>
             </div>
 
+            <!-- Alasan Penolakan (hanya muncul jika status ditolak = 9) -->
+            <div v-if="item.status == 9 && item.alasan_tolak"
+                class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div class="flex items-start gap-2 text-red-800">
+                    <Icon icon="solar:danger-triangle-bold" class="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div class="text-xs">
+                        <p class="font-bold uppercase tracking-wide mb-0.5">Alasan Penolakan</p>
+                        <p class="font-medium">{{ item.alasan_tolak }}</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2 mb-3 text-sm">
                 <Icon icon="solar:buildings-bold" class="w-5 h-5 flex-shrink-0" />
                 <span class="truncate font-semibold capitalize">
@@ -117,14 +147,15 @@ const canManageFiles = (item) => {
                 </div>
 
                 <div class="w-full grid grid-cols-2 gap-2 mt-2">
-                    <!-- Edit Button (Only for Status 0 & Not Admin) -->
+                    <!-- Edit Button (untuk Pemohon, status 0=Menunggu Validasi atau 9=Ditolak/Revisi) -->
                      <button 
-                        v-if="!isAdmin && item.status == 0"
+                        v-if="!isAdmin && (item.status == 0 || item.status == 9)"
                         @click.stop="$emit('edit', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-white text-yellow-600 hover:bg-yellow-50 col-span-2 shadow-sm"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-white shadow-sm col-span-2"
+                        :class="item.status == 9 ? 'text-red-600 hover:bg-red-50' : 'text-yellow-600 hover:bg-yellow-50'"
                     >
-                        <Icon icon="solar:pen-bold" class="w-3.5 h-3.5" />
-                        <span>Edit Pengajuan</span>
+                        <Icon :icon="item.status == 9 ? 'solar:refresh-bold' : 'solar:pen-bold'" class="w-3.5 h-3.5" />
+                        <span>{{ item.status == 9 ? 'Revisi & Ajukan Ulang' : 'Edit Pengajuan' }}</span>
                     </button>
 
                     <button 
@@ -134,6 +165,44 @@ const canManageFiles = (item) => {
                     >
                         <Icon icon="solar:calendar-add-bold" class="w-3.5 h-3.5" />
                         <span>Buat Jadwal</span>
+                    </button>
+
+                    <!-- Upload PKS Final (status 3) — admin: buka modal detail untuk upload -->
+                    <button
+                        v-if="isAdmin && item.status == 3"
+                        @click.stop="$emit('detail', item)"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-violet-700 hover:bg-violet-800 text-white col-span-2"
+                    >
+                        <Icon icon="solar:document-add-bold" class="w-3.5 h-3.5" />
+                        <span>Upload PKS Final (PDF)</span>
+                    </button>
+
+                    <!-- Status 3 — pemohon: info menunggu admin upload PKS final -->
+                    <div
+                        v-if="!isAdmin && item.status == 3"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-violet-800"
+                    >
+                        <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
+                        <span>Menunggu PKS final dari admin</span>
+                    </div>
+
+                    <!-- Menunggu Hari Penandatanganan (status 4) — info only -->
+                    <div
+                        v-if="!isAdmin && item.status == 4"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-pink-800"
+                    >
+                        <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
+                        <span>Menunggu waktu penandatanganan</span>
+                    </div>
+
+                    <!-- Upload Dokumen Tertandatangani (status 5) — pemohon -->
+                    <button
+                        v-if="!isAdmin && item.status == 5"
+                        @click.stop="$emit('detail', item)"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-orange-600 hover:bg-orange-700 text-white col-span-2"
+                    >
+                        <Icon icon="solar:document-text-bold" class="w-3.5 h-3.5" />
+                        <span>Upload Dokumen TTD</span>
                     </button>
 
                     <button 
@@ -158,9 +227,9 @@ const canManageFiles = (item) => {
                         <Icon icon="solar:upload-bold" class="w-3.5 h-3.5" />
                         <span>Upload Berkas</span>
                     </button>
-                    <!-- Info: files pending review -->
+                    <!-- Info: berkas masih dalam tahap pembahasan (status = 1) -->
                     <div 
-                        v-else-if="!isAdmin && item.files && item.files.length > 0 && item.status != 4 && item.status != 9"
+                        v-else-if="!isAdmin && item.files && item.files.length > 0 && Number(item.status) === 1"
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-blue-700"
                     >
                         <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />

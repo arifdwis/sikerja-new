@@ -72,12 +72,15 @@ class PenjadwalanController extends Controller implements HasMiddleware
     {
         $validated = $request->validate([
             'id_permohonan' => 'required|exists:permohonan,id',
-            'tipe' => 'required|in:calendar,langsung',
+            // Req 6: Metode penjadwalan baru
+            'tipe' => 'required|in:desk_to_desk,seremonial,hybrid',
             'tanggal' => 'required|date',
             'waktu' => 'required',
-            'lokasi' => 'required_if:tipe,langsung',
+            'lokasi' => 'nullable|string',
             'agenda' => 'required|string',
             'keterangan' => 'nullable|string',
+        ], [
+            'tipe.in' => 'Metode penjadwalan harus salah satu: Desk to Desk, Seremonial, atau Hybrid.',
         ]);
 
         $permohonan = Permohonan::findOrFail($request->id_permohonan);
@@ -103,40 +106,47 @@ class PenjadwalanController extends Controller implements HasMiddleware
         $histori = \App\Models\PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
             'id_operator' => $user->id,
-            'deskripsi' => 'Mengajukan jadwal pembahasan.',
+            'role_operator' => $user->role_name,
+            'deskripsi' => 'Mengajukan jadwal penandatanganan kerjasama.',
         ]);
 
         // Create Penjadwalan
         $jadwal = Penjadwalan::create([
             'id_permohonan' => $permohonan->id,
             'id_histori' => $histori->id,
-            'tipe' => $request->tipe,
-            'tanggal' => $request->tanggal,
-            'waktu' => $request->waktu,
-            'lokasi' => $request->tipe == 'calendar' ? 'Online/Calendar' : $request->lokasi,
-            'agenda' => $request->agenda,
-            'keterangan' => $request->keterangan,
+            'tipe' => $validated['tipe'],
+            'tanggal' => $validated['tanggal'],
+            'waktu' => $validated['waktu'],
+            'lokasi' => $validated['lokasi'] ?? null,
+            'agenda' => $validated['agenda'],
+            'keterangan' => $validated['keterangan'] ?? null,
             'status' => 0, // Menunggu Persetujuan
             'created_by' => $user->id,
         ]);
 
-        // Send notification to Admin/TKKSD
-        $adminIds = \App\Models\User::whereHas('roles', function ($q) {
-            $q->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
-        })->pluck('id');
+        // Send notification to Admin/TKKSD — admin pakai whitelist via scope, TKKSD apa adanya
+        $adminIds = \App\Models\User::adminNotificationRecipients()->pluck('id');
+        $tkksdIds = \App\Models\User::whereHas('roles', fn($q) => $q->where('slug', 'tkksd'))->pluck('id');
+        $adminIds = $adminIds->merge($tkksdIds)->unique();
+
+        $tanggalJadwal = \Carbon\Carbon::parse($validated['tanggal'])->translatedFormat('l, d F Y');
+        $waJadwal = \App\Services\NotificationTemplate::jadwalDiajukan($permohonan, "{$tanggalJadwal} pukul {$validated['waktu']} WITA", $user->name);
 
         foreach ($adminIds as $adminId) {
             \App\Models\Notifikasi::create([
-                'id_user' => $adminId,
+                'id_user'       => $adminId,
                 'id_permohonan' => $permohonan->id,
-                'from_user_id' => $user->id,
-                'type' => 'penjadwalan',
-                'title' => 'Pengajuan Jadwal Baru',
-                'message' => "Jadwal baru diajukan untuk permohonan {$permohonan->kode} pada " . \Carbon\Carbon::parse($request->tanggal)->translatedFormat('l, d F Y') . " pukul {$request->waktu} WITA",
+                'from_user_id'  => $user->id,
+                'type'          => 'penjadwalan',
+                'title'         => 'Pengajuan Jadwal Penandatanganan',
+                'message'       => "Pemohon mengajukan jadwal penandatanganan untuk \"{$permohonan->label}\" pada {$tanggalJadwal} pukul {$validated['waktu']} WITA. Mohon meninjau dan memberikan persetujuan.",
             ]);
         }
 
-        return back()->with('success', 'Jadwal berhasil diajukan, menunggu persetujuan Admin.');
+        // WA grup admin
+        try { app(\App\Services\WhatsappService::class)->sendToGroup($waJadwal); } catch (\Throwable $e) {}
+
+        return back()->with('success', 'Jadwal penandatanganan berhasil diajukan, menunggu persetujuan Admin.');
     }
 
     /**
@@ -167,19 +177,29 @@ class PenjadwalanController extends Controller implements HasMiddleware
         $permohonan = $jadwal->permohonan;
 
         if ($request->status == 1) {
-            // Approved
+            // Approved → Status JADWAL_DISETUJUI (3) — Pemohon harus upload PKS
             $permohonan->update([
-                'status' => Permohonan::STATUS_DISETUJUI, // Next step (or Selesai?)
+                'status' => Permohonan::STATUS_JADWAL_DISETUJUI,
                 'status_selesai' => 'PROSES',
             ]);
-            $title = 'Jadwal Disetujui';
-            $message = "Jadwal anda untuk permohonan {$permohonan->kode} tanggal " . \Carbon\Carbon::parse($jadwal->tanggal)->translatedFormat('d F Y') . " telah disetujui.";
+            $title = 'Jadwal Penandatanganan Disetujui';
+            // Req 8: Notifikasi baru
+            $message = "Jadwal penandatanganan untuk permohonan {$permohonan->kode} disetujui pada " . \Carbon\Carbon::parse($jadwal->tanggal)->translatedFormat('d F Y') . ". Menunggu waktu penandatanganan, harap mempersiapkan seluruh dokumen yang akan ditandatangani.";
+
+            // Histori
+            \App\Models\PermohonanHistori::create([
+                'id_permohonan' => $permohonan->id,
+                'id_operator' => $user->id,
+                'role_operator' => $user->role_name,
+                'deskripsi' => 'Jadwal penandatanganan disetujui. Pemohon dapat mengupload PKS final.',
+            ]);
+
+            // WA notif ke pemohon
+            $this->notifPemohonJadwalDisetujui($permohonan, $jadwal);
         } else {
             // Rejected
-            // Status remains Penjadwalan so they can resubmit?
-            // Or maybe stay in Penjadwalan (2)
             $title = 'Jadwal Ditolak';
-            $message = "Jadwal anda untuk permohonan {$permohonan->kode} ditolak. " . ($request->admin_comment ? "Alasan: {$request->admin_comment}" : '');
+            $message = "Jadwal penandatanganan untuk permohonan {$permohonan->kode} ditolak. " . ($request->admin_comment ? "Alasan: {$request->admin_comment}" : '');
         }
 
         // Notify Pemohon
@@ -202,5 +222,36 @@ class PenjadwalanController extends Controller implements HasMiddleware
 
         return redirect()->route("$this->prefix.index")
             ->with('success', 'Jadwal berhasil dihapus.');
+    }
+
+    /**
+     * Kirim WA notif ke pemohon saat jadwal disetujui (Req 8) — pakai template formal.
+     */
+    private function notifPemohonJadwalDisetujui(Permohonan $permohonan, Penjadwalan $jadwal): void
+    {
+        try {
+            $wa = app(\App\Services\WhatsappService::class);
+            $user = \App\Models\User::find($permohonan->id_pemohon_0);
+            $phone = $user?->phone ?: ($permohonan->pemohon1?->phone ?? null);
+
+            $name = $permohonan->pemohon1?->name ?: ($user?->name ?: 'Pemohon');
+            $tglFormat = \Carbon\Carbon::parse($jadwal->tanggal)->translatedFormat('l, d F Y');
+            $tipeLabel = match ($jadwal->tipe) {
+                'desk_to_desk' => 'Desk to Desk',
+                'seremonial'   => 'Seremonial',
+                'hybrid'       => 'Hybrid',
+                default        => $jadwal->tipe,
+            };
+            $tanggalJadwalLengkap = "{$tglFormat} pukul {$jadwal->waktu} WITA"
+                . ($jadwal->lokasi ? " — Lokasi: {$jadwal->lokasi}" : '')
+                . " (Metode: {$tipeLabel})";
+
+            $payload = \App\Services\NotificationTemplate::jadwalDisetujui($name, $permohonan, $tanggalJadwalLengkap);
+            if ($phone) {
+                $wa->sendMessage($phone, $payload['wa']);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed WA notif jadwal: ' . $e->getMessage());
+        }
     }
 }

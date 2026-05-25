@@ -24,7 +24,7 @@ const corporate = computed(() => props.permohonan.corporate); // Assuming relati
         <!-- DATA INSTANSI -->
         <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Icon icon="solar:buildings-bold" class="w-6 h-6 mr-2 text-blue-500" />
+                <Icon icon="solar:buildings-bold" class="w-6 h-6 mr-2 text-slate-600" />
                 Data Instansi / Perusahaan
             </h3>
             
@@ -59,7 +59,7 @@ const corporate = computed(() => props.permohonan.corporate); // Assuming relati
                 </div>
                  <div>
                     <label class="block text-gray-500 dark:text-gray-400 mb-1">Website</label>
-                    <a v-if="permohonan.website" :href="permohonan.website" target="_blank" class="font-semibold text-blue-600 hover:underline break-words">{{ permohonan.website }}</a>
+                    <a v-if="permohonan.website" :href="permohonan.website" target="_blank" class="font-semibold text-slate-700 hover:text-slate-900 hover:underline break-words">{{ permohonan.website }}</a>
                     <span v-else>-</span>
                 </div>
                  <div>
@@ -72,7 +72,7 @@ const corporate = computed(() => props.permohonan.corporate); // Assuming relati
         <!-- PPKSD 1 -->
         <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Icon icon="solar:user-bold" class="w-6 h-6 mr-2 text-teal-500" />
+                <Icon icon="solar:user-bold" class="w-6 h-6 mr-2 text-slate-600" />
                 Pihak Pertama (PPKSD-1)
                 <span class="ml-2 text-xs font-normal text-gray-500 bg-white dark:bg-gray-900 px-2 py-1 rounded border dark:border-gray-600">Pemohon</span>
             </h3>
@@ -111,7 +111,7 @@ const corporate = computed(() => props.permohonan.corporate); // Assuming relati
         <!-- PPKSD 2 -->
         <div v-if="ppksd2" class="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Icon icon="solar:users-group-two-rounded-bold" class="w-6 h-6 mr-2 text-purple-500" />
+                <Icon icon="solar:users-group-two-rounded-bold" class="w-6 h-6 mr-2 text-slate-600" />
                 Pihak Kedua (PPKSD-2)
             </h3>
 

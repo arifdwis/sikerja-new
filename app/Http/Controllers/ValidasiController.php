@@ -76,73 +76,42 @@ class ValidasiController extends Controller implements HasMiddleware
         $permohonan = Permohonan::where('uuid', $uuid)->firstOrFail();
 
         $validated = $request->validate([
-            'status' => 'required|in:1,99', // 1: Terima (Disposisi), 99: Tolak (Revisi)
-            'keterangan' => 'nullable|string', // Alasan jika ditolak
+            'status' => 'required|in:1,9,99', // 1: Terima (Pembahasan), 9: Tolak Final, 99: Tolak/Revisi (alias 9)
+            'keterangan' => 'required_unless:status,1|string|min:5', // Alasan wajib jika ditolak
+        ], [
+            'keterangan.required_unless' => 'Alasan penolakan wajib diisi (minimal 5 karakter).',
+            'keterangan.min' => 'Alasan penolakan minimal 5 karakter.',
         ]);
 
         if ($validated['status'] == 1) {
             $permohonan->update([
                 'status' => Permohonan::STATUS_PEMBAHASAN, // Status 1: Masuk Pembahasan
+                'alasan_tolak' => null, // Clear alasan tolak jika sebelumnya pernah ditolak
             ]);
             $message = 'Permohonan berhasil divalidasi dan masuk ke tahap Pembahasan.';
             $notifStatus = 'Dalam Pembahasan (Validasi Diterima)';
         } else {
+            // Tolak: status 9 = DITOLAK, simpan alasan tolak
             $permohonan->update([
-                'status' => Permohonan::STATUS_PERMOHONAN,
-                'alasan_tolak' => $validated['keterangan']
+                'status' => Permohonan::STATUS_DITOLAK, // 9
+                'alasan_tolak' => $validated['keterangan'],
             ]);
-            $message = 'Permohonan dikembalikan (revisi).';
-            $notifStatus = 'Perlu Revisi / Dikembalikan';
+
+            // Histori dengan role admin
+            \App\Models\PermohonanHistori::create([
+                'id_permohonan' => $permohonan->id,
+                'id_operator' => Auth::id(),
+                'role_operator' => Auth::user()->role_name,
+                'deskripsi' => 'Permohonan ditolak / dikembalikan untuk revisi.',
+                'komentar' => $validated['keterangan'],
+            ]);
+
+            $message = 'Permohonan ditolak. Pemohon dapat melakukan revisi.';
+            $notifStatus = 'Ditolak / Perlu Revisi';
         }
 
-        // Send WhatsApp Notification
-        try {
-            $wa = app(WhatsappService::class);
-
-            // 1. Notify User (Pemohon) - FORMAL
-            $formalMsg = "*SIKERJA - PEMBARUAN STATUS*\n\n" .
-                "Yth. Pemohon Kerja Sama,\n" .
-                "Berikut kami sampaikan status terbaru permohonan Anda:\n\n" .
-                "Instansi: *{$permohonan->nama_instansi}*\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status: *{$notifStatus}*\n" .
-                "Catatan: " . ($validated['keterangan'] ?? '-') . "\n\n" .
-                "Terima kasih.\n" .
-                "_Pemerintah Kota Samarinda_";
-
-            // Try getting phone from User first, then Pemohon profile
-            $targetPhone = null;
-            $user = User::find($permohonan->id_pemohon_0);
-            $pemohonProfile = $permohonan->pemohon1;
-            if ($user && !empty($user->phone)) {
-                $targetPhone = $user->phone;
-            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                $targetPhone = $pemohonProfile->phone;
-            }
-
-            if ($targetPhone) {
-                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
-                $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
-                $wa->sendMessage($targetPhone, $personalMsg);
-            }
-
-            // 2. Notify Group (Admin) - INTERNAL / INFO
-            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
-                "Validasi Permohonan\n\n" .
-                "Instansi: {$permohonan->nama_instansi}\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status: *{$notifStatus}*\n" .
-                "Validator: " . Auth::user()->name . "\n" .
-                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
-                "_Mohon monitor dashboard._";
-
-            $group = config('services.whatsapp.group_id');
-            if ($group) {
-                $wa->sendMessage($group, $adminMsg);
-            }
-        } catch (\Exception $e) {
-            \Log::error("Failed to send WA Notification: " . $e->getMessage());
-        }
+        // Notifikasi pemohon & grup admin di-handle oleh PermohonanObserver
+        // saat status berubah (pakai App\Services\NotificationTemplate untuk format formal).
 
         return redirect()->back()->with('success', $message);
     }

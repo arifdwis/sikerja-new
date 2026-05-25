@@ -82,6 +82,179 @@ class LandingController extends Controller
         ]);
     }
 
+    /**
+     * Halaman infografis publik (Req 15) — tanpa auth.
+     */
+    public function infografis(Request $request)
+    {
+        $tahun = $request->filled('tahun') ? (int) $request->integer('tahun') : null;
+        $permohonanQuery = Permohonan::query();
+        $manualQuery = \App\Models\KerjasamaManual::query();
+
+        if ($tahun) {
+            $permohonanQuery->whereYear('created_at', $tahun);
+            $manualQuery->whereYear('created_at', $tahun);
+        }
+
+        // Stats dasar
+        $total = (clone $permohonanQuery)->count();
+        $aktif = (clone $permohonanQuery)->where('status', Permohonan::STATUS_PELAKSANAAN)->count();
+        $selesai = (clone $permohonanQuery)->where('status', Permohonan::STATUS_SELESAI)->count();
+        $dalamProses = (clone $permohonanQuery)->whereNotIn('status', [
+            Permohonan::STATUS_PELAKSANAAN,
+            Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DITOLAK,
+        ])->count();
+
+        // Tambah dari kerjasama_manual (Req 17.5)
+        $manualTotal = (clone $manualQuery)->count();
+        $manualAktif = (clone $manualQuery)->whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '>=', now())
+            ->count();
+        $manualSelesai = (clone $manualQuery)->whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '<', now())
+            ->count();
+
+        $stats = [
+            'total' => $total + $manualTotal,
+            'aktif' => $aktif + $manualAktif,
+            'selesai' => $selesai + $manualSelesai,
+            'dalam_proses' => $dalamProses,
+        ];
+
+        // Distribusi per kategori
+        $kategoriPermohonan = (clone $permohonanQuery)->with('kategori')
+            ->selectRaw('id_kategori, COUNT(*) as total')
+            ->groupBy('id_kategori')
+            ->get()
+            ->map(fn($p) => [
+                'kategori' => $p->kategori?->label ?? 'Lainnya',
+                'total' => $p->total,
+            ]);
+
+        $kategoriManual = (clone $manualQuery)->with('kategori')
+            ->selectRaw('id_kategori, COUNT(*) as total')
+            ->groupBy('id_kategori')
+            ->get()
+            ->map(fn($p) => [
+                'kategori' => $p->kategori?->label ?? 'Lainnya',
+                'total' => $p->total,
+            ]);
+
+        $perKategori = $kategoriPermohonan->merge($kategoriManual)
+            ->groupBy('kategori')
+            ->map(fn($items, $kategori) => [
+                'kategori' => $kategori,
+                'total' => $items->sum('total'),
+            ])
+            ->sortByDesc('total')
+            ->values();
+
+        // Top OPD pelaksana (gabungan dari permohonan & kerjasama_manual)
+        $perOpd = \App\Models\Opd::withCount([
+            'permohonans' => fn($query) => $tahun ? $query->whereYear('permohonan.created_at', $tahun) : $query,
+            'kerjasamaManuals' => fn($query) => $tahun ? $query->whereYear('kerjasama_manual.created_at', $tahun) : $query,
+        ])
+            ->get()
+            ->map(fn($o) => [
+                'opd' => $o->singkatan ?: $o->nama,
+                'total' => $o->permohonans_count + $o->kerjasama_manuals_count,
+            ])
+            ->filter(fn($r) => $r['total'] > 0)
+            ->sortByDesc('total')
+            ->take(9)
+            ->values();
+
+        $trendPermohonan = Permohonan::selectRaw('YEAR(created_at) as tahun, COUNT(*) as total')
+            ->groupBy('tahun')
+            ->get();
+        $trendManual = \App\Models\KerjasamaManual::selectRaw('YEAR(created_at) as tahun, COUNT(*) as total')
+            ->groupBy('tahun')
+            ->get();
+
+        // Trend tahunan tetap global agar filter tahun punya konteks pembanding.
+        $trendTahun = $trendPermohonan->merge($trendManual)
+            ->groupBy('tahun')
+            ->map(fn($items, $year) => [
+                'tahun' => (int) $year,
+                'total' => $items->sum('total'),
+            ])
+            ->sortByDesc('tahun')
+            ->take(5)
+            ->reverse()
+            ->values();
+
+        $bulanLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+        $bulananPermohonan = (clone $permohonanQuery)
+            ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan');
+        $bulananManual = (clone $manualQuery)
+            ->selectRaw('MONTH(created_at) as bulan, COUNT(*) as total')
+            ->groupBy('bulan')
+            ->pluck('total', 'bulan');
+
+        $trendBulanan = collect(range(1, 12))->map(fn($bulan) => [
+            'bulan' => $bulanLabels[$bulan - 1],
+            'total' => ($bulananPermohonan[$bulan] ?? 0) + ($bulananManual[$bulan] ?? 0),
+        ]);
+
+        $statusCounts = (clone $permohonanQuery)
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+        $perStatus = collect(Permohonan::statusLabels())
+            ->map(fn($status, $code) => [
+                'status' => $status['label'],
+                'total' => $statusCounts[$code] ?? 0,
+            ])
+            ->filter(fn($status) => $status['total'] > 0)
+            ->values()
+            ->push(['status' => 'Data Manual Aktif', 'total' => $manualAktif])
+            ->push(['status' => 'Data Manual Berakhir', 'total' => $manualSelesai])
+            ->filter(fn($status) => $status['total'] > 0)
+            ->values();
+
+        // Top 5 instansi mitra
+        $instansiPermohonan = (clone $permohonanQuery)->selectRaw('nama_instansi, COUNT(*) as total')
+            ->whereNotNull('nama_instansi')
+            ->groupBy('nama_instansi')
+            ->get();
+        $instansiManual = (clone $manualQuery)->selectRaw('nama_instansi, COUNT(*) as total')
+            ->whereNotNull('nama_instansi')
+            ->groupBy('nama_instansi')
+            ->get();
+        $topInstansi = $instansiPermohonan->merge($instansiManual)
+            ->groupBy('nama_instansi')
+            ->map(fn($items, $instansi) => [
+                'nama_instansi' => $instansi,
+                'total' => $items->sum('total'),
+            ])
+            ->sortByDesc('total')
+            ->take(5)
+            ->values();
+
+        $availableYears = $trendPermohonan->pluck('tahun')
+            ->merge($trendManual->pluck('tahun'))
+            ->filter()
+            ->map(fn($year) => (int) $year)
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        return Inertia::render('Frontend/Landing/Infografis', [
+            'stats' => $stats,
+            'perKategori' => $perKategori,
+            'perOpd' => $perOpd,
+            'trendTahun' => $trendTahun,
+            'trendBulanan' => $trendBulanan,
+            'perStatus' => $perStatus,
+            'topInstansi' => $topInstansi,
+            'availableYears' => $availableYears,
+            'tahun' => $tahun,
+        ]);
+    }
+
     public function page($slug)
     {
         $page = Laman::where('slug', $slug)->firstOrFail();

@@ -69,6 +69,10 @@ onUnmounted(() => {
                         'font-semibold hover:text-amber-300 transition-colors',
                         isScrolled ? 'text-gray-900' : 'text-white'
                     ]">Alur Proses</Link>
+                    <Link href="/infografis" :class="[
+                        'font-semibold hover:text-amber-300 transition-colors',
+                        isScrolled ? 'text-gray-900' : 'text-white'
+                    ]">Infografis</Link>
                     
                     <!-- Mega Menu Dropdown -->
                     <div class="relative group" v-if="lamanMenu.length">
@@ -137,6 +141,7 @@ onUnmounted(() => {
             <div class="px-6 py-4 space-y-3">
                 <Link href="/" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Beranda</Link>
                 <Link href="/alur" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Alur Proses</Link>
+                <Link href="/infografis" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Infografis</Link>
                 
                 <div v-if="lamanMenu.length" class="space-y-4 pl-4 border-l-2 border-gray-100 dark:border-gray-800 my-2">
                     <div v-for="(group, key) in groupedLaman" :key="key">

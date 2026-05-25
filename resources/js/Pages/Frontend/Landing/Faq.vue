@@ -22,7 +22,7 @@ onMounted(() => {
     <Head title="FAQ Sikerja" />
     <Navbar />
 
-    <main class="font-['Inter'] antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden">
+    <main class="font-['Inter'] antialiased bg-[#f4f6f8] dark:bg-gray-950 text-gray-900 dark:text-gray-100 overflow-x-hidden">
         <PageHeader 
             title="Pertanyaan Umum" 
             subtitle="Jawaban atas pertanyaan yang sering diajukan seputar Sikerja"

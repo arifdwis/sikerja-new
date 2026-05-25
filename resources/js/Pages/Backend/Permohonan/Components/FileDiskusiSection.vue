@@ -52,15 +52,20 @@ const fetchMessages = async () => {
         const response = await axios.get(route('permohonan.file.diskusi.index', props.file.uuid));
         messages.value = response.data;
         
-        // Extract approval info from messages
+        // Extract approval info from messages — attach role + timestamp untuk Req 4
         if (props.file?.status === 1) {
-            const approvalMessages = response.data.filter(m => 
+            const approvalMessages = response.data.filter(m =>
                 m.komentar && m.komentar.includes('Disetujui')
             );
             const uniqueApprovers = {};
             approvalMessages.forEach(m => {
                 if (m.operator && !uniqueApprovers[m.operator.id]) {
-                    uniqueApprovers[m.operator.id] = { id: m.operator.id, name: m.operator.name };
+                    uniqueApprovers[m.operator.id] = {
+                        id: m.operator.id,
+                        name: m.operator.name,
+                        role: m.operator.roles?.[0]?.name || m.operator.role_name || 'Reviewer',
+                        reviewed_at: m.formatted_time || null,
+                    };
                 }
             });
             approvedBy.value = Object.values(uniqueApprovers);
@@ -372,7 +377,7 @@ onMounted(() => {
         </div>
 
         <!-- Approved Info Banner (discussion stays open for other TKKSD reviewers) -->
-        <div v-if="file?.status === 1" class="px-4 pt-3">
+        <div v-if="file?.status === 1" class="px-4 pt-3 space-y-2">
              <div class="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-2 px-3 rounded-lg border border-green-100 dark:border-green-800/50">
                 <Icon icon="solar:check-circle-bold" class="w-4 h-4 shrink-0" />
                 <span class="text-xs font-medium">
@@ -380,6 +385,25 @@ onMounted(() => {
                     <span v-if="hasCurrentUserApproved" class="text-green-700 font-bold"> (Termasuk Anda)</span>
                     <span v-else> Diskusi tetap terbuka untuk TKKSD lainnya.</span>
                 </span>
+            </div>
+
+            <!-- Daftar approver dengan role + waktu (Req 4: identitas approver) -->
+            <div v-if="approvedBy.length > 0" class="bg-white dark:bg-gray-800 border border-green-100 dark:border-green-800/40 rounded-lg p-3 space-y-1.5">
+                <p class="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Disetujui Oleh</p>
+                <ul class="space-y-1">
+                    <li v-for="u in approvedBy" :key="u.id" class="flex items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {{ (u.name || '?').charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-gray-800 dark:text-gray-100 truncate">{{ u.name }}</p>
+                                <p class="text-[10px] text-gray-500">{{ u.role || 'Reviewer' }}</p>
+                            </div>
+                        </div>
+                        <span v-if="u.reviewed_at" class="text-[10px] text-gray-400 shrink-0">{{ u.reviewed_at }}</span>
+                    </li>
+                </ul>
             </div>
         </div>
         <!-- Chat Input (always open) -->

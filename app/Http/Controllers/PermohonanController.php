@@ -73,6 +73,8 @@ class PermohonanController extends Controller implements HasMiddleware
             'operator',
             'provinsi',
             'kota',
+            'files',
+            'opds',
             'penjadwalans' => function ($q) {
                 $q->latest();
             }
@@ -82,23 +84,64 @@ class PermohonanController extends Controller implements HasMiddleware
 
         // Filter based on Route Name (untuk menu Sidebar)
         if ($routeName === 'validasi.index') {
-            $query->whereIn('status', [Permohonan::STATUS_PERMOHONAN, Permohonan::STATUS_DISPOSISI]);
+            // Validasi: status 0 (Permohonan Baru menunggu validasi admin)
+            $query->where('status', Permohonan::STATUS_PERMOHONAN);
             $pageTitle = 'Validasi Permohonan';
         } elseif ($routeName === 'pembahasan.index') {
+            // Pembahasan: status 1 (Dalam Pembahasan TKKSD)
             $query->where('status', Permohonan::STATUS_PEMBAHASAN);
             $pageTitle = 'Pembahasan Permohonan';
         } elseif ($routeName === 'persetujuan.index') {
-            $query->where('status', Permohonan::STATUS_SELESAI);
-            $pageTitle = 'Persetujuan Kerjasama';
+            // Persetujuan: status 2 saja (admin review jadwal yang diajukan pemohon)
+            $query->where('status', Permohonan::STATUS_PENJADWALAN);
+            $pageTitle = 'Persetujuan Jadwal';
+        } elseif ($routeName === 'penandatanganan.index') {
+            // Penandatanganan: tahap upload PKS sampai validasi dokumen TTD
+            // 3 = Jadwal Disetujui, menunggu pemohon upload PKS
+            // 4 = PKS terupload, menunggu hari penandatanganan
+            // 5 = Pasca-tandatangan, admin validasi dokumen + approve PKS final
+            $query->whereIn('status', [
+                Permohonan::STATUS_JADWAL_DISETUJUI,
+                Permohonan::STATUS_MENUNGGU_TANDATANGAN,
+                Permohonan::STATUS_PASCA_TANDATANGAN,
+            ]);
+            $pageTitle = 'Penandatanganan Kerjasama';
+        } elseif ($routeName === 'pelaksanaan.index') {
+            // Pelaksanaan: status 6 (kerjasama aktif berjalan)
+            $query->where('status', Permohonan::STATUS_PELAKSANAAN);
+            $pageTitle = 'Pelaksanaan Kerjasama';
         } elseif ($routeName === 'permohonan.selesai') {
+            // Permohonan Selesai: status 7 (monev final dibuat, kerjasama selesai)
             $query->where('status', Permohonan::STATUS_SELESAI);
             $pageTitle = 'Permohonan Selesai';
+        } else {
+            // Default permohonan.index ("Permohonan Saya"):
+            // Pemohon hanya melihat alur aktif. Status Pelaksanaan/Selesai/Ditolak
+            // tampil di menu Riwayat agar tidak campur dengan permohonan yang masih berproses.
+            if (Auth::user()->hasRole('pemohon')
+                && !Auth::user()->hasRole(['administrator', 'superadmin', 'tkksd', 'tkksd_lokus'])) {
+                $query->whereNotIn('status', [
+                    Permohonan::STATUS_PELAKSANAAN,
+                    Permohonan::STATUS_SELESAI,
+                    Permohonan::STATUS_DITOLAK,
+                ]);
+            }
         }
 
         // Filter by user role (Ownership Scope)
         // Pemohon hanya melihat data miliknya sendiri
         if (Auth::user()->hasRole('pemohon')) {
             $query->where('id_pemohon_0', Auth::id());
+        }
+
+        // TKKSD Lokus hanya melihat kerjasama yang melibatkan OPD-nya
+        if (Auth::user()->hasRole('tkksd_lokus') && !Auth::user()->hasRole(['administrator', 'superadmin'])) {
+            $opdId = Auth::user()->id_opd;
+            if ($opdId) {
+                $query->whereHas('opds', fn($q) => $q->where('opd.id', $opdId));
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         // Filter manually requested status
@@ -141,15 +184,21 @@ class PermohonanController extends Controller implements HasMiddleware
         // Load all pemohon for PPKSD-2 dropdown
         $pemohonanList = Pemohon::orderBy('name')->get(['id', 'name', 'jabatan', 'unit_kerja']);
 
+        // Daftar OPD aktif untuk multi-select & auto-fill OPD jika user terhubung via SSO
+        $opds = \App\Models\Opd::active()->orderBy('nama')->get();
+        $userOpd = $user->id_opd ? \App\Models\Opd::find($user->id_opd) : null;
+
         return Inertia::render("$this->view/Index", [
             'permohonan' => $permohonan,
             'statusLabels' => $statusLabels,
             'kategoris' => $kategoris,
             'provinsis' => $provinsis,
+            'opds' => $opds,
+            'userOpd' => $userOpd,
             'pemohon' => $pemohon,
             'corporate' => $corporate,
             'pemohonanList' => $pemohonanList,
-            'filters' => $request->only(['status', 'tahun', 'search']),
+            'filters' => $request->only(['status', 'tahun', 'search', 'detail']),
             'pageTitle' => $pageTitle,
             'currentRoute' => $routeName,
             'share' => $this->share,
@@ -161,15 +210,28 @@ class PermohonanController extends Controller implements HasMiddleware
      */
     public function riwayat(Request $request)
     {
-        $query = $this->data::with(['kategori', 'operator', 'kota']);
         $pageTitle = 'Riwayat Permohonan';
+
+        // Riwayat menampilkan semua kerjasama yang sudah keluar dari alur aktif:
+        // - 6 = Pelaksanaan (sedang terlaksana, sebelum tanggal_berakhir)
+        // - 7 = Selesai (tanggal_berakhir kerjasama sudah lewat)
+        // - 9 = Ditolak
+        $finalStatuses = [
+            Permohonan::STATUS_PELAKSANAAN,
+            Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DITOLAK,
+        ];
+
+        // Build one history query for all final statuses. The old status tabs were
+        // removed from the page, so a stale ?tab= query must not hide records.
+        $base = $this->data::query()->whereIn('status', $finalStatuses);
 
         // Ownership Check (Strictly for Pemohon)
         if (Auth::user()->hasRole('pemohon')) {
-            $query->where('id_pemohon_0', Auth::id());
+            $base->where('id_pemohon_0', Auth::id());
         }
 
-        $query->whereIn('status', [Permohonan::STATUS_SELESAI, Permohonan::STATUS_DITOLAK]);
+        $query = $base->with(['kategori', 'operator', 'kota']);
 
         // Search
         if ($request->has('search') && $request->search) {
@@ -185,12 +247,12 @@ class PermohonanController extends Controller implements HasMiddleware
         $statusLabels = Permohonan::statusLabels();
 
         return Inertia::render("Backend/Riwayat/Index", [
-            'permohonan' => $permohonan,
+            'permohonan'  => $permohonan,
             'statusLabels' => $statusLabels,
-            'filters' => $request->only(['search']),
+            'filters'     => $request->only(['search']),
             'share' => [
-                'title' => $pageTitle,
-                'prefix' => 'riwayat', // Ensure route('riwayat.index') works if we name the route that
+                'title'  => $pageTitle,
+                'prefix' => 'riwayat',
             ],
         ]);
     }
@@ -203,6 +265,7 @@ class PermohonanController extends Controller implements HasMiddleware
         $user = Auth::user();
         $kategoris = Kategori::all();
         $provinsis = Provinsi::all();
+        $opds = \App\Models\Opd::active()->orderBy('nama')->get();
 
         // Load pemohon and corporate data for auto-fill
         $pemohon = null;
@@ -217,9 +280,14 @@ class PermohonanController extends Controller implements HasMiddleware
         // Load all pemohon for PPKSD-2 dropdown
         $pemohonanList = Pemohon::orderBy('name')->get(['id', 'name', 'jabatan', 'unit_kerja']);
 
+        // Auto-fill OPD jika user terhubung ke OPD via SSO (id_opd di users)
+        $userOpd = $user->id_opd ? \App\Models\Opd::find($user->id_opd) : null;
+
         return Inertia::render("$this->view/Create", [
             'kategoris' => $kategoris,
             'provinsis' => $provinsis,
+            'opds' => $opds,
+            'userOpd' => $userOpd,
             'pemohon' => $pemohon,
             'corporate' => $corporate,
             'pemohonanList' => $pemohonanList,
@@ -254,7 +322,24 @@ class PermohonanController extends Controller implements HasMiddleware
             'manfaat' => 'nullable|string',
             'analisis_dampak' => 'nullable|string',
             'pembiayaan' => 'nullable|string',
+            // OPD multiple - Req 12
+            'opd_ids' => 'nullable|array',
+            'opd_ids.*' => 'exists:opd,id',
         ]);
+
+        // Auto-fill OPD jika user terhubung ke OPD via SSO dan tidak ada opd_ids di request
+        $opdIds = $validated['opd_ids'] ?? [];
+        $user = Auth::user();
+        if (empty($opdIds) && $user->id_opd) {
+            $opdIds = [$user->id_opd];
+        }
+        unset($validated['opd_ids']);
+
+        // Auto-compute jangka_waktu dari tanggal_mulai & tanggal_berakhir (safeguard server-side)
+        $validated['jangka_waktu'] = $this->computeJangkaWaktu(
+            $validated['tanggal_mulai'] ?? null,
+            $validated['tanggal_berakhir'] ?? null
+        ) ?: ($validated['jangka_waktu'] ?? null);
 
         $validated['kode'] = 'PKS-' . strtoupper(Str::random(8));
         $validated['nomor_permohonan'] = 'REQ/' . date('Y') . '/' . str_pad(Permohonan::whereYear('created_at', date('Y'))->count() + 1, 4, '0', STR_PAD_LEFT);
@@ -263,13 +348,18 @@ class PermohonanController extends Controller implements HasMiddleware
 
         $permohonan = $this->data::create($validated);
 
+        // Sync OPD ke pivot
+        if (!empty($opdIds)) {
+            $permohonan->opds()->sync($opdIds);
+        }
+
         PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
             'id_operator' => Auth::id(),
             'deskripsi' => 'Permohonan kerjasama dibuat.',
         ]);
 
-        return redirect()->route("$this->prefix.show", $permohonan->uuid)
+        return redirect()->route("$this->prefix.index", ['detail' => $permohonan->uuid])
             ->with('success', 'Permohonan berhasil dibuat.');
     }
 
@@ -286,6 +376,10 @@ class PermohonanController extends Controller implements HasMiddleware
             'pemohon1',
             'pemohon2',
             'files',
+            'opds',
+            'pksFiles.uploader',
+            'ttdFiles.uploader',
+            'ttdFiles.validator',
             'historis.operator',
             'penjadwalans' => function ($q) {
                 $q->latest()->with('approver');
@@ -297,17 +391,20 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403, 'Unauthorized access to this permohonan');
         }
 
-        $statusLabels = Permohonan::statusLabels();
+        // TKKSD Lokus: hanya boleh lihat kerjasama yang melibatkan OPD-nya
+        if (Auth::user()->hasRole('tkksd_lokus') && !Auth::user()->hasRole(['administrator', 'superadmin'])) {
+            $opdId = Auth::user()->id_opd;
+            $opdIds = $permohonan->opds->pluck('id')->toArray();
+            if (!$opdId || !in_array($opdId, $opdIds)) {
+                abort(403, 'Anda hanya dapat melihat kerjasama yang melibatkan OPD Anda.');
+            }
+        }
 
         if (request()->wantsJson()) {
             return response()->json($permohonan);
         }
 
-        return Inertia::render("$this->view/Show", [
-            'permohonan' => $permohonan,
-            'statusLabels' => $statusLabels,
-            'share' => $this->share,
-        ]);
+        return redirect()->route("$this->prefix.index", ['detail' => $permohonan->uuid]);
     }
 
     /**
@@ -321,7 +418,9 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        if ($permohonan->status != Permohonan::STATUS_PERMOHONAN) {
+        // Izinkan edit jika status: Permohonan Baru (0) atau Ditolak (9 - revisi)
+        $editableStatuses = [Permohonan::STATUS_PERMOHONAN, Permohonan::STATUS_DITOLAK];
+        if (!in_array($permohonan->status, $editableStatuses)) {
             return redirect()->route("$this->prefix.show", $permohonan->uuid)
                 ->with('error', 'Permohonan tidak dapat diedit karena sudah diproses.');
         }
@@ -329,12 +428,19 @@ class PermohonanController extends Controller implements HasMiddleware
         $kategoris = Kategori::all();
         $provinsis = Provinsi::all();
         $kotas = Kota::where('province_id', $permohonan->id_provinsi)->get();
+        $opds = \App\Models\Opd::active()->orderBy('nama')->get();
+        $selectedOpdIds = $permohonan->opds()->pluck('opd.id')->toArray();
+        // Untuk dropdown PPKSD-2 (Pihak Kedua) saat edit/revisi
+        $pemohonanList = Pemohon::orderBy('name')->get(['id', 'name', 'jabatan', 'unit_kerja']);
 
         return Inertia::render("$this->view/Edit", [
             'permohonan' => $permohonan,
             'kategoris' => $kategoris,
             'provinsis' => $provinsis,
             'kotas' => $kotas,
+            'opds' => $opds,
+            'selectedOpdIds' => $selectedOpdIds,
+            'pemohonanList' => $pemohonanList,
             'share' => $this->share,
         ]);
     }
@@ -350,24 +456,29 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        // Restrict edit if already validated (status != 0)
-        if ($permohonan->status != Permohonan::STATUS_PERMOHONAN) {
+        // Izinkan edit jika status: Permohonan Baru (0) atau Ditolak (9 - revisi)
+        $editableStatuses = [Permohonan::STATUS_PERMOHONAN, Permohonan::STATUS_DITOLAK];
+        if (!in_array($permohonan->status, $editableStatuses)) {
             return redirect()->route("$this->prefix.show", $permohonan->uuid)
                 ->with('error', 'Permohonan tidak dapat diedit karena sudah diproses.');
         }
+
+        $wasRejected = $permohonan->status == Permohonan::STATUS_DITOLAK;
 
         $validated = $request->validate([
             'id_kategori' => 'required|exists:kategori,id',
             'label' => 'required|string|max:255',
             'nama_instansi' => 'required|string|max:255',
-            'id_provinsi' => 'required|exists:provinsi,id',
-            'id_kota' => 'required|exists:kota,id',
+            'id_provinsi' => 'nullable|exists:master_provinces,id',
+            'id_kota' => 'nullable|exists:master_cities,id',
             'alamat' => 'nullable|string',
             'email' => 'nullable|email|max:255',
             'telepon' => 'nullable|string|max:20',
             'website' => 'nullable|url|max:255',
+            'id_pemohon_1' => 'nullable|exists:pemohon,id',
             'latar_belakang' => 'required|string',
             'maksud_tujuan' => 'required|string',
+            'lokasi_kerjasama' => 'nullable|string',
             'ruang_lingkup' => 'required|string',
             'jangka_waktu' => 'nullable|string|max:255',
             'tanggal_mulai' => 'nullable|date',
@@ -375,18 +486,49 @@ class PermohonanController extends Controller implements HasMiddleware
             'manfaat' => 'nullable|string',
             'analisis_dampak' => 'nullable|string',
             'pembiayaan' => 'nullable|string',
+            'opd_ids' => 'nullable|array',
+            'opd_ids.*' => 'exists:opd,id',
         ]);
 
+        $opdIds = $validated['opd_ids'] ?? null;
+        unset($validated['opd_ids']);
+
+        // Auto-compute jangka_waktu dari tanggal_mulai & tanggal_berakhir (safeguard server-side)
+        $validated['jangka_waktu'] = $this->computeJangkaWaktu(
+            $validated['tanggal_mulai'] ?? null,
+            $validated['tanggal_berakhir'] ?? null
+        ) ?: ($validated['jangka_waktu'] ?? null);
+
+        // Jika permohonan sebelumnya ditolak, reset status ke Permohonan Baru (0)
+        // dan hapus alasan tolak
+        if ($wasRejected) {
+            $validated['status'] = Permohonan::STATUS_PERMOHONAN;
+            $validated['alasan_tolak'] = null;
+        }
+
         $permohonan->update($validated);
+
+        // Sync OPD jika dikirim
+        if ($opdIds !== null) {
+            $permohonan->opds()->sync($opdIds);
+        }
+
+        $deskripsi = $wasRejected
+            ? 'Permohonan direvisi dan diajukan kembali setelah ditolak.'
+            : 'Permohonan diperbarui.';
 
         PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
             'id_operator' => Auth::id(),
-            'deskripsi' => 'Permohonan diperbarui.',
+            'deskripsi' => $deskripsi,
         ]);
 
+        $message = $wasRejected
+            ? 'Revisi permohonan berhasil diajukan kembali.'
+            : 'Permohonan berhasil diperbarui.';
+
         return redirect()->route("$this->prefix.show", $permohonan->uuid)
-            ->with('success', 'Permohonan berhasil diperbarui.');
+            ->with('success', $message);
     }
 
     /**
@@ -471,54 +613,7 @@ class PermohonanController extends Controller implements HasMiddleware
             'komentar' => $validated['keterangan'] ?? null,
         ]);
 
-        // Send WhatsApp Notification
-        try {
-            $wa = app(WhatsappService::class);
-
-            // 1. Notify User (Pemohon) - FORMAL
-            $formalMsg = "*SIKERJA - PEMBARUAN STATUS*\n\n" .
-                "Yth. Pemohon Kerja Sama,\n" .
-                "Berikut kami sampaikan status terbaru permohonan Anda:\n\n" .
-                "Instansi: *{$permohonan->nama_instansi}*\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status: *{$newLabel}*\n" .
-                "Catatan: " . ($validated['keterangan'] ?? '-') . "\n\n" .
-                "Terima kasih.\n" .
-                "_Pemerintah Kota Samarinda_";
-
-            // Try getting phone from User first, then Pemohon profile
-            $targetPhone = null;
-            $user = User::find($permohonan->id_pemohon_0);
-            $pemohonProfile = $permohonan->pemohon1;
-            if ($user && !empty($user->phone)) {
-                $targetPhone = $user->phone;
-            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                $targetPhone = $pemohonProfile->phone;
-            }
-
-            if ($targetPhone) {
-                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
-                $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
-                $wa->sendMessage($targetPhone, $personalMsg);
-            }
-
-            // 2. Notify Group (Admin) - INTERNAL / INFO
-            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
-                "Update Status Permohonan\n\n" .
-                "Instansi: {$permohonan->nama_instansi}\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status Baru: *{$newLabel}*\n" .
-                "Oleh: " . Auth::user()->name . "\n" .
-                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
-                "_Mohon monitor dashboard._";
-
-            $group = config('services.whatsapp.group_id');
-            if ($group) {
-                $wa->sendMessage($group, $adminMsg);
-            }
-        } catch (\Exception $e) {
-            \Log::error("Failed to send WA Notification: " . $e->getMessage());
-        }
+        // Notifikasi pemohon dan grup admin di-handle oleh PermohonanObserver via NotificationTemplate.
 
         return redirect()->back()->with('success', 'Status berhasil diperbarui.');
     }
@@ -541,16 +636,36 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403, 'Anda tidak memiliki akses untuk upload file ini.');
         }
 
+        // Pemohon hanya melakukan upload berkas awal sekali. Jika ada berkas yang
+        // perlu diperbaiki, upload ulang harus lewat alur revisi berkas ditolak.
+        if (Auth::user()->hasRole('pemohon') && $permohonan->files()->exists()) {
+            return redirect()->back()->with(
+                'error',
+                'Berkas sudah diupload. Upload ulang hanya tersedia pada berkas yang diminta revisi.'
+            );
+        }
+
+        if (Auth::user()->hasRole('pemohon') && $permohonan->status != Permohonan::STATUS_PEMBAHASAN) {
+            abort(403, 'Upload berkas hanya tersedia saat permohonan dalam tahap pembahasan.');
+        }
+
+        // Lock berkas pemohon setelah pembahasan selesai
+        // Pemohon tidak bisa upload/ubah berkas tahap awal jika status sudah > PEMBAHASAN
+        if (Auth::user()->hasRole('pemohon') && $permohonan->status > Permohonan::STATUS_PEMBAHASAN) {
+            abort(403, 'Berkas tidak dapat diubah karena permohonan sudah melewati tahap pembahasan.');
+        }
+
         $validated = $request->validate([
-            'surat_permohonan' => 'required|file|mimes:pdf,doc,docx|max:10240',
-            'proposal_kak' => 'required|file|mimes:pdf,doc,docx|max:10240',
-            'draft_mou' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+            // Req 3: Format dokumen ditetapkan
+            'surat_permohonan' => 'required|file|mimes:pdf|max:10240',
+            'proposal_kak'     => 'required|file|mimes:pdf|max:10240',
+            'draft_mou'        => 'nullable|file|mimes:doc,docx|max:10240',
         ], [
             'surat_permohonan.required' => 'Surat Permohonan wajib diupload.',
             'proposal_kak.required' => 'Proposal/KAK wajib diupload.',
-            'surat_permohonan.mimes' => 'Format file harus PDF, DOC, atau DOCX.',
-            'proposal_kak.mimes' => 'Format file harus PDF, DOC, atau DOCX.',
-            'draft_mou.mimes' => 'Format file harus PDF, DOC, atau DOCX.',
+            'surat_permohonan.mimes' => 'Surat Permohonan harus berformat PDF.',
+            'proposal_kak.mimes' => 'KAK harus berformat PDF.',
+            'draft_mou.mimes' => 'Draft MoU harus berformat DOC atau DOCX.',
             'surat_permohonan.max' => 'Ukuran file maksimal 10MB.',
             'proposal_kak.max' => 'Ukuran file maksimal 10MB.',
             'draft_mou.max' => 'Ukuran file maksimal 10MB.',
@@ -591,23 +706,11 @@ class PermohonanController extends Controller implements HasMiddleware
             'deskripsi' => 'Dokumen kerjasama telah diupload.',
         ]);
 
-        // Send WhatsApp Notification to Admin Group
+        // Send WhatsApp Notification to Admin Group — pakai template internal formal
         try {
             $wa = app(WhatsappService::class);
-
-            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
-                "Berkas Baru Diupload\n\n" .
-                "Instansi: {$permohonan->nama_instansi}\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Keterangan: Berkas telah diupload dan siap untuk dilakukan pembahasan.\n" .
-                "Oleh: " . Auth::user()->name . "\n" .
-                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
-                "_Mohon segera diperiksa._";
-
-            $group = config('services.whatsapp.group_id');
-            if ($group) {
-                $wa->sendMessage($group, $adminMsg);
-            }
+            $adminMsg = \App\Services\NotificationTemplate::berkasAwalDiupload($permohonan, Auth::user()?->name ?? 'Pemohon');
+            $wa->sendToGroup($adminMsg);
         } catch (\Exception $e) {
             \Log::error("Failed to send WA Notification: " . $e->getMessage());
         }
@@ -717,12 +820,14 @@ class PermohonanController extends Controller implements HasMiddleware
         ]);
 
         $statusLabel = $validated['status'] == 1 ? 'Disetujui' : 'Ditolak';
+        $userRole = Auth::user()->role_name;
 
         PermohonanHistori::create([
             'id_permohonan' => $file->id_permohonan,
             'id_operator' => Auth::id(),
+            'role_operator' => $userRole,
             'id_file' => $file->id,
-            'deskripsi' => "Dokumen {$file->label} telah {$statusLabel}.",
+            'deskripsi' => "Dokumen {$file->label} telah {$statusLabel} oleh " . Auth::user()->name . " ({$userRole}).",
             'komentar' => $validated['komentar'] ?? null,
         ]);
 
@@ -752,6 +857,8 @@ class PermohonanController extends Controller implements HasMiddleware
             'users' => $approvals->map(fn($a) => [
                 'id' => $a->id_operator,
                 'name' => $a->operator->name ?? 'Unknown',
+                'role' => $a->role_operator ?? '-',
+                'timestamp' => $a->created_at?->format('d M Y H:i'),
             ])->values()->toArray(),
         ];
     }
@@ -762,6 +869,11 @@ class PermohonanController extends Controller implements HasMiddleware
     public function uploadFileRevision(Request $request, string $uuid)
     {
         $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
+
+        // Lock berkas setelah pembahasan selesai
+        if (Auth::user()->hasRole('pemohon') && $file->permohonan->status > Permohonan::STATUS_PEMBAHASAN) {
+            abort(403, 'Revisi tidak diizinkan setelah permohonan melewati tahap pembahasan.');
+        }
 
         // Ensure strictly for Rejected files
         if ($file->status != PermohonanFile::STATUS_DITOLAK) {
@@ -793,5 +905,28 @@ class PermohonanController extends Controller implements HasMiddleware
         ]);
 
         return response()->json(['message' => 'Revision uploaded', 'file' => $file]);
+    }
+
+    /**
+     * Hitung jangka waktu kerjasama otomatis dari tanggal_mulai → tanggal_berakhir.
+     * Output: "X Tahun, Y Bulan, Z Hari" (komponen 0 di-skip).
+     */
+    protected function computeJangkaWaktu(?string $mulai, ?string $akhir): ?string
+    {
+        if (!$mulai || !$akhir) return null;
+        try {
+            $start = \Carbon\Carbon::parse($mulai);
+            $end = \Carbon\Carbon::parse($akhir);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        if ($end->lt($start)) return null;
+
+        $diff = $start->diff($end);
+        $parts = [];
+        if ($diff->y > 0) $parts[] = "{$diff->y} Tahun";
+        if ($diff->m > 0) $parts[] = "{$diff->m} Bulan";
+        if ($diff->d > 0) $parts[] = "{$diff->d} Hari";
+        return $parts ? implode(', ', $parts) : '0 Hari';
     }
 }

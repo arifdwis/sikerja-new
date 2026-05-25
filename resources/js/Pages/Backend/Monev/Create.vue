@@ -33,6 +33,7 @@ const form = useForm({
     relevansi_kebutuhan: null,
     rekomendasi_lanjutan: null,
     saran_rekomendasi: '',
+    rating: null,
     file_bukti: null,
 });
 
@@ -94,23 +95,30 @@ const submit = () => {
             </h2>
         </template>
 
-        <section class="py-12">
+        <section class="py-8">
             <div class="mx-auto max-w-4xl px-6 lg:px-8">
                 <Breadcrumb class="mb-6" />
 
-                <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <form @submit.prevent="submit" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-gray-800">
                     <!-- Header -->
-                    <div class="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700">
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Icon icon="solar:clipboard-check-bold-duotone" class="w-6 h-6 text-blue-600" />
-                            Form Monitoring & Evaluasi Kerjasama
-                        </h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Isi form evaluasi setelah kerjasama selesai dilaksanakan</p>
+                    <div class="border-b border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-800">
+                        <div class="flex items-start gap-3">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm dark:bg-slate-700 dark:text-white">
+                                <Icon icon="solar:clipboard-check-bold-duotone" class="h-6 w-6" />
+                            </span>
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+                                    Form Monitoring & Evaluasi Kerjasama
+                                </h3>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">Isi form evaluasi setelah kerjasama selesai dilaksanakan.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="p-6 space-y-6">
                         <!-- Pilih Kerjasama -->
-                        <div class="space-y-2">
+                        <div class="grid gap-4 rounded-xl border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-[minmax(0,1fr)_220px]">
+                            <div class="space-y-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Pilih Kerjasama <span class="text-red-500">*</span></label>
                             <Dropdown 
                                 v-model="form.id_permohonan"
@@ -122,23 +130,29 @@ const submit = () => {
                                 :class="{ 'p-invalid': form.errors.id_permohonan }"
                             />
                             <small v-if="form.errors.id_permohonan" class="text-red-500">{{ form.errors.id_permohonan }}</small>
-                        </div>
-
-                        <!-- Tanggal Evaluasi -->
-                        <div class="space-y-2">
+                            </div>
+                            <div class="space-y-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tanggal Evaluasi <span class="text-red-500">*</span></label>
-                            <Calendar v-model="form.tanggal_evaluasi" dateFormat="dd/mm/yy" class="w-full" />
+                            <Calendar
+                                v-model="form.tanggal_evaluasi"
+                                dateFormat="dd/mm/yy"
+                                showIcon
+                                :manualInput="true"
+                                placeholder="Pilih tanggal evaluasi"
+                                class="w-full"
+                            />
+                            </div>
                         </div>
 
                         <!-- Questions grouped by section -->
                         <template v-for="(questionsInSection, sectionName) in groupedQuestions" :key="sectionName">
-                            <div class="pt-4 border-t border-gray-100">
-                                <h4 class="text-sm font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                                    <Icon icon="solar:widget-bold" class="w-4 h-4 text-blue-500" />
+                            <div class="rounded-xl border border-slate-200 p-4">
+                                <h4 class="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+                                    <Icon icon="solar:widget-bold" class="h-4 w-4 text-slate-500" />
                                     {{ sectionName }}
                                 </h4>
-                                <div class="space-y-4">
-                                    <div v-for="q in questionsInSection" :key="q.key" class="space-y-2">
+                                <div class="grid gap-3">
+                                    <div v-for="q in questionsInSection" :key="q.key" class="grid gap-2 rounded-lg bg-slate-50/70 p-3 md:grid-cols-[minmax(0,1fr)_240px] md:items-center">
                                         <label class="block text-sm text-gray-700 dark:text-gray-300">{{ q.label }} <span class="text-red-500">*</span></label>
                                         <Dropdown 
                                             v-model="form[q.key]"
@@ -154,19 +168,48 @@ const submit = () => {
                         </template>
 
                         <!-- Kendala Administrasi -->
-                        <div class="pt-4 border-t border-gray-100 space-y-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Apakah ada kendala dalam proses administrasi atau pelaporan kerjasama?</label>
-                            <Textarea v-model="form.kendala_administrasi" rows="3" class="w-full" placeholder="Jelaskan kendala jika ada..." />
+                        <div class="grid gap-4 rounded-xl border border-slate-200 p-4 md:grid-cols-2">
+                            <div class="space-y-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kendala administrasi atau pelaporan</label>
+                                <Textarea v-model="form.kendala_administrasi" rows="3" class="w-full" placeholder="Jelaskan kendala jika ada..." />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Saran dan rekomendasi</label>
+                                <Textarea v-model="form.saran_rekomendasi" rows="3" class="w-full" placeholder="Tuliskan saran dan rekomendasi..." />
+                            </div>
                         </div>
 
-                        <!-- Saran Rekomendasi -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Saran atau rekomendasi untuk peningkatan efektivitas pelaksanaan kerjasama ke depan</label>
-                            <Textarea v-model="form.saran_rekomendasi" rows="3" class="w-full" placeholder="Tuliskan saran dan rekomendasi..." />
+                        <!-- Rating (Req 13) -->
+                        <div class="space-y-2 rounded-xl border border-slate-200 p-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Penilaian (Rating) <span class="text-gray-500 font-normal">— skala 1 sampai 5 bintang</span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    v-for="n in 5"
+                                    :key="n"
+                                    @click="form.rating = n"
+                                    class="focus:outline-none transition-transform hover:scale-110"
+                                >
+                                    <Icon
+                                        :icon="form.rating >= n ? 'solar:star-bold' : 'solar:star-line-duotone'"
+                                        class="w-8 h-8"
+                                        :class="form.rating >= n ? 'text-slate-800' : 'text-gray-300'"
+                                    />
+                                </button>
+                                <span v-if="form.rating" class="ml-3 text-sm text-gray-600 dark:text-gray-300">
+                                    {{ form.rating }} dari 5
+                                </span>
+                                <button v-if="form.rating" type="button" @click="form.rating = null" class="ml-2 text-xs text-slate-500 hover:text-slate-800 hover:underline">
+                                    reset
+                                </button>
+                            </div>
+                            <small class="text-red-500" v-if="form.errors.rating">{{ form.errors.rating }}</small>
                         </div>
 
                         <!-- File Upload -->
-                        <div class="space-y-2">
+                        <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Bukti Pendukung (opsional)</label>
                             <FileUpload 
                                 mode="basic" 
@@ -181,7 +224,7 @@ const submit = () => {
                     </div>
 
                     <!-- Footer -->
-                    <div class="p-6 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+                    <div class="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-gray-700/50">
                         <Link :href="route('monev.index')">
                             <Button label="Batal" severity="secondary" text />
                         </Link>

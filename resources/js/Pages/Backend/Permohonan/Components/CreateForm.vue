@@ -10,6 +10,14 @@ import Step3Detail from './Steps/Step3Detail.vue';
 const props = defineProps({
     kategoris: Array,
     provinsis: Array,
+    opds: {
+        type: Array,
+        default: () => []
+    },
+    userOpd: {
+        type: Object,
+        default: null
+    },
     pemohon: Object,
     corporate: Object,
     pemohonanList: Array,
@@ -31,6 +39,19 @@ const getInitialValue = (key, fallback = '') => {
     return props.initialData?.[key] !== undefined && props.initialData?.[key] !== null ? props.initialData[key] : fallback;
 };
 
+const getInitialOpdIds = () => {
+    if (props.mode === 'edit') {
+        const existing = props.initialData?.opds;
+        if (Array.isArray(existing) && existing.length) {
+            return existing.map(o => o.id);
+        }
+    }
+    if (props.userOpd) return [props.userOpd.id];
+    return [];
+};
+
+const isOpdLocked = !!props.userOpd && props.mode !== 'edit';
+
 const form = useForm({
     id: props.initialData?.id || null,
     uuid: props.initialData?.uuid || null,
@@ -49,6 +70,8 @@ const form = useForm({
     maksud_tujuan: getInitialValue('maksud_tujuan'),
     lokasi_kerjasama: getInitialValue('lokasi_kerjasama'),
     ruang_lingkup: getInitialValue('ruang_lingkup'),
+    // Req 12 — OPD multiple select. Auto-fill bila user Pemkot punya id_opd via SSO.
+    opd_ids: getInitialOpdIds(),
     jangka_waktu: getInitialValue('jangka_waktu'),
     tanggal_mulai: getInitialValue('tanggal_mulai'),
     tanggal_berakhir: getInitialValue('tanggal_berakhir'),
@@ -84,6 +107,15 @@ watch(() => form.id_provinsi, async (provinsiId, oldProvinsiId) => {
 }, { immediate: true });
 
 const submit = () => {
+    if (
+        form.tanggal_mulai &&
+        form.tanggal_berakhir &&
+        form.tanggal_berakhir < form.tanggal_mulai
+    ) {
+        toast.error('Tanggal berakhir tidak boleh lebih awal dari tanggal mulai.');
+        return;
+    }
+
     const routeName = props.mode === 'edit' ? 'permohonan.update' : 'permohonan.store';
     const routeId = props.mode === 'edit' ? form.uuid : undefined;
     const method = props.mode === 'edit' ? 'put' : 'post';
@@ -155,6 +187,9 @@ const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id,
             <Step3Detail 
                 v-if="currentStep === 3" 
                 :form="form" 
+                :opds="opds"
+                :userOpd="userOpd"
+                :isOpdLocked="isOpdLocked"
             />
         </form>
 
@@ -171,9 +206,9 @@ const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id,
                     Selanjutnya <Icon icon="solar:arrow-right-linear" class="w-5 h-5 ml-2" />
                 </button>
                 
-                <button v-else type="submit" @click="submit" :disabled="form.processing" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition flex items-center disabled:opacity-50">
-                    <Icon v-if="form.processing" icon="solar:refresh-circle-line-duotone" class="w-5 h-5 mr-2 animate-spin" />
-                    <Icon v-else icon="solar:send-bold" class="w-5 h-5 mr-2" />
+                <button v-else type="submit" @click="submit" :disabled="form.processing" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition inline-flex items-center gap-2 disabled:opacity-50">
+                    <Icon v-if="form.processing" icon="lucide:loader-circle" class="h-5 w-5 animate-spin" />
+                    <Icon v-else icon="lucide:send" class="h-5 w-5 shrink-0" />
                     {{ mode === 'edit' ? 'Simpan Perubahan' : 'Submit Data' }}
                 </button>
              </div>

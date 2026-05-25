@@ -10,11 +10,24 @@ import { ref, watch } from 'vue';
 const toast = useToast();
 const page = usePage();
 const pemohon = page.props.pemohon;
+const opds = page.props.opds || [];
+const userIdOpd = page.props.userIdOpd;
 
 const genderOptions = [
     { label: 'Laki-laki', value: 'L' },
     { label: 'Perempuan', value: 'P' }
 ];
+
+// Cek apakah unit_kerja yang sudah ada cocok dengan salah satu OPD
+const findMatchingOpd = (name) => {
+    if (!name) return null;
+    return opds.find(o => o.nama?.toUpperCase() === name.toUpperCase());
+};
+const initialOpd = userIdOpd
+    ? opds.find(o => o.id === userIdOpd)
+    : findMatchingOpd(pemohon?.unit_kerja);
+
+const isManualMode = ref(!initialOpd && !!pemohon?.unit_kerja);
 
 const form = useForm({
     name: pemohon?.name || page.props.auth?.user?.name || '',
@@ -25,10 +38,32 @@ const form = useForm({
     email: pemohon?.email || page.props.auth?.user?.email || '',
     kota_id: pemohon?.kota_id ? Number(pemohon.kota_id) : null,
     address: pemohon?.address || '',
+    id_opd: initialOpd?.id ?? null,
     unit_kerja: pemohon?.unit_kerja || '',
     nip: pemohon?.nip || '',
     jabatan: pemohon?.jabatan || '',
 });
+
+// Auto-fill unit_kerja saat user pilih OPD
+watch(() => form.id_opd, (newId) => {
+    if (newId) {
+        const opd = opds.find(o => o.id === newId);
+        if (opd) {
+            form.unit_kerja = opd.nama;
+        }
+    }
+});
+
+const switchToManual = () => {
+    isManualMode.value = true;
+    form.id_opd = null;
+};
+
+const switchToPick = () => {
+    isManualMode.value = false;
+    form.unit_kerja = '';
+    form.id_opd = null;
+};
 
 const submit = () => {
     form.put(route('profile.biodata.update'), {
@@ -128,13 +163,40 @@ const submit = () => {
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Informasi Kepegawaian</p>
                 </div>
 
-                <!-- Unit Kerja -->
+                <!-- Unit Kerja: dropdown OPD atau manual -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Unit Kerja <span class="text-red-500">*</span>
-                    </label>
-                    <InputText v-model="form.unit_kerja" class="w-full" placeholder="Contoh: Dinas Komunikasi dan Informatika" />
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Unit Kerja <span class="text-red-500">*</span>
+                        </label>
+                        <button v-if="!isManualMode" type="button" @click="switchToManual" class="text-xs text-blue-600 hover:underline">
+                            Tidak ada di daftar? Ketik manual
+                        </button>
+                        <button v-else type="button" @click="switchToPick" class="text-xs text-blue-600 hover:underline">
+                            Pilih dari daftar OPD
+                        </button>
+                    </div>
+                    <Dropdown
+                        v-if="!isManualMode"
+                        v-model="form.id_opd"
+                        :options="opds"
+                        optionLabel="nama"
+                        optionValue="id"
+                        class="w-full"
+                        placeholder="Pilih OPD / Unit Kerja"
+                        filter
+                        showClear
+                    >
+                        <template #option="slotProps">
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium">{{ slotProps.option.nama }}</span>
+                                <span v-if="slotProps.option.singkatan" class="text-xs text-gray-500">({{ slotProps.option.singkatan }})</span>
+                            </div>
+                        </template>
+                    </Dropdown>
+                    <InputText v-else v-model="form.unit_kerja" class="w-full" placeholder="Contoh: Universitas Mulawarman" />
                     <small v-if="form.errors.unit_kerja" class="text-red-500">{{ form.errors.unit_kerja }}</small>
+                    <small v-if="form.errors.id_opd" class="text-red-500">{{ form.errors.id_opd }}</small>
                 </div>
 
                 <!-- NIP -->

@@ -14,6 +14,10 @@ const props = defineProps({
     user: Object,
     isEdit: Boolean,
     roles: Array,
+    opds: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const emit = defineEmits(['update:visible', 'success']);
@@ -26,11 +30,24 @@ const modalTitle = computed(() => props.isEdit ? 'Edit User' : 'Tambah User');
 const form = useForm({
     name: '',
     email: '',
-    password: '',
-    password_confirmation: '',
     role_id: null,
+    id_opd: null,
     uid: null,
 });
+
+// Slug role yang dipilih (untuk show field OPD secara kondisional)
+const selectedRoleSlug = computed(() => {
+    if (!form.role_id) return null;
+    const r = props.roles.find(x => x.id === form.role_id);
+    return r?.slug ?? null;
+});
+
+const showOpdField = computed(() => selectedRoleSlug.value === 'tkksd_lokus');
+
+const opdOptions = computed(() => (props.opds || []).map(o => ({
+    label: o.singkatan ? `${o.nama} (${o.singkatan})` : o.nama,
+    value: o.id,
+})));
 
 const ssoUsers = ref([]);
 const selectedSsoUser = ref(null);
@@ -44,6 +61,7 @@ watch(() => props.visible, (newVal) => {
             form.email = props.user.email;
             form.uid = props.user.uid;
             form.role_id = props.user.roles?.[0]?.id || null;
+            form.id_opd = props.user.id_opd || null;
             if (props.user.uid) {
                 isSsoLocked.value = true;
                 selectedSsoUser.value = { text: props.user.name, uid: props.user.uid };
@@ -55,6 +73,13 @@ watch(() => props.visible, (newVal) => {
             form.reset();
             clearSso();
         }
+    }
+});
+
+// Bersihkan id_opd saat role bukan tkksd_lokus agar tidak ikut terkirim
+watch(selectedRoleSlug, (slug) => {
+    if (slug !== 'tkksd_lokus') {
+        form.id_opd = null;
     }
 });
 
@@ -94,8 +119,6 @@ const onSsoSelect = (event) => {
     form.name = name;
     form.email = email;
     form.uid = uid;
-    form.password = 'Substituted by SSO';
-    form.password_confirmation = 'Substituted by SSO';
     isSsoLocked.value = true;
     toast.info("Data user SSO berhasil dimuat.");
 };
@@ -106,8 +129,6 @@ const clearSso = () => {
     form.uid = null;
     form.name = '';
     form.email = '';
-    form.password = '';
-    form.password_confirmation = '';
 };
 
 const close = () => {
@@ -119,6 +140,11 @@ const close = () => {
 const submit = () => {
     if (!form.role_id) {
         toast.warning('Pilih Role terlebih dahulu.');
+        return;
+    }
+
+    if (selectedRoleSlug.value === 'tkksd_lokus' && !form.id_opd) {
+        toast.warning('OPD wajib dipilih untuk role TKKSD Lokus Kerjasama.');
         return;
     }
 
@@ -207,20 +233,34 @@ const roleOptions = computed(() => props.roles.map(role => ({
                     />
                      <small v-if="form.errors.role_id" class="text-red-500">{{ form.errors.role_id }}</small>
                 </div>
-                
-                <template v-if="!isSsoLocked">
-                    <div class="flex flex-col gap-2">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                        <InputText v-model="form.password" class="w-full" placeholder="Password" type="password" />
-                        <small class="text-xs text-gray-500" v-if="isEdit">Kosongkan jika tidak ingin mengganti.</small>
-                         <small v-if="form.errors.password" class="text-red-500">{{ form.errors.password }}</small>
-                    </div>
-                    
-                    <div class="flex flex-col gap-2">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Konfirmasi Password</label>
-                        <InputText v-model="form.password_confirmation" class="w-full" placeholder="Konfirmasi Password" type="password" />
-                    </div>
-                </template>
+
+                <!-- Field OPD (muncul ketika role TKKSD Lokus Kerjasama) -->
+                <div v-if="showOpdField" class="flex flex-col gap-2 md:col-span-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        OPD yang Diwakili <span class="text-red-500">*</span>
+                    </label>
+                    <Dropdown
+                        v-model="form.id_opd"
+                        :options="opdOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Pilih OPD..."
+                        class="w-full"
+                        filter
+                        showClear
+                    />
+                    <small class="text-xs text-gray-500">
+                        TKKSD Lokus hanya akan menerima monev kerjasama yang melibatkan OPD ini.
+                    </small>
+                    <small v-if="form.errors.id_opd" class="text-red-500">{{ form.errors.id_opd }}</small>
+                </div>
+
+                <div class="flex flex-col gap-2 md:col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                    <p class="text-xs text-blue-800 dark:text-blue-200 flex items-start gap-2">
+                        <i class="pi pi-info-circle mt-0.5"></i>
+                        <span>Semua user login menggunakan <b>SSO Samarinda</b> ({{ 'sso.samarindakota.go.id' }}). Password tidak diperlukan saat menambah/mengedit user.</span>
+                    </p>
+                </div>
             </div>
         </div>
         <template #footer>

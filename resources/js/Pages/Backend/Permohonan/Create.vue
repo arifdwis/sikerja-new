@@ -1,13 +1,16 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { Icon } from '@iconify/vue';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
+import { computeJangkaWaktu } from '@/utils/jangkaWaktu';
 
 const props = defineProps({
     kategoris: Array,
     provinsis: Array,
+    opds: Array,         // Daftar OPD aktif
+    userOpd: Object,     // OPD user (null jika non-Pemkot)
     pemohon: Object,    // Logged in pemohon profile
     corporate: Object,  // Logged in corporate profile
     pemohonanList: Array, // For PPKSD-2 auto-fill
@@ -33,6 +36,8 @@ const form = useForm({
     maksud_tujuan: '',
     lokasi_kerjasama: '',
     ruang_lingkup: '',
+    // OPD multiple - Req 12. Jika user SSO punya OPD, auto-isi
+    opd_ids: props.userOpd ? [props.userOpd.id] : [],
     jangka_waktu: '',
     tanggal_mulai: '',
     tanggal_berakhir: '',
@@ -40,6 +45,20 @@ const form = useForm({
     analisis_dampak: '',
     pembiayaan: '',
 });
+
+// Apakah user terkunci ke OPD-nya (user Pemkot dengan id_opd via SSO)
+const isOpdLocked = !!props.userOpd;
+
+// Auto-hitung jangka waktu dari tanggal_mulai & tanggal_berakhir
+const jangkaWaktuAuto = computed(() =>
+    computeJangkaWaktu(form.tanggal_mulai, form.tanggal_berakhir)
+);
+watch([
+    () => form.tanggal_mulai,
+    () => form.tanggal_berakhir,
+], () => {
+    form.jangka_waktu = jangkaWaktuAuto.value;
+}, { immediate: true });
 
 const kotas = ref([]);
 const loadingKotas = ref(false);
@@ -85,6 +104,11 @@ const toast = useToast();
 // ... existing code ...
 
 const submit = () => {
+    if (form.tanggal_mulai && form.tanggal_berakhir && form.tanggal_berakhir < form.tanggal_mulai) {
+        toast.error('Tanggal berakhir tidak boleh lebih awal dari tanggal mulai.');
+        return;
+    }
+
     form.post(route('permohonan.store'), {
         onError: (errors) => {
              // Show first error or generic message
@@ -202,9 +226,45 @@ const submit = () => {
                                     <textarea v-model="form.ruang_lingkup" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></textarea>
                                     <p v-if="form.errors.ruang_lingkup" class="text-red-500 text-sm mt-1">{{ form.errors.ruang_lingkup }}</p>
                                 </div>
+
+                                <!-- Field OPD Multiple (Req 12) -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jangka Waktu</label>
-                                    <textarea v-model="form.jangka_waktu" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Contoh: 12 Bulan / 1 Tahun"></textarea>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        OPD Terkait <span class="text-red-500">*</span>
+                                        <span v-if="isOpdLocked" class="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                                            <Icon icon="solar:lock-bold" class="inline w-3 h-3" />
+                                            Terhubung otomatis dari profil Anda
+                                        </span>
+                                    </label>
+                                    <p v-if="!isOpdLocked" class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                        Pilih satu atau lebih OPD yang terlibat dalam kerjasama ini
+                                    </p>
+
+                                    <!-- Auto-fill dari profil user (read-only chip) -->
+                                    <div v-if="isOpdLocked" class="flex flex-wrap gap-2">
+                                        <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                                            <Icon icon="solar:building-bold" class="w-4 h-4" />
+                                            {{ userOpd.nama }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Multi-select untuk user non-Pemkot -->
+                                    <div v-else class="space-y-2">
+                                        <select
+                                            multiple
+                                            v-model="form.opd_ids"
+                                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[120px]"
+                                        >
+                                            <option v-for="opd in opds" :key="opd.id" :value="opd.id">
+                                                {{ opd.nama }}{{ opd.singkatan ? ` (${opd.singkatan})` : '' }}
+                                            </option>
+                                        </select>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            Tahan Ctrl (Windows) atau Cmd (Mac) untuk pilih lebih dari satu
+                                        </p>
+                                    </div>
+
+                                    <p v-if="form.errors.opd_ids" class="text-red-500 text-sm mt-1">{{ form.errors.opd_ids }}</p>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -213,7 +273,24 @@ const submit = () => {
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Berakhir</label>
-                                        <input v-model="form.tanggal_berakhir" type="date" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                                        <input v-model="form.tanggal_berakhir" type="date" :min="form.tanggal_mulai || undefined" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                                        <p v-if="form.tanggal_mulai && form.tanggal_berakhir && form.tanggal_berakhir < form.tanggal_mulai" class="text-red-500 text-sm mt-1">
+                                            Tanggal berakhir tidak boleh lebih awal dari tanggal mulai.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Jangka Waktu
+                                        <span class="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
+                                            <Icon icon="solar:magic-stick-3-bold" class="inline w-3 h-3" />
+                                            Otomatis dari tanggal
+                                        </span>
+                                    </label>
+                                    <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-blue-50/50 dark:bg-gray-700/40 text-sm">
+                                        <Icon icon="solar:clock-circle-bold-duotone" class="w-5 h-5 text-blue-600" />
+                                        <span v-if="jangkaWaktuAuto" class="font-semibold text-gray-800 dark:text-white">{{ jangkaWaktuAuto }}</span>
+                                        <span v-else class="italic text-gray-500 dark:text-gray-400">Pilih tanggal mulai dan berakhir terlebih dahulu</span>
                                     </div>
                                 </div>
                                 <div>

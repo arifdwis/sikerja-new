@@ -86,6 +86,7 @@ class UserController extends Controller implements HasMiddleware
             'users' => $datas,
             'datas' => $datas,
             'roles' => Role::all(),
+            'opds' => \App\Models\Opd::active()->orderBy('nama')->get(['id', 'nama', 'singkatan']),
             'share' => $this->share,
             'filters' => $request->only(['search']),
         ]);
@@ -97,7 +98,8 @@ class UserController extends Controller implements HasMiddleware
     public function create()
     {
         return Inertia::render("$this->view/Create", [
-            'roles' => Role::all(),
+            'roles' => Role::orderBy('name')->get(),
+            'opds' => \App\Models\Opd::active()->orderBy('nama')->get(['id', 'nama', 'singkatan']),
             'share' => $this->share,
         ]);
     }
@@ -111,33 +113,36 @@ class UserController extends Controller implements HasMiddleware
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'role_id' => 'required|exists:roles,id',
+            // id_opd wajib jika role adalah tkksd_lokus
+            'id_opd' => 'nullable|exists:opd,id',
         ];
 
-        // Conditional validation for password: required only if NOT SSO user (no uid)
-        if (!$request->filled('uid')) {
-            $rules['password'] = ['required', 'confirmed', Rules\Password::defaults()];
-        }
-
         $validated = $request->validate($rules);
+
+        // Cek role tkksd_lokus → wajib id_opd
+        $role = Role::findOrFail($validated['role_id']);
+        if ($role->slug === 'tkksd_lokus' && empty($validated['id_opd'])) {
+            return back()->withErrors(['id_opd' => 'OPD wajib dipilih untuk role TKKSD Lokus Kerjasama.'])->withInput();
+        }
 
         $userData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'id_opd' => $validated['id_opd'] ?? null,
+            // Semua user pakai SSO Samarinda. Password di-generate random
+            // sebagai dummy karena column NOT NULL.
+            'password' => Hash::make(Str::random(32)),
         ];
 
-        // Handle SSO User creation
+        // Optional: jika user dari pencarian SSO, attach uid
         if ($request->filled('uid')) {
             $userData['uid'] = $request->uid;
-            // Generate random password for SSO users since they use SSO auth
-            $userData['password'] = Hash::make(Str::random(16));
-        } else {
-            $userData['password'] = Hash::make($request->password);
         }
 
         $user = $this->data::create($userData);
 
-        $role = Role::findById($validated['role_id']);
-        $user->assignRole($role);
+        // Pakai method assignRole custom dari User model (bukan Spatie)
+        $user->assignRole($role->slug);
 
         return redirect()->route("$this->prefix.index")
             ->with('success', 'User berhasil ditambahkan.');
@@ -182,7 +187,8 @@ class UserController extends Controller implements HasMiddleware
 
         return Inertia::render("$this->view/Edit", [
             'user' => $user,
-            'roles' => Role::all(),
+            'roles' => Role::orderBy('name')->get(),
+            'opds' => \App\Models\Opd::active()->orderBy('nama')->get(['id', 'nama', 'singkatan']),
             'share' => $this->share,
         ]);
     }
@@ -198,27 +204,27 @@ class UserController extends Controller implements HasMiddleware
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role_id' => 'required|exists:roles,id',
+            'id_opd' => 'nullable|exists:opd,id',
         ];
 
-        if ($request->filled('password')) {
-            $rules['password'] = ['confirmed', Rules\Password::defaults()];
-        }
-
         $validated = $request->validate($rules);
+
+        // Cek role tkksd_lokus → wajib id_opd
+        $role = Role::findOrFail($validated['role_id']);
+        if ($role->slug === 'tkksd_lokus' && empty($validated['id_opd'])) {
+            return back()->withErrors(['id_opd' => 'OPD wajib dipilih untuk role TKKSD Lokus Kerjasama.'])->withInput();
+        }
 
         $user->fill([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'id_opd' => $validated['id_opd'] ?? null,
         ]);
-
-        if ($request->filled('password')) {
-            $user->password = Hash::make($validated['password']);
-        }
 
         $user->save();
 
-        $role = Role::findById($validated['role_id']);
-        $user->syncRoles([$role]);
+        // Sync role: detach all then attach the selected one
+        $user->roles()->sync([$role->id]);
 
         return redirect()->route("$this->prefix.index")
             ->with('success', 'User berhasil diperbarui.');

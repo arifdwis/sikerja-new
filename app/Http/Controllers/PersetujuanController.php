@@ -50,7 +50,9 @@ class PersetujuanController extends Controller implements HasMiddleware
                 $q->latest();
             }
         ])
-            ->where('status', Permohonan::STATUS_PENJADWALAN) // Status 2: Menunggu Persetujuan Jadwal
+            // Persetujuan: status 2 (Menunggu Jadwal Penandatanganan)
+            // Admin review jadwal yang diajukan pemohon, lalu setujui/tolak
+            ->where('status', Permohonan::STATUS_PENJADWALAN)
             ->latest();
 
         if ($request->has('kategori') && $request->kategori) {
@@ -98,58 +100,8 @@ class PersetujuanController extends Controller implements HasMiddleware
         // Find pending schedule
         $pendingJadwal = $permohonan->penjadwalans()->where('status', 0)->latest()->first();
 
-        // Send WhatsApp Notification
-        try {
-            $wa = app(WhatsappService::class);
-            $statusPart = $validated['status'] == 9 ? '*Jadwal Ditolak (Perlu Jadwal Baru)*' : '*Selesai (Jadwal Disetujui)*';
-            $descPart = $validated['status'] == 9 ? 'Jadwal ditolak. Silakan ajukan jadwal baru.' : 'Jadwal disetujui. Proses selesai.';
-
-            // 1. Notify User (Pemohon) - FORMAL
-            $formalMsg = "*SIKERJA - PEMBARUAN STATUS*\n\n" .
-                "Yth. Pemohon Kerja Sama,\n" .
-                "Berikut kami sampaikan status terbaru permohonan Anda:\n\n" .
-                "Instansi: *{$permohonan->nama_instansi}*\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status: {$statusPart}\n" .
-                "Catatan: " . ($validated['admin_comment'] ?? $descPart) . "\n\n" .
-                "Terima kasih.\n" .
-                "_Pemerintah Kota Samarinda_";
-
-            // Try getting phone from User first, then Pemohon profile
-            $targetPhone = null;
-            $user = User::find($permohonan->id_pemohon_0);
-            $pemohonProfile = $permohonan->pemohon1;
-            if ($user && !empty($user->phone)) {
-                $targetPhone = $user->phone;
-            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                $targetPhone = $pemohonProfile->phone;
-            }
-
-            if ($targetPhone) {
-                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
-                $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
-                $wa->sendMessage($targetPhone, $personalMsg);
-            }
-
-            // 2. Notify Group (Admin) - INTERNAL
-            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
-                "Persetujuan Jadwal\n\n" .
-                "Instansi: {$permohonan->nama_instansi}\n" .
-                "Status: {$statusPart}\n" .
-                "Oleh: " . Auth::user()->name . "\n" .
-                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
-                "_Mohon monitor dashboard._";
-
-            $group = config('services.whatsapp.group_id');
-            if ($group) {
-                $wa->sendMessage($group, $adminMsg);
-            }
-        } catch (\Exception $e) {
-            \Log::error("Failed to send WA Notification: " . $e->getMessage());
-        }
-
         if ($validated['status'] == 9) {
-            // REJECT
+            // REJECT — kirim notif formal ke pemohon (jadwal ditolak, ajukan baru)
             if ($pendingJadwal) {
                 $pendingJadwal->update([
                     'status' => 2, // Ditolak
@@ -157,10 +109,12 @@ class PersetujuanController extends Controller implements HasMiddleware
                     'approved_at' => now(),
                     'admin_comment' => $validated['admin_comment'] ?? 'Ditolak melalui menu Persetujuan',
                 ]);
+
+                $this->notifyPemohonJadwalDitolak($permohonan, $validated['admin_comment'] ?? 'Mohon mengajukan jadwal baru sesuai ketentuan.');
+
                 return redirect()->back()->with('success', 'Jadwal ditolak. Menunggu jadwal baru.');
             }
             return redirect()->back()->with('error', 'Tidak ada jadwal yang perlu ditolak.');
-
         } else {
             // APPROVE
             if ($pendingJadwal) {
@@ -171,26 +125,87 @@ class PersetujuanController extends Controller implements HasMiddleware
                     'admin_comment' => $validated['admin_comment'] ?? 'Disetujui melalui menu Persetujuan',
                 ]);
 
+                // Status berubah ke JADWAL_DISETUJUI (3) — observer kirim notif formal ke pemohon
+                // (template: jadwalDisetujui via PermohonanObserver pada status change)
                 $permohonan->update([
-                    'status' => Permohonan::STATUS_SELESAI, // Status 4: Selesai
+                    'status' => Permohonan::STATUS_JADWAL_DISETUJUI,
                 ]);
 
-                // Notify pemohon that the completed cooperation enters Monev.
-                try {
-                    if ($targetPhone) {
-                        $monevMsg = "📋 *INFORMASI MONEV*\n\n";
-                        $monevMsg .= "Kerjasama *{$permohonan->label}* telah berakhir.\n\n";
-                        $monevMsg .= "Kerjasama tersebut saat ini masuk dalam proses Monitoring & Evaluasi oleh admin SIKERJA.\n\n";
-                        $monevMsg .= "_Terima kasih atas kerjasamanya._";
-                        $wa->sendMessage($targetPhone, $monevMsg);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error('Monev reminder error: ' . $e->getMessage());
-                }
+                // Tambahan: notif khusus dengan tanggal jadwal yang disetujui
+                $this->notifyPemohonJadwalDisetujui($permohonan, $pendingJadwal);
 
-                return redirect()->back()->with('success', 'Jadwal disetujui. Permohonan kerjasama selesai.');
+                return redirect()->back()->with('success', 'Jadwal disetujui. Pemohon dapat mengupload PKS final.');
             }
             return redirect()->back()->with('error', 'Tidak ada jadwal yang perlu disetujui.');
+        }
+    }
+
+    private function notifyPemohonJadwalDitolak(Permohonan $permohonan, string $alasan): void
+    {
+        $user = User::find($permohonan->id_pemohon_0);
+        $pemohonProfile = $permohonan->pemohon1;
+        $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
+
+        $payload = \App\Services\NotificationTemplate::statusUpdate(
+            $name,
+            $permohonan,
+            'Jadwal Penandatanganan Belum Disetujui',
+            $alasan
+        );
+
+        \App\Models\Notifikasi::create([
+            'id_user'       => $permohonan->id_pemohon_0,
+            'id_permohonan' => $permohonan->id,
+            'from_user_id'  => Auth::id(),
+            'type'          => 'jadwal_rejected',
+            'title'         => 'Jadwal Penandatanganan Belum Disetujui',
+            'message'       => $payload['system']['message'],
+            'data'          => json_encode(['uuid' => $permohonan->uuid]),
+            'is_read'       => false,
+        ]);
+
+        try {
+            $wa = app(WhatsappService::class);
+            $phone = $user?->phone ?: $pemohonProfile?->phone;
+            if ($phone) {
+                $wa->sendMessage($phone, $payload['wa']);
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Notif jadwal rejected: ' . $e->getMessage());
+        }
+    }
+
+    private function notifyPemohonJadwalDisetujui(Permohonan $permohonan, $jadwal): void
+    {
+        $user = User::find($permohonan->id_pemohon_0);
+        $pemohonProfile = $permohonan->pemohon1;
+        $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
+
+        $tanggalJadwal = $jadwal->tanggal
+            ? \Carbon\Carbon::parse($jadwal->tanggal)->translatedFormat('l, d F Y')
+            : '(belum ditetapkan)';
+
+        $payload = \App\Services\NotificationTemplate::jadwalDisetujui($name, $permohonan, $tanggalJadwal);
+
+        \App\Models\Notifikasi::create([
+            'id_user'       => $permohonan->id_pemohon_0,
+            'id_permohonan' => $permohonan->id,
+            'from_user_id'  => Auth::id(),
+            'type'          => 'jadwal_approved',
+            'title'         => $payload['system']['title'],
+            'message'       => $payload['system']['message'],
+            'data'          => json_encode(['uuid' => $permohonan->uuid]),
+            'is_read'       => false,
+        ]);
+
+        try {
+            $wa = app(WhatsappService::class);
+            $phone = $user?->phone ?: $pemohonProfile?->phone;
+            if ($phone) {
+                $wa->sendMessage($phone, $payload['wa']);
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Notif jadwal approved: ' . $e->getMessage());
         }
     }
 }

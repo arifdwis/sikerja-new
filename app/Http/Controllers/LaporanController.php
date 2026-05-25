@@ -140,97 +140,165 @@ class LaporanController extends Controller
 
     public function statistik(Request $request)
     {
-        // 1. Laporan Akumulatif
-        $akumulatifQuery = Permohonan::query()
-            ->where('status', Permohonan::STATUS_SELESAI)
-            ->selectRaw('YEAR(tanggal_mulai) as tahun')
-            ->selectRaw('COUNT(*) as total_kerjasama')
-            ->selectRaw('SUM(CASE WHEN tanggal_berakhir >= CURDATE() THEN 1 ELSE 0 END) as aktif')
-            ->selectRaw('SUM(CASE WHEN tanggal_berakhir < CURDATE() THEN 1 ELSE 0 END) as selesai')
-            ->groupBy('tahun')
-            ->orderByDesc('tahun');
+        // Build a unified collection: Permohonan (semua yang punya periode kerjasama) + KerjasamaManual.
+        // Logika "kerjasama valid": punya tanggal_mulai DAN tanggal_berakhir (artinya sudah disepakati & ditandatangani),
+        // tidak peduli stuck di status alur sistem berapa pun. Plus tabel kerjasama_manual untuk data sistem lama.
+        // Tetap include yang tanggalnya belum ada juga, supaya pengguna lihat permohonan migrasi sistem lama.
+        $tahunFilter = $request->input('tahun');
 
-        if ($request->has('tahun') && $request->tahun) {
-            $akumulatifQuery->whereYear('tanggal_mulai', $request->tahun);
+        $permohonanRows = Permohonan::query()
+            ->where('status', '!=', Permohonan::STATUS_DITOLAK)
+            ->select([
+                'id', 'uuid', 'label', 'nama_instansi', 'id_kategori',
+                'id_pemohon_0', 'tanggal_mulai', 'tanggal_berakhir', 'created_at', 'status',
+            ])
+            ->with(['kategori:id,label', 'opds:id,nama,singkatan'])
+            ->get()
+            ->map(fn($p) => [
+                'source'         => 'sistem',
+                'id'             => $p->id,
+                'label'          => $p->label,
+                'mitra'          => $p->nama_instansi,
+                'id_kategori'    => $p->id_kategori,
+                'kategori_label' => $p->kategori?->label,
+                'tanggal_mulai'  => optional($p->tanggal_mulai)->toDateString(),
+                'tanggal_berakhir' => optional($p->tanggal_berakhir)->toDateString(),
+                'created_at'     => optional($p->created_at)->toDateString(),
+                'opds'           => $p->opds->map(fn($o) => $o->singkatan ?: $o->nama)->all(),
+                'id_pemohon_0'   => $p->id_pemohon_0,
+            ]);
+
+        $manualRows = \App\Models\KerjasamaManual::query()
+            ->select([
+                'id', 'uuid', 'label', 'nama_instansi', 'id_kategori',
+                'tanggal_mulai', 'tanggal_berakhir', 'created_at',
+            ])
+            ->with(['kategori:id,label', 'opds:id,nama,singkatan'])
+            ->get()
+            ->map(fn($m) => [
+                'source'         => 'manual',
+                'id'             => $m->id,
+                'label'          => $m->label,
+                'mitra'          => $m->nama_instansi,
+                'id_kategori'    => $m->id_kategori,
+                'kategori_label' => $m->kategori?->label,
+                'tanggal_mulai'  => optional($m->tanggal_mulai)->toDateString(),
+                'tanggal_berakhir' => optional($m->tanggal_berakhir)->toDateString(),
+                'created_at'     => optional($m->created_at)->toDateString(),
+                'opds'           => $m->opds->map(fn($o) => $o->singkatan ?: $o->nama)->all(),
+                'id_pemohon_0'   => null,
+            ]);
+
+        $all = $permohonanRows->concat($manualRows);
+
+        // Helper: tahun acuan = tanggal_mulai bila ada, fallback ke created_at
+        $resolveYear = function ($row) {
+            $date = $row['tanggal_mulai'] ?: $row['created_at'];
+            return $date ? (int) substr($date, 0, 4) : null;
+        };
+
+        if ($tahunFilter) {
+            $all = $all->filter(fn($r) => $resolveYear($r) === (int) $tahunFilter)->values();
         }
 
-        $akumulatifData = $akumulatifQuery->get();
+        $now = Carbon::now()->startOfDay();
 
-        // 2. Rekap Mitra (Top 20)
-        $rekapMitraQuery = Permohonan::query()
-            ->where('status', Permohonan::STATUS_SELESAI)
-            ->select('nama_instansi as mitra')
-            ->selectRaw('COUNT(*) as total_kerjasama')
-            ->groupBy('nama_instansi')
-            ->orderByDesc('total_kerjasama')
-            ->limit(20);
-
-        $rekapMitraData = $rekapMitraQuery->get()->map(function ($item, $index) {
-            $item->id = $index + 1;
-            $item->jenis = '-';
-            return $item;
-        });
-
-        // 3. Persentase OPD
-        $totalSelesai = Permohonan::where('status', Permohonan::STATUS_SELESAI)->count();
-        if ($totalSelesai == 0) $totalSelesai = 1;
-
-        $opdCounts = Permohonan::where('status', Permohonan::STATUS_SELESAI)
-            ->select('id_pemohon_0', DB::raw('count(*) as total'))
-            ->groupBy('id_pemohon_0')
-            ->get();
-
-        $opdIds = $opdCounts->pluck('id_pemohon_0')->filter()->values();
-        $pemohonByOperator = Pemohon::whereIn('id_operator', $opdIds)->get()->keyBy('id_operator');
-        $userById = User::whereIn('id', $opdIds)->get()->keyBy('id');
-
-        $persentaseOpdData = $opdCounts
-            ->map(function ($row) use ($pemohonByOperator, $userById, $totalSelesai) {
-                $pemohon = $pemohonByOperator->get($row->id_pemohon_0);
-                $user = $userById->get($row->id_pemohon_0);
-
-                $name = 'N/A';
-                if ($pemohon) {
-                    $name = $pemohon->unit_kerja ?? $pemohon->nama_instansi;
-                }
-                if (!$name && $user) {
-                    $name = $user->name;
-                }
-
-                $count = (int) $row->total;
+        // 1) Akumulatif per tahun (aktif vs selesai vs tanpa-jangka-waktu)
+        $akumulatifData = $all
+            ->groupBy(fn($r) => $resolveYear($r) ?? 'Tanpa Tahun')
+            ->map(function ($rows, $tahun) use ($now) {
+                $total = $rows->count();
+                $aktif = $rows->filter(fn($r) => $r['tanggal_berakhir'] && Carbon::parse($r['tanggal_berakhir']) >= $now)->count();
+                $selesai = $rows->filter(fn($r) => $r['tanggal_berakhir'] && Carbon::parse($r['tanggal_berakhir']) < $now)->count();
+                $tanpaJangka = $rows->filter(fn($r) => !$r['tanggal_berakhir'])->count();
                 return [
-                    'opd' => $name ?? 'Unknown',
-                    'realisasi' => $count,
-                    'persentase' => round(($count / $totalSelesai) * 100, 2)
+                    'tahun'           => $tahun,
+                    'total_kerjasama' => $total,
+                    'aktif'           => $aktif,
+                    'selesai'         => $selesai,
+                    'tanpa_jangka'    => $tanpaJangka,
                 ];
             })
+            ->sortKeysDesc()
+            ->values();
+
+        // 2) Rekap mitra (Top 20) — hitung dari kedua sumber
+        $rekapMitraData = $all
+            ->groupBy(fn($r) => $r['mitra'] ?: 'Tidak Diketahui')
+            ->map(fn($rows, $mitra) => [
+                'mitra'           => $mitra,
+                'total_kerjasama' => $rows->count(),
+                'sistem'          => $rows->where('source', 'sistem')->count(),
+                'manual'          => $rows->where('source', 'manual')->count(),
+            ])
+            ->sortByDesc('total_kerjasama')
+            ->take(20)
             ->values()
+            ->map(function ($item, $i) {
+                $item['id'] = $i + 1;
+                return $item;
+            });
+
+        // 3) Persentase OPD — gunakan opds (multi) yang sudah di-flatten
+        $totalAll = $all->count();
+        $opdCounter = [];
+        foreach ($all as $row) {
+            if (empty($row['opds'])) {
+                $opdCounter['(Tanpa OPD)'] = ($opdCounter['(Tanpa OPD)'] ?? 0) + 1;
+                continue;
+            }
+            foreach ($row['opds'] as $opd) {
+                $opdCounter[$opd] = ($opdCounter[$opd] ?? 0) + 1;
+            }
+        }
+        $persentaseOpdData = collect($opdCounter)
+            ->map(fn($count, $opd) => [
+                'opd'        => $opd,
+                'realisasi'  => $count,
+                'persentase' => $totalAll > 0 ? round(($count / $totalAll) * 100, 2) : 0,
+            ])
             ->sortByDesc('realisasi')
             ->values();
 
-        // 4. Persentase Bidang
-        $persentaseBidangData = Kategori::withCount([
-            'permohonans' => function ($q) {
-                $q->where('status', Permohonan::STATUS_SELESAI);
-            }
-        ])
-            ->get()
-            ->map(function ($file) use ($totalSelesai) {
-                return [
-                    'bidang' => $file->label,
-                    'jumlah' => $file->permohonans_count,
-                    'persentase' => round(($file->permohonans_count / $totalSelesai) * 100, 2)
-                ];
-            })
+        // 4) Persentase Bidang — group berdasarkan kategori_label
+        $persentaseBidangData = $all
+            ->groupBy(fn($r) => $r['kategori_label'] ?: 'Tanpa Kategori')
+            ->map(fn($rows, $kategori) => [
+                'bidang'     => $kategori,
+                'jumlah'     => $rows->count(),
+                'sistem'     => $rows->where('source', 'sistem')->count(),
+                'manual'     => $rows->where('source', 'manual')->count(),
+                'persentase' => $totalAll > 0 ? round(($rows->count() / $totalAll) * 100, 2) : 0,
+            ])
             ->sortByDesc('jumlah')
             ->values();
 
+        // 5) Ringkasan global (untuk KPI cards di atas tabs)
+        $summary = [
+            'total'        => $totalAll,
+            'sistem'       => $all->where('source', 'sistem')->count(),
+            'manual'       => $all->where('source', 'manual')->count(),
+            'aktif'        => $all->filter(fn($r) => $r['tanggal_berakhir'] && Carbon::parse($r['tanggal_berakhir']) >= $now)->count(),
+            'selesai'      => $all->filter(fn($r) => $r['tanggal_berakhir'] && Carbon::parse($r['tanggal_berakhir']) < $now)->count(),
+            'tanpa_jangka' => $all->filter(fn($r) => !$r['tanggal_berakhir'])->count(),
+            'mitra_unik'   => $all->pluck('mitra')->filter()->unique()->count(),
+        ];
+
+        // Daftar tahun yang tersedia (gabungan)
+        $tahunListSistem = Permohonan::where('status', '!=', Permohonan::STATUS_DITOLAK)
+            ->selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')
+            ->pluck('y');
+        $tahunListManual = \App\Models\KerjasamaManual::selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')->pluck('y');
+        $availableYears = $tahunListSistem->concat($tahunListManual)->filter()->unique()->sortDesc()->values();
+
         return Inertia::render('Backend/Laporan/Statistik', [
-            'akumulatifData' => $akumulatifData,
-            'rekapMitraData' => $rekapMitraData,
-            'persentaseOpdData' => $persentaseOpdData,
+            'summary'              => $summary,
+            'akumulatifData'       => $akumulatifData,
+            'rekapMitraData'       => $rekapMitraData,
+            'persentaseOpdData'    => $persentaseOpdData,
             'persentaseBidangData' => $persentaseBidangData,
-            'filters' => $request->all(),
+            'availableYears'       => $availableYears,
+            'filters'              => $request->only(['tahun']),
         ]);
     }
 

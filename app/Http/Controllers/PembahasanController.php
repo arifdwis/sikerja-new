@@ -43,8 +43,10 @@ class PembahasanController extends Controller implements HasMiddleware
         $userId = Auth::id();
         $query = Permohonan::with(['kategori', 'pemohon1', 'operator.corporate', 'provinsi', 'kota', 'files'])
             ->withExists([
+                // "contributed" = user ini sudah memberikan masukan/diskusi pada salah satu dokumen permohonan
+                // Indikator: ada PermohonanHistori dengan id_file (artinya komentar/aksi pada dokumen) oleh user ini.
                 'historis as contributed' => function ($q) use ($userId) {
-                    $q->where('id_operator', $userId);
+                    $q->where('id_operator', $userId)->whereNotNull('id_file');
                 }
             ])
             ->where('status', Permohonan::STATUS_PEMBAHASAN) // Status 1: Dalam Pembahasan
@@ -79,7 +81,7 @@ class PembahasanController extends Controller implements HasMiddleware
 
         $query = Permohonan::with(['kategori', 'pemohon1', 'operator.corporate', 'provinsi', 'kota'])
             ->whereHas('historis', function ($q) use ($userId) {
-                $q->where('id_operator', $userId);
+                $q->where('id_operator', $userId)->whereNotNull('id_file');
             })
             // Optional: Exclude current active discussions if they are in the main list?
             // ->where('status', '!=', Permohonan::STATUS_PEMBAHASAN) 
@@ -116,7 +118,7 @@ class PembahasanController extends Controller implements HasMiddleware
         $query = Permohonan::with(['kategori', 'pemohon1', 'operator.corporate', 'provinsi', 'kota', 'files'])
             ->withExists([
                 'historis as contributed' => function ($q) use ($userId) {
-                    $q->where('id_operator', $userId);
+                    $q->where('id_operator', $userId)->whereNotNull('id_file');
                 }
             ])
             ->where('status', '>', Permohonan::STATUS_PEMBAHASAN) // Status > 1 (Selesai/Penjadwalan/Ditolak)
@@ -173,55 +175,8 @@ class PembahasanController extends Controller implements HasMiddleware
             'status' => Permohonan::STATUS_PENJADWALAN, // Status 2: Menunggu Penjadwalan
         ]);
 
-        // Send WhatsApp Notification
-        try {
-            $wa = app(WhatsappService::class);
+        // Notifikasi pemohon & grup admin di-handle PermohonanObserver via NotificationTemplate.
 
-            // 1. Notify User (Pemohon) - FORMAL
-            $formalMsg = "*SIKERJA - PEMBARUAN STATUS*\n\n" .
-                "Yth. Pemohon Kerja Sama,\n" .
-                "Berikut kami sampaikan status terbaru permohonan Anda:\n\n" .
-                "Instansi: *{$permohonan->nama_instansi}*\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status: *Menunggu Penjadwalan*\n" .
-                "Catatan: Pembahasan selesai. Silakan buat jadwal pertemuan.\n\n" .
-                "Terima kasih.\n" .
-                "_Pemerintah Kota Samarinda_";
-
-            // Try getting phone from User first, then Pemohon profile
-            $targetPhone = null;
-            $user = User::find($permohonan->id_pemohon_0);
-            $pemohonProfile = $permohonan->pemohon1;
-            if ($user && !empty($user->phone)) {
-                $targetPhone = $user->phone;
-            } elseif ($pemohonProfile && !empty($pemohonProfile->phone)) {
-                $targetPhone = $pemohonProfile->phone;
-            }
-
-            if ($targetPhone) {
-                $name = $pemohonProfile?->name ?: ($user?->name ?: 'Pemohon');
-                $personalMsg = str_replace("Yth. Pemohon Kerja Sama,", "Yth. Bpk/Ibu *$name*,", $formalMsg);
-                $wa->sendMessage($targetPhone, $personalMsg);
-            }
-
-            // 2. Notify Group (Admin) - INTERNAL
-            $adminMsg = "*INFO ADMIN - SIKERJA*\n" .
-                "Pembahasan Selesai\n\n" .
-                "Instansi: {$permohonan->nama_instansi}\n" .
-                "Perihal: {$permohonan->label}\n" .
-                "Status: *Menunggu Penjadwalan*\n" .
-                "Operator: " . Auth::user()->name . "\n" .
-                "Waktu: " . now()->format('d M Y H:i') . "\n\n" .
-                "_Mohon monitor dashboard._";
-
-            $group = config('services.whatsapp.group_id');
-            if ($group) {
-                $wa->sendMessage($group, $adminMsg);
-            }
-        } catch (\Exception $e) {
-            \Log::error("Failed to send WA Notification: " . $e->getMessage());
-        }
-
-        return redirect()->back()->with('success', 'Pembahasan selesai. Pemohon dapat membuat jadwal pertemuan.');
+        return redirect()->back()->with('success', 'Pembahasan selesai. Pemohon dapat mengajukan jadwal penandatanganan.');
     }
 }

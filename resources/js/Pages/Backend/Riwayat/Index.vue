@@ -2,7 +2,6 @@
 import { ref, computed, watch } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { useToast } from 'vue-toastification';
 import axios from 'axios';
 import ControlBar from '../Permohonan/Components/ControlBar.vue';
 import PermohonanList from '../Permohonan/Components/PermohonanList.vue';
@@ -16,7 +15,6 @@ const props = defineProps({
 });
 
 const page = usePage();
-// const toast = useToast(); // Unused for now
 
 const filterQuery = ref(props.filters?.search || '');
 const filteredData = computed(() => {
@@ -50,11 +48,13 @@ const openDetailModal = async (item) => {
     detailDialog.value = true;
     loadingDetail.value = true;
     try {
-        // Use permohonan.show route to get detail
-        const response = await axios.get(route('permohonan.show', item.uuid));
+        const response = await axios.get(route('permohonan.show', item.uuid), {
+            params: { _: Date.now() },
+            headers: { Accept: 'application/json' },
+        });
         detailData.value = response.data;
     } catch (error) {
-        console.error("Failed to fetch details", error);
+        console.error('Failed to fetch details', error);
     } finally {
         loadingDetail.value = false;
     }
@@ -67,23 +67,26 @@ const isAdmin = computed(() => {
 
 const groupedData = computed(() => {
     const data = filteredData.value;
+    const fallbackTitle = 'Riwayat Kerjasama';
+
     if (groupBy.value === 'latest') {
-        return { "Riwayat Kerjasama": data };
+        return { [fallbackTitle]: data };
     } else if (groupBy.value === 'kategori') {
         return data.reduce((acc, item) => {
-            const key = item.kategori?.label || "Tanpa Kategori";
+            const key = item.kategori?.label || 'Tanpa Kategori';
             (acc[key] = acc[key] || []).push(item);
             return acc;
         }, {});
     } else if (groupBy.value === 'status') {
         return data.reduce((acc, item) => {
-            const key = item.status_label?.label || "Unknown";
+            const key = item.status_label?.label || 'Unknown';
             (acc[key] = acc[key] || []).push(item);
             return acc;
         }, {});
     }
-    return { "Riwayat Kerjasama": data };
+    return { [fallbackTitle]: data };
 });
+
 </script>
 
 <template>
@@ -99,30 +102,33 @@ const groupedData = computed(() => {
             <div class="mx-auto max-w-full px-6 lg:px-8">
                 <Breadcrumb class="mb-6" />
 
-                <ControlBar 
-                    v-model:filterQuery="filterQuery" 
-                    v-model:viewMode="viewMode" 
+                <ControlBar
+                    v-model:filterQuery="filterQuery"
+                    v-model:viewMode="viewMode"
                     v-model:groupBy="groupBy"
                     :showCreate="false"
                 />
 
-                <PermohonanList 
+                <PermohonanList
                     :groupedData="groupedData"
                     :viewMode="viewMode"
                     :isAdmin="isAdmin"
                     :hasData="filteredData.length > 0"
+                    :showCreate="false"
+                    emptyTitle="Belum ada Riwayat"
+                    emptyDescription="Belum ada kerjasama pada kategori ini."
                     @detail="openDetailModal"
                 />
             </div>
         </section>
 
-        <DetailModal 
-            :visible="detailDialog" 
+        <DetailModal
+            :visible="detailDialog"
             @update:visible="detailDialog = $event"
             :loading="loadingDetail"
             :data="detailData"
             :isAdmin="isAdmin"
-            @refresh="openDetailModal(selectedItem)" 
+            @refresh="openDetailModal(selectedItem)"
         />
     </AuthenticatedLayout>
 </template>
