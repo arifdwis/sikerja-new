@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Permohonan;
 use App\Models\Penjadwalan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -33,7 +34,9 @@ class PenjadwalanController extends Controller implements HasMiddleware
     {
         return [
             new Middleware('can:penjadwalan.index', only: ['index']),
+            new Middleware('can:penjadwalan.create', only: ['store']),
             new Middleware('can:penjadwalan.edit', only: ['edit', 'update', 'review']),
+            new Middleware('can:penjadwalan.delete', only: ['destroy']),
         ];
     }
 
@@ -142,7 +145,9 @@ class PenjadwalanController extends Controller implements HasMiddleware
         }
 
         // WA grup admin
-        try { app(\App\Services\WhatsappService::class)->sendToGroup($waJadwal); } catch (\Throwable $e) {}
+        try { app(\App\Services\WhatsappService::class)->sendToGroup($waJadwal); } catch (\Throwable $e) {
+            \Log::error('WA group send failed for jadwal notification', ['error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Jadwal penandatanganan berhasil diajukan, menunggu persetujuan Admin.');
     }
@@ -214,6 +219,9 @@ class PenjadwalanController extends Controller implements HasMiddleware
 
     public function destroy(string $uuid)
     {
+        $user = Auth::user();
+        abort_unless($user && ($user->hasAnyRole(['administrator', 'superadmin', 'tkksd'])), 403, 'Anda tidak memiliki hak akses untuk menghapus jadwal ini.');
+
         $penjadwalan = Penjadwalan::where('uuid', $uuid)->firstOrFail();
         $penjadwalan->delete();
 

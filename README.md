@@ -1,59 +1,125 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SIKERJA V2 — Sistem Informasi Kerja Sama Daerah Kota Samarinda
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+SIKERJA V2 adalah aplikasi berbasis web yang digunakan oleh Pemerintah Kota Samarinda untuk mengelola alur Kerja Sama Daerah (KSD), mulai dari pengajuan permohonan, verifikasi, pembahasan, penandatanganan, hingga monitoring & evaluasi (Monev) secara terpadu.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🛠️ Teknologi & Stack Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Backend**: Laravel 12 (PHP 8.2+)
+- **Frontend**: Vue 3 (Composition API), Inertia.js, PrimeVue, Tailwind CSS
+- **Database**: MySQL / MariaDB
+- **Notifikasi**: SMTP Email (`mail.samarindakota.go.id`) & WhatsApp Service
+- **Autentikasi**: Single Sign-On (SSO Kota Samarinda), Google OAuth, & Local Auth (Laravel Breeze)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 🚀 Panduan Instalasi & Setup Lokal
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 1. Prasyarat Sistem
+- PHP >= 8.2 (ekstensi: `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `cURL`)
+- Node.js >= 18.x & npm
+- Composer >= 2.x
+- Database Server (MySQL 8.0+ / MariaDB 10.5+)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 2. Kloning Repository & Install Dependencies
+```bash
+git clone https://github.com/arifdwis/sikerja-new.git sikerja-v2
+cd sikerja-v2
 
-## Laravel Sponsors
+# Install dependensi PHP
+composer install
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Install dependensi Frontend
+npm install
+```
 
-### Premium Partners
+### 3. Konfigurasi Environment (`.env`)
+Salin file `.env.example` ke `.env` dan atur kredensial database & mail:
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Ubah parameter utama di `.env`:
+```env
+APP_NAME="SIKERJA Samarinda"
+APP_ENV=local
+APP_URL=http://localhost:8000
 
-## Contributing
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=sikerja_v2
+DB_USERNAME=root
+DB_PASSWORD=
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# SMTP Email Notification Settings
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps
+MAIL_HOST=mail.samarindakota.go.id
+MAIL_PORT=465
+MAIL_USERNAME=sikerja@samarindakota.go.id
+MAIL_PASSWORD=****************
+MAIL_FROM_ADDRESS="sikerja@samarindakota.go.id"
+MAIL_FROM_NAME="SIKERJA Samarinda"
+```
 
-## Code of Conduct
+### 4. Migrasi Database & Seeding
+```bash
+php artisan migrate --seed
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 5. Menjalankan Server Lokal
+Jalankan server Laravel & Vite secara berdampingan:
+```bash
+# Terminal 1: Laravel Server
+php artisan serve
 
-## Security Vulnerabilities
+# Terminal 2: Asset Compiler (Hot Reload)
+npm run dev
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Aplikasi dapat diakses di `http://localhost:8000`.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 👥 Struktur Role & Hak Akses
+
+1. **Pemohon**: Pengguna eksternal / Mitra / Perangkat Daerah yang mengajukan permohonan kerjasama.
+2. **Administrator**: Pengelola utama sistem SIKERJA (Bagian Kerja Sama Daerah).
+3. **Superadmin**: Administrator tingkat tinggi dengan akses penuh manajemen pengguna & sistem.
+4. **TKKSD**: Tim Koordinasi Kerja Sama Daerah Kota Samarinda (Verifikasi & Pembahasan).
+5. **TKKSD Lokus**: Anggota TKKSD khusus Perangkat Daerah penanggung jawab lokasi/substansi.
+
+---
+
+## 📑 Fitur Utama
+
+- **Management Permohonan**: Alur pengajuan dokumen, disposisi, dan verifikasi berkas.
+- **Pembahasan & Diskusi**: Modul obrolan permohonan dengan fitur lampiran berkas dan riwayat revisi.
+- **Penjadwalan Desk-to-Desk & Hybrid**: Pengaturan jadwal verifikasi langsung maupun daring.
+- **Monitoring & Evaluasi (Monev)**: Evaluasi berkala pelaksanaan kerjasama antar daerah/pihak ketiga.
+- **Auto Email Notification**: Pengiriman pemberitahuan otomatis via SMTP Mail Server ke email notifikasi terdaftar.
+- **Mandatory Notification Email Enforcement**: Penguncian sistem bagi akun tanpa email notifikasi aktif.
+
+---
+
+## 🧪 Pengujian & Build Production
+
+```bash
+# Menjalankan Test Suite
+php artisan test
+
+# Build Bundle Production
+npm run build
+```
+
+---
+
+## 📄 Dokumentasi Tambahan
+
+- [STRUKTUR_MODUL.md](STRUKTUR_MODUL.md) — Rincian modul & arsitektur sistem.
+- [TESTING_FLOW.md](TESTING_FLOW.md) — Panduan skenario pengujian workflow.
+- [NOTIFIKASI.md](NOTIFIKASI.md) — Dokumentasi template & skema notifikasi.
+- [hallmark_audit.md](hallmark_audit.md) — Laporan Hallmark Audit Kualitas Kode & Keamanan.

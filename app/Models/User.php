@@ -209,7 +209,7 @@ class User extends Authenticatable
     public function scopeAdminNotificationRecipients($query)
     {
         $whitelist = config('services.admin_notification_recipients', []);
-        $excludedEmails = ['novay@btekno.id', 'alfi.haryadi11@gmail.com'];
+        $excludedEmails = config('services.admin_notification_excluded', ['novay@btekno.id', 'alfi.haryadi11@gmail.com']);
         $excludedIds = [3, 6];
 
         return $query->where(function ($q) use ($whitelist) {

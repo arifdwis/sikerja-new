@@ -49,7 +49,7 @@ class SSOController extends Controller
 
     public function callback(Request $request)
     {
-        Log::info('SSO Callback received', ['params' => $request->all()]);
+        Log::info('SSO Callback received');
 
         try {
             $broker = new Broker();
@@ -58,7 +58,7 @@ class SSOController extends Controller
                 $username = base64_decode($request->uid);
                 $password = base64_decode($request->pwd);
 
-                Log::info('SSO: Attempting login with credentials', ['username' => $username]);
+                Log::info('SSO: Attempting login');
 
                 try {
                     $loginResult = $broker->login($username, $password);
@@ -93,7 +93,6 @@ class SSOController extends Controller
                 $codeParts = explode('.', $request->code);
                 if (count($codeParts) === 3) {
                     $payload = json_decode(base64_decode($codeParts[1]), true);
-                    Log::info('SSO: JWT Payload', ['payload' => $payload]);
 
                     if (isset($payload['sub'])) {
                         $user = $this->createOrUpdateUserFromJWT($payload, $username);
@@ -125,8 +124,8 @@ class SSOController extends Controller
             return redirect()->route('login')->with('error', 'Tidak dapat terhubung dengan SSO. Silakan coba lagi.');
 
         } catch (\Exception $e) {
-            Log::error('SSO Callback Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return redirect()->route('login')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('SSO Callback Error', ['message' => $e->getMessage()]);
+            return redirect()->route('login')->with('error', 'Terjadi kesalahan saat memproses autentikasi SSO. Silakan coba lagi.');
         }
     }
 
@@ -172,7 +171,6 @@ class SSOController extends Controller
     {
         try {
             $response = $broker->getUserInfo();
-            Log::info('SSO: getUserInfo response', ['response' => $response]);
 
             if (!isset($response['data'])) {
                 Log::warning('SSO: No data in getUserInfo response');

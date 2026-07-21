@@ -491,7 +491,7 @@ class MonevController extends Controller implements HasMiddleware
             ]);
 
             if ($admin->phone) {
-                try { $whatsapp->sendToAdmin($admin->phone, $waMsg); } catch (\Throwable $e) {}
+                try { $whatsapp->sendToAdmin($admin->phone, $waMsg); } catch (\Throwable $e) { \Log::error("Failed sending Monev notification to admin #{$admin->id}: " . $e->getMessage()); }
             }
         }
     }

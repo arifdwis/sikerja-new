@@ -36,11 +36,13 @@ Route::controller(\App\Http\Controllers\LandingController::class)->group(functio
     Route::get('/page/{slug}', 'page')->name('landing.page');
 });
 
-// Chatbot API (Public)
-Route::post('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'chat'])->name('api.chatbot');
-Route::get('/api/chatbot/{requestId}', [\App\Http\Controllers\ChatbotController::class, 'status'])->name('api.chatbot.status');
+// Chatbot API (Public - Throttled)
+Route::middleware('throttle:15,1')->group(function () {
+    Route::post('/api/chatbot', [\App\Http\Controllers\ChatbotController::class, 'chat'])->name('api.chatbot');
+    Route::get('/api/chatbot/{requestId}', [\App\Http\Controllers\ChatbotController::class, 'status'])->name('api.chatbot.status');
+});
 
-// API Routes (Public)
+// API Routes (Public - Throttled)
 Route::get('/api/kotas-all', function () {
     $provinsis = \App\Models\Provinsi::with('kotas')->orderBy('name')->get();
     return response()->json($provinsis->map(function ($p) {
@@ -54,7 +56,7 @@ Route::get('/api/kotas-all', function () {
             })
         ];
     }));
-})->name('api.kotas.all');
+})->middleware('throttle:30,1')->name('api.kotas.all');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified', 'ensure.email', 'pemohon.profile'])->name('dashboard');
 

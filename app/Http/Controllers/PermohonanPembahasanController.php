@@ -69,7 +69,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
 
         $request->validate([
             'message' => 'nullable|string',
-            'file' => 'nullable|file|max:10240', // Max 10MB
+            'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,zip,rar|max:10240',
             'file_label' => 'nullable|string'
         ]);
 

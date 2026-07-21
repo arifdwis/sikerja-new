@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Permohonan;
-use App\Services\WhatsappService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -160,6 +159,11 @@ class PembahasanController extends Controller implements HasMiddleware
     public function update(Request $request, string $uuid)
     {
         $permohonan = Permohonan::with('files')->where('uuid', $uuid)->firstOrFail();
+
+        // Validate current status is still in pembahasan
+        if ($permohonan->status != Permohonan::STATUS_PEMBAHASAN) {
+            abort(422, 'Status permohonan sudah berubah dan tidak bisa diproses.');
+        }
 
         // Check if all files are approved (Optional validation)
         $allFilesApproved = $permohonan->files->count() > 0 &&

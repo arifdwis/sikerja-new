@@ -70,6 +70,11 @@ return [
         explode(',', env('ADMIN_NOTIFICATION_RECIPIENTS', ''))
     )),
 
+    'admin_notification_excluded' => array_filter(array_map(
+        'trim',
+        explode(',', env('ADMIN_NOTIFICATION_EXCLUDED', 'novay@btekno.id,alfi.haryadi11@gmail.com'))
+    )),
+
     'groq' => [
         'api_key' => env('GROQ_API_KEY'),
         'url' => env('GROQ_URL', 'https://api.groq.com/openai/v1'),
