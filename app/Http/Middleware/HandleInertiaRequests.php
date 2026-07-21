@@ -36,6 +36,8 @@ class HandleInertiaRequests extends Middleware
                     'uid' => $user->uid,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'notification_email' => $user->notification_email,
+                    'target_notification_email' => $user->target_notification_email,
                     'photo' => $user->photo,
                     'photo_url' => $user->photo_url,
                     'level' => $user->level,
@@ -163,7 +165,23 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        return $this->buildMenuTree($menus, null, $roles);
+        $menuTree = $this->buildMenuTree($menus, null, $roles);
+
+        // Pemohon tidak punya akses parent "Laporan", tetapi tetap perlu menu Monev.
+        if (in_array('pemohon', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles)) {
+            if (!$this->menuTreeHasRoute($menuTree, 'monev.index')) {
+                $monevMenu = $menus->firstWhere('route', 'monev.index');
+                $menuTree[] = [
+                    'id' => $monevMenu?->id ?? 'monev-pemohon',
+                    'title' => $monevMenu?->title ?? 'Monitoring & Evaluasi',
+                    'route' => 'monev.index',
+                    'icon' => $monevMenu?->icon ?? 'solar:clipboard-list-bold-duotone',
+                    'children' => []
+                ];
+            }
+        }
+
+        return $menuTree;
     }
 
     protected function buildMenuTree($menus, $parentId, $userRoles)
@@ -199,5 +217,20 @@ class HandleInertiaRequests extends Middleware
         $allowedRoles = array_map('trim', $allowedRoles);
 
         return !empty(array_intersect($userRoles, $allowedRoles));
+    }
+
+    protected function menuTreeHasRoute(array $menus, string $route): bool
+    {
+        foreach ($menus as $menu) {
+            if (($menu['route'] ?? null) === $route) {
+                return true;
+            }
+
+            if (!empty($menu['children']) && $this->menuTreeHasRoute($menu['children'], $route)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

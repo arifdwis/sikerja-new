@@ -75,7 +75,7 @@ class PermohonanObserver
             $user = auth()->user();
 
             $deskripsi = $this->getDeskripsiForStatus($newStatus);
-            if (in_array($newStatus, [Permohonan::STATUS_DITOLAK, 99])) {
+            if (in_array($newStatus, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, 99])) {
                 $deskripsi .= ': ' . ($permohonan->alasan_tolak ?? 'Tidak ada alasan spesifik.');
             }
 
@@ -117,6 +117,7 @@ class PermohonanObserver
             Permohonan::STATUS_PEMBAHASAN           => NotificationTemplate::permohonanDiterima($namaPemohon, $permohonan),
             Permohonan::STATUS_PENJADWALAN          => NotificationTemplate::pembahasanSelesai($namaPemohon, $permohonan),
             Permohonan::STATUS_PELAKSANAAN          => NotificationTemplate::pelaksanaanDimulai($namaPemohon, $permohonan),
+            Permohonan::STATUS_DICABUT              => NotificationTemplate::kerjasamaDicabut($namaPemohon, $permohonan, $permohonan->alasan_tolak ?? '-'),
             Permohonan::STATUS_DITOLAK              => NotificationTemplate::permohonanDitolak($namaPemohon, $permohonan, $permohonan->alasan_tolak ?? '-'),
             default                                 => NotificationTemplate::statusUpdate(
                 $namaPemohon,
@@ -148,9 +149,46 @@ class PermohonanObserver
                 $permohonan,
                 "Status permohonan kerja sama berubah menjadi *" . ($permohonan->status_label['label'] ?? '-') . "*.",
                 auth()->user()?->name,
-                $newStatus === Permohonan::STATUS_DITOLAK ? $permohonan->alasan_tolak : null
+                in_array($newStatus, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT], true)
+                    ? $permohonan->alasan_tolak
+                    : null
             )
         );
+
+        // Jika status dicabut, informasikan juga ke TKKSD Lokus OPD terkait.
+        if ($newStatus === Permohonan::STATUS_DICABUT) {
+            $this->notifyTkksdLokusPencabutan($permohonan);
+        }
+    }
+
+    private function notifyTkksdLokusPencabutan(Permohonan $permohonan): void
+    {
+        $opdIds = $permohonan->opds()->pluck('opd.id')->toArray();
+        if (empty($opdIds)) return;
+
+        $users = User::whereHas('roles', fn($q) => $q->where('slug', 'tkksd_lokus'))
+            ->whereIn('id_opd', $opdIds)
+            ->get();
+
+        if ($users->isEmpty()) return;
+
+        $title = 'Kerjasama Dicabut';
+        $message = 'Kerjasama "' . $permohonan->label . '" dicabut pada tahap pelaksanaan. Alasan: ' . ($permohonan->alasan_tolak ?? '-');
+
+        foreach ($users as $u) {
+            Notifikasi::create([
+                'id_user'  => $u->id,
+                'category' => 'permohonan',
+                'title'    => $title,
+                'message'  => $message,
+                'data'     => json_encode(['uuid' => $permohonan->uuid]),
+                'is_read'  => false,
+            ]);
+
+            if (!empty($u->phone)) {
+                $this->waService->sendMessage($u->phone, $message);
+            }
+        }
     }
 
     /**
@@ -244,6 +282,7 @@ class PermohonanObserver
             Permohonan::STATUS_PASCA_TANDATANGAN    => 'Dokumen tertandatangani diunggah. Menunggu validasi admin.',
             Permohonan::STATUS_PELAKSANAAN          => 'Dokumen disetujui. Kerja sama memasuki tahap pelaksanaan.',
             Permohonan::STATUS_SELESAI              => 'Kerja sama telah selesai.',
+            Permohonan::STATUS_DICABUT              => 'Kerja sama dicabut pada tahap pelaksanaan.',
             Permohonan::STATUS_DITOLAK              => 'Permohonan dikembalikan untuk direvisi',
             default                                 => 'Status permohonan diperbarui.',
         };

@@ -191,26 +191,6 @@ class PksController extends Controller
     }
 
     /**
-     * Notif WA ke admin group saat pemohon upload PKS
-     * @deprecated Pemohon tidak lagi upload PKS final. Disimpan untuk back-compat.
-     */
-    private function notifAdminPksUploaded(Permohonan $permohonan): void
-    {
-        try {
-            $wa = app(WhatsappService::class);
-            $msg = \App\Services\NotificationTemplate::internalGroup(
-                'PKS Final Diunggah',
-                $permohonan,
-                "PKS final telah diunggah dan siap untuk koordinasi waktu penandatanganan.",
-                Auth::user()?->name
-            );
-            $wa->sendToGroup($msg);
-        } catch (\Exception $e) {
-            Log::error('Failed WA notif PKS upload: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Notif ke pemohon saat memasuki pelaksanaan
      */
     private function notifPemohonPelaksanaan(Permohonan $permohonan): void

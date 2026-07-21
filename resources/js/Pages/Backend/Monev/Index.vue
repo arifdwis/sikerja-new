@@ -12,8 +12,8 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Textarea from 'primevue/textarea';
 import Calendar from 'primevue/calendar';
-import Tag from 'primevue/tag';
 import FileUpload from 'primevue/fileupload';
+import Tag from 'primevue/tag';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
 import { useToast } from 'vue-toastification';
@@ -50,11 +50,63 @@ watch(filterQuery, (val) => {
     }, 500);
 });
 
-// Create Form Modal
-const formDialog = ref(false);
-const selectedPermohonan = ref(null);
+const questions = [
+    { key: 'kesesuaian_tujuan', label: 'Kesesuaian dengan tujuan', section: 'Pelaksanaan' },
+    { key: 'ketepatan_waktu', label: 'Ketepatan waktu', section: 'Pelaksanaan' },
+    { key: 'kontribusi_mitra', label: 'Kontribusi mitra', section: 'Pelaksanaan' },
+    { key: 'tingkat_koordinasi', label: 'Tingkat koordinasi', section: 'Pelaksanaan' },
+    { key: 'capaian_indikator', label: 'Capaian indikator', section: 'Capaian' },
+    { key: 'dampak_pelaksanaan', label: 'Dampak pelaksanaan', section: 'Capaian' },
+    { key: 'inovasi_manfaat', label: 'Inovasi & manfaat', section: 'Capaian' },
+    { key: 'kelengkapan_dokumen', label: 'Kelengkapan dokumen', section: 'Administrasi' },
+    { key: 'pelaporan_berkala', label: 'Pelaporan berkala', section: 'Administrasi' },
+    { key: 'relevansi_kebutuhan', label: 'Relevansi kebutuhan', section: 'Rekomendasi' },
+    { key: 'rekomendasi_lanjutan', label: 'Rekomendasi lanjutan', section: 'Rekomendasi' },
+];
 
-const form = useForm({
+const pemohonQuestions = [
+    { key: 'pmh_realisasi_kegiatan', label: 'Realisasi kegiatan sesuai rencana' },
+    { key: 'pmh_kesesuaian_output', label: 'Kesesuaian output terhadap target' },
+    { key: 'pmh_keberlanjutan', label: 'Usulan keberlanjutan' },
+];
+
+const tkksdQuestions = [
+    { key: 'tkl_kepatuhan_pks', label: 'Kepatuhan terhadap PKS' },
+    { key: 'tkl_koordinasi_mitra', label: 'Kualitas koordinasi OPD–mitra' },
+    { key: 'tkl_kesesuaian_anggaran', label: 'Kesesuaian realisasi vs anggaran' },
+    { key: 'tkl_rekomendasi_lokus', label: 'Rekomendasi TKKSD Lokus' },
+];
+
+const adminOptions = {
+    kesesuaian_tujuan: ['Ya seluruhnya', 'Sebagian', 'Tidak'],
+    ketepatan_waktu: ['Tepat waktu', 'Terlambat', 'Tidak terlaksana'],
+    kontribusi_mitra: ['Ya sepenuhnya', 'Sebagian', 'Tidak'],
+    tingkat_koordinasi: ['Sangat baik', 'Baik', 'Cukup', 'Kurang'],
+    capaian_indikator: ['Tercapai seluruhnya', 'Sebagian', 'Tidak'],
+    dampak_pelaksanaan: ['Sangat berdampak', 'Cukup', 'Kurang'],
+    inovasi_manfaat: ['Ya signifikan', 'Ada', 'Tidak'],
+    kelengkapan_dokumen: ['Lengkap', 'Sebagian', 'Tidak'],
+    pelaporan_berkala: ['Rutin', 'Kadang', 'Tidak'],
+    relevansi_kebutuhan: ['Sangat relevan', 'Cukup', 'Tidak'],
+    rekomendasi_lanjutan: ['Dilanjutkan', 'Diperluas', 'Dihentikan'],
+};
+
+const adminGroupedQuestions = computed(() => questions.reduce((groups, q) => {
+    if (!groups[q.section]) groups[q.section] = [];
+    groups[q.section].push(q);
+    return groups;
+}, {}));
+
+const roleFormType = computed(() => (props.isAdmin ? 'admin' : (props.isTkksdLokus ? 'tkksd_lokus' : 'pemohon')));
+const roleFormTitle = computed(() => {
+    if (roleFormType.value === 'admin') return 'Form Monev Admin';
+    if (roleFormType.value === 'tkksd_lokus') return 'Form Monev TKKSD Lokus';
+    return 'Form Monev Pemohon';
+});
+
+const createDialog = ref(false);
+const selectedPermohonan = ref(null);
+const createForm = useForm({
     id_permohonan: null,
     tanggal_evaluasi: new Date(),
     kesesuaian_tujuan: null,
@@ -70,63 +122,48 @@ const form = useForm({
     relevansi_kebutuhan: null,
     rekomendasi_lanjutan: null,
     saran_rekomendasi: '',
+    rating: null,
     file_bukti: null,
+    pmh_realisasi_kegiatan: null,
+    pmh_kesesuaian_output: null,
+    pmh_pemanfaatan_hasil: '',
+    pmh_kendala_lapangan: '',
+    pmh_keberlanjutan: null,
+    pmh_file_laporan: null,
+    tkl_kepatuhan_pks: null,
+    tkl_koordinasi_mitra: null,
+    tkl_kesesuaian_anggaran: null,
+    tkl_temuan_pengawasan: '',
+    tkl_rekomendasi_lokus: null,
+    tkl_catatan: '',
 });
 
-const options = {
-    kesesuaian_tujuan: ['Ya seluruhnya', 'Sebagian', 'Tidak'],
-    ketepatan_waktu: ['Tepat waktu', 'Terlambat', 'Tidak terlaksana'],
-    kontribusi_mitra: ['Ya sepenuhnya', 'Sebagian', 'Tidak'],
-    tingkat_koordinasi: ['Sangat baik', 'Baik', 'Cukup', 'Kurang'],
-    capaian_indikator: ['Tercapai seluruhnya', 'Sebagian', 'Tidak'],
-    dampak_pelaksanaan: ['Sangat berdampak', 'Cukup', 'Kurang'],
-    inovasi_manfaat: ['Ya signifikan', 'Ada', 'Tidak'],
-    kelengkapan_dokumen: ['Lengkap', 'Sebagian', 'Tidak'],
-    pelaporan_berkala: ['Rutin', 'Kadang', 'Tidak'],
-    relevansi_kebutuhan: ['Sangat relevan', 'Cukup', 'Tidak'],
-    rekomendasi_lanjutan: ['Dilanjutkan', 'Diperluas', 'Dihentikan'],
-};
-
-const questions = [
-    { key: 'kesesuaian_tujuan', label: 'Kesesuaian dengan tujuan', section: 'Pelaksanaan' },
-    { key: 'ketepatan_waktu', label: 'Ketepatan waktu', section: 'Pelaksanaan' },
-    { key: 'kontribusi_mitra', label: 'Kontribusi mitra', section: 'Pelaksanaan' },
-    { key: 'tingkat_koordinasi', label: 'Tingkat koordinasi', section: 'Pelaksanaan' },
-    { key: 'capaian_indikator', label: 'Capaian indikator', section: 'Capaian' },
-    { key: 'dampak_pelaksanaan', label: 'Dampak pelaksanaan', section: 'Capaian' },
-    { key: 'inovasi_manfaat', label: 'Inovasi & manfaat', section: 'Capaian' },
-    { key: 'kelengkapan_dokumen', label: 'Kelengkapan dokumen', section: 'Administrasi' },
-    { key: 'pelaporan_berkala', label: 'Pelaporan berkala', section: 'Administrasi' },
-    { key: 'relevansi_kebutuhan', label: 'Relevansi kebutuhan', section: 'Rekomendasi' },
-    { key: 'rekomendasi_lanjutan', label: 'Rekomendasi lanjutan', section: 'Rekomendasi' },
-];
-
-const groupedQuestions = computed(() => questions.reduce((groups, question) => {
-    if (!groups[question.section]) groups[question.section] = [];
-    groups[question.section].push(question);
-    return groups;
-}, {}));
-
-const openFormModal = (permohonan) => {
+const openCreateModal = (permohonan) => {
     selectedPermohonan.value = permohonan;
-    form.reset();
-    form.id_permohonan = permohonan.id;
-    form.tanggal_evaluasi = new Date();
-    formDialog.value = true;
+    createForm.reset();
+    createForm.clearErrors();
+    createForm.id_permohonan = permohonan.id;
+    createForm.tanggal_evaluasi = new Date();
+    createDialog.value = true;
 };
 
-const handleFileSelect = (event) => {
-    form.file_bukti = event.files[0];
-};
-
-const submitForm = () => {
-    form.post(route('monev.store'), {
+const submitCreateForm = () => {
+    createForm.post(route('monev.store'), {
         forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
-            formDialog.value = false;
-            form.reset();
+            createDialog.value = false;
+            createForm.reset();
         }
     });
+};
+
+const onAdminFileSelect = (event) => {
+    createForm.file_bukti = event.files?.[0] || null;
+};
+
+const onPemohonFileSelect = (event) => {
+    createForm.pmh_file_laporan = event.files?.[0] || null;
 };
 
 // Detail Modal
@@ -229,6 +266,40 @@ const getElegantAnswerColor = (answer) => {
     if (positives.includes(answer)) return 'text-emerald-700';
     if (neutrals.includes(answer)) return 'text-amber-700';
     return 'text-rose-700';
+};
+
+const getQuestionsForRole = (role) => {
+    if (role === 'pemohon') return pemohonQuestions;
+    if (role === 'tkksd_lokus') return tkksdQuestions;
+    return questions;
+};
+
+const getQuestionGridClass = (role) => {
+    return role === 'admin' ? 'md:grid-cols-2' : 'md:grid-cols-1';
+};
+
+const getSummaryPelaksanaan = (data) => {
+    if (!data) return '-';
+    if (data.submitter_role === 'pemohon') return data.pmh_realisasi_kegiatan || '-';
+    if (data.submitter_role === 'tkksd_lokus') return data.tkl_kepatuhan_pks || '-';
+    return data.kesesuaian_tujuan || '-';
+};
+
+const getSummaryCapaian = (data) => {
+    if (!data) return '-';
+    if (data.submitter_role === 'pemohon') return data.pmh_kesesuaian_output || '-';
+    if (data.submitter_role === 'tkksd_lokus') return data.tkl_kesesuaian_anggaran || '-';
+    return data.capaian_indikator || '-';
+};
+
+const getSupportFile = (data) => data?.pmh_file_laporan || data?.file_bukti || null;
+
+const getRecommendationValue = (data) => data?.rekomendasi_lanjutan || data?.pmh_keberlanjutan || data?.tkl_rekomendasi_lokus || null;
+const getRecommendationSeverity = (value) => {
+    if (!value) return 'secondary';
+    if (['Dilanjutkan', 'Perlu dilanjutkan', 'Lanjutkan'].includes(value)) return 'success';
+    if (['Diperluas', 'Cukup', 'Perbaiki'].includes(value)) return 'info';
+    return 'danger';
 };
 
 const formatDate = (dateString) => {
@@ -341,7 +412,14 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 </Column>
                                 <Column header="Aksi" style="width: 140px">
                                     <template #body="{ data }">
-                                        <Button v-if="isAdmin || canCreateMonev" label="Buat Monev" icon="pi pi-pencil" severity="secondary" size="small" @click="openFormModal(data)" />
+                                        <Button
+                                            v-if="isAdmin || canCreateMonev"
+                                            label="Buat Monev"
+                                            icon="pi pi-pencil"
+                                            severity="secondary"
+                                            size="small"
+                                            @click="openCreateModal(data)"
+                                        />
                                         <span v-else class="text-xs text-gray-400 italic">Menunggu pemohon</span>
                                     </template>
                                 </Column>
@@ -417,21 +495,21 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 </Column>
                                 <Column header="Pelaksanaan">
                                     <template #body="{ data }">
-                                        <span class="text-xs font-medium" :class="getElegantAnswerColor(data.kesesuaian_tujuan)">
-                                            {{ data.kesesuaian_tujuan || '-' }}
+                                        <span class="text-xs font-medium" :class="getElegantAnswerColor(getSummaryPelaksanaan(data))">
+                                            {{ getSummaryPelaksanaan(data) }}
                                         </span>
                                     </template>
                                 </Column>
                                 <Column header="Capaian">
                                     <template #body="{ data }">
-                                        <span class="text-xs font-medium" :class="getElegantAnswerColor(data.capaian_indikator)">
-                                            {{ data.capaian_indikator || '-' }}
+                                        <span class="text-xs font-medium" :class="getElegantAnswerColor(getSummaryCapaian(data))">
+                                            {{ getSummaryCapaian(data) }}
                                         </span>
                                     </template>
                                 </Column>
                                 <Column header="Rekomendasi">
                                     <template #body="{ data }">
-                                        <Tag v-if="data.rekomendasi_lanjutan" :value="data.rekomendasi_lanjutan" :severity="data.rekomendasi_lanjutan === 'Dilanjutkan' ? 'success' : data.rekomendasi_lanjutan === 'Diperluas' ? 'info' : 'danger'" />
+                                        <Tag v-if="getRecommendationValue(data)" :value="getRecommendationValue(data)" :severity="getRecommendationSeverity(getRecommendationValue(data))" />
                                         <span v-else class="text-gray-400">-</span>
                                     </template>
                                 </Column>
@@ -447,102 +525,129 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
             </div>
         </section>
 
-        <!-- Create Form Modal -->
-        <Dialog v-model:visible="formDialog" modal :style="{ width: '920px' }" :breakpoints="{ '960px': '96vw' }" contentClass="p-0">
-            <template #header>
-                <div class="flex items-start gap-3">
-                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                        <Icon icon="solar:clipboard-check-bold" class="h-5 w-5" />
-                    </span>
+        <Dialog v-model:visible="createDialog" modal :style="{ width: '980px' }" :breakpoints="{ '960px': '96vw' }" :header="roleFormTitle">
+            <form @submit.prevent="submitCreateForm" class="space-y-4">
+                <div class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_260px]">
                     <div>
-                        <h3 class="text-lg font-semibold text-slate-900">Form Monitoring & Evaluasi</h3>
-                        <p class="mt-0.5 text-sm font-normal text-slate-500">Lengkapi penilaian per bagian agar evaluasi mudah ditinjau.</p>
+                        <p class="text-xs font-semibold uppercase text-slate-500">Kerjasama</p>
+                        <p class="mt-1 text-sm font-semibold text-slate-900">{{ selectedPermohonan?.label || '-' }}</p>
+                        <p class="text-xs text-slate-500">{{ selectedPermohonan?.nama_instansi || '-' }}</p>
+                    </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-medium text-slate-700">Tanggal Evaluasi <span class="text-red-500">*</span></label>
+                        <Calendar v-model="createForm.tanggal_evaluasi" dateFormat="dd/mm/yy" showIcon class="w-full" />
+                        <small v-if="createForm.errors.tanggal_evaluasi" class="text-red-500">{{ createForm.errors.tanggal_evaluasi }}</small>
                     </div>
                 </div>
-            </template>
 
-            <form id="monev-modal-form" @submit.prevent="submitForm" class="bg-white px-6 py-5">
-                <div class="grid gap-4 border-b border-slate-200 pb-5 lg:grid-cols-[minmax(0,1fr)_250px]">
-                        <div v-if="selectedPermohonan" class="rounded-lg bg-slate-50 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kerjasama yang dievaluasi</p>
-                            <div class="mt-2 text-base font-semibold text-slate-900">{{ selectedPermohonan.label }}</div>
-                            <div class="mt-1 text-sm text-slate-500">{{ selectedPermohonan.nama_instansi }}</div>
+                <div v-if="roleFormType === 'admin'" class="space-y-4">
+                    <div v-for="(sectionQuestions, sectionName) in adminGroupedQuestions" :key="sectionName" class="rounded-lg border border-slate-200 p-4">
+                        <h4 class="mb-3 text-sm font-semibold text-slate-800">{{ sectionName }}</h4>
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <div v-for="q in sectionQuestions" :key="q.key">
+                                <label class="mb-1 block text-sm text-slate-700">{{ q.label }} <span class="text-red-500">*</span></label>
+                                <Dropdown v-model="createForm[q.key]" :options="adminOptions[q.key]" placeholder="Pilih jawaban" class="w-full" />
+                                <small v-if="createForm.errors[q.key]" class="text-red-500">{{ createForm.errors[q.key] }}</small>
+                            </div>
                         </div>
-
-                        <div class="rounded-lg bg-slate-50 p-4">
-                            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Tanggal Evaluasi <span class="text-red-500">*</span></label>
-                            <Calendar
-                                v-model="form.tanggal_evaluasi"
-                                dateFormat="dd/mm/yy"
-                                showIcon
-                                :manualInput="true"
-                                placeholder="Pilih tanggal evaluasi"
-                                class="mt-2 w-full"
-                            />
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm text-slate-700">Kendala Administrasi</label>
+                            <Textarea v-model="createForm.kendala_administrasi" rows="3" class="w-full" />
                         </div>
+                        <div>
+                            <label class="mb-1 block text-sm text-slate-700">Saran & Rekomendasi</label>
+                            <Textarea v-model="createForm.saran_rekomendasi" rows="3" class="w-full" />
+                        </div>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <label class="mb-2 block text-sm text-slate-700">Bukti Pendukung (opsional)</label>
+                        <FileUpload mode="basic" accept=".pdf,.jpg,.jpeg,.png" :maxFileSize="5000000" chooseLabel="Pilih File" @select="onAdminFileSelect" />
+                    </div>
                 </div>
 
-                <div class="divide-y divide-slate-200">
-                        <section v-for="(sectionQuestions, sectionName) in groupedQuestions" :key="sectionName" class="py-5">
-                            <div class="mb-4 flex items-center gap-2">
-                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                                    <Icon icon="solar:widget-bold" class="h-4 w-4" />
-                                </span>
-                                <div>
-                                    <h4 class="text-sm font-semibold text-slate-900">{{ sectionName }}</h4>
-                                    <p class="text-xs text-slate-500">Pilih jawaban yang paling sesuai.</p>
-                                </div>
-                            </div>
-                            <div class="grid gap-3 md:grid-cols-2">
-                                <div v-for="q in sectionQuestions" :key="q.key" class="flex flex-col gap-2">
-                                    <label class="text-sm font-medium leading-5 text-slate-700">{{ q.label }} <span class="text-red-500">*</span></label>
-                                    <Dropdown v-model="form[q.key]" :options="options[q.key]" placeholder="Pilih jawaban" class="w-full text-sm" :class="{ 'p-invalid': form.errors[q.key] }" />
-                                    <small v-if="form.errors[q.key]" class="text-xs text-red-500">{{ form.errors[q.key] }}</small>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="grid gap-5 py-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div v-else-if="roleFormType === 'pemohon'" class="space-y-4">
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Apakah kegiatan kerjasama terlaksana sesuai rencana? <span class="text-red-500">*</span></label>
                         <div>
-                            <h4 class="text-sm font-semibold text-slate-900">Catatan Evaluasi</h4>
-                            <div class="mt-3 grid gap-3 md:grid-cols-2">
-                                <div class="flex flex-col gap-2">
-                                    <label class="text-sm font-medium text-slate-700">Kendala Administrasi</label>
-                                    <Textarea v-model="form.kendala_administrasi" rows="3" class="w-full text-sm" placeholder="Jelaskan kendala jika ada..." />
-                                </div>
-                                <div class="flex flex-col gap-2">
-                                    <label class="text-sm font-medium text-slate-700">Saran & Rekomendasi</label>
-                                    <Textarea v-model="form.saran_rekomendasi" rows="3" class="w-full text-sm" placeholder="Tuliskan saran..." />
-                                </div>
-                            </div>
+                            <Dropdown v-model="createForm.pmh_realisasi_kegiatan" :options="['Terlaksana penuh','Sebagian','Tidak']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.pmh_realisasi_kegiatan" class="text-red-500">{{ createForm.errors.pmh_realisasi_kegiatan }}</small>
                         </div>
+                    </div>
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Apakah output sesuai target perjanjian? <span class="text-red-500">*</span></label>
+                        <div>
+                            <Dropdown v-model="createForm.pmh_kesesuaian_output" :options="['Ya','Sebagian','Tidak']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.pmh_kesesuaian_output" class="text-red-500">{{ createForm.errors.pmh_kesesuaian_output }}</small>
+                        </div>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <label class="mb-1 block text-sm text-slate-700">Bagaimana hasil kerjasama dimanfaatkan?</label>
+                        <Textarea v-model="createForm.pmh_pemanfaatan_hasil" rows="3" class="w-full" />
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <label class="mb-1 block text-sm text-slate-700">Kendala selama pelaksanaan</label>
+                        <Textarea v-model="createForm.pmh_kendala_lapangan" rows="3" class="w-full" />
+                    </div>
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Usulan keberlanjutan <span class="text-red-500">*</span></label>
+                        <div>
+                            <Dropdown v-model="createForm.pmh_keberlanjutan" :options="['Perlu dilanjutkan','Cukup','Hentikan']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.pmh_keberlanjutan" class="text-red-500">{{ createForm.errors.pmh_keberlanjutan }}</small>
+                        </div>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <label class="mb-2 block text-sm text-slate-700">Upload Laporan Pelaksanaan (opsional)</label>
+                        <FileUpload mode="basic" accept=".pdf,.jpg,.jpeg,.png" :maxFileSize="5000000" chooseLabel="Pilih File" @select="onPemohonFileSelect" />
+                        <small v-if="createForm.errors.pmh_file_laporan" class="text-red-500">{{ createForm.errors.pmh_file_laporan }}</small>
+                    </div>
+                </div>
 
-                        <div class="flex flex-col gap-2">
-                            <label class="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                                <Icon icon="solar:upload-bold" class="h-4 w-4 text-slate-600" />
-                                Bukti Pendukung
-                                <span class="text-xs font-normal text-slate-500">(opsional)</span>
-                            </label>
-                            <p class="text-xs leading-5 text-slate-500">PDF, JPG, atau PNG. Maksimal 5 MB.</p>
-                            <FileUpload mode="basic" accept=".pdf,.jpg,.jpeg,.png" :maxFileSize="5000000" @select="handleFileSelect" chooseLabel="Pilih File" class="w-full" />
-                            <div v-if="form.file_bukti" class="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                                <Icon icon="solar:file-check-bold" class="h-4 w-4" />
-                                <span class="truncate">{{ form.file_bukti.name }}</span>
-                                <span class="ml-auto shrink-0 text-slate-500">{{ (form.file_bukti.size / 1024).toFixed(0) }} KB</span>
-                            </div>
+                <div v-else class="space-y-4">
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Kepatuhan pelaksanaan terhadap PKS <span class="text-red-500">*</span></label>
+                        <div>
+                            <Dropdown v-model="createForm.tkl_kepatuhan_pks" :options="['Patuh','Sebagian','Tidak']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.tkl_kepatuhan_pks" class="text-red-500">{{ createForm.errors.tkl_kepatuhan_pks }}</small>
                         </div>
-                        </section>
+                    </div>
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Kualitas koordinasi OPD–mitra <span class="text-red-500">*</span></label>
+                        <div>
+                            <Dropdown v-model="createForm.tkl_koordinasi_mitra" :options="['Sangat baik','Baik','Cukup','Kurang']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.tkl_koordinasi_mitra" class="text-red-500">{{ createForm.errors.tkl_koordinasi_mitra }}</small>
+                        </div>
+                    </div>
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Kesesuaian realisasi terhadap anggaran <span class="text-red-500">*</span></label>
+                        <div>
+                            <Dropdown v-model="createForm.tkl_kesesuaian_anggaran" :options="['Sesuai','Sebagian','Tidak']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.tkl_kesesuaian_anggaran" class="text-red-500">{{ createForm.errors.tkl_kesesuaian_anggaran }}</small>
+                        </div>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <label class="mb-1 block text-sm text-slate-700">Temuan pengawasan</label>
+                        <Textarea v-model="createForm.tkl_temuan_pengawasan" rows="3" class="w-full" />
+                    </div>
+                    <div class="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-[minmax(0,1fr)_300px] md:items-center">
+                        <label class="text-sm text-slate-700">Rekomendasi lokus <span class="text-red-500">*</span></label>
+                        <div>
+                            <Dropdown v-model="createForm.tkl_rekomendasi_lokus" :options="['Lanjutkan','Perbaiki','Hentikan']" placeholder="Pilih jawaban" class="w-full" />
+                            <small v-if="createForm.errors.tkl_rekomendasi_lokus" class="text-red-500">{{ createForm.errors.tkl_rekomendasi_lokus }}</small>
+                        </div>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <label class="mb-1 block text-sm text-slate-700">Catatan tambahan</label>
+                        <Textarea v-model="createForm.tkl_catatan" rows="3" class="w-full" />
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <Button label="Batal" severity="secondary" text @click="createDialog = false" />
+                    <Button type="submit" label="Simpan Evaluasi" icon="pi pi-check" :loading="createForm.processing" />
                 </div>
             </form>
-            <template #footer>
-                <div class="flex w-full items-center justify-between gap-3">
-                    <p class="hidden text-sm text-slate-500 sm:block">Field bertanda <span class="text-red-500">*</span> wajib diisi.</p>
-                    <div class="ml-auto flex items-center gap-2">
-                        <Button label="Batal" severity="secondary" text @click="formDialog = false" />
-                        <Button type="submit" form="monev-modal-form" label="Simpan Evaluasi" icon="pi pi-check" :loading="form.processing" />
-                    </div>
-                </div>
-            </template>
         </Dialog>
 
         <!-- Detail Modal -->
@@ -578,84 +683,25 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
 
                 <!-- Content -->
                 <div class="space-y-5 px-6 py-5">
-                    <!-- Two Column Layout -->
-                    <div class="grid grid-cols-1 gap-x-8 gap-y-5 lg:grid-cols-2">
-                        
-                        <!-- Evaluasi Pelaksanaan -->
-                        <div>
-                            <h4 class="mb-2 flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
-                                <Icon icon="solar:checklist-minimalistic-bold" class="h-4 w-4 text-slate-500" />
-                                Evaluasi Pelaksanaan
-                            </h4>
-                            <div>
-                                <template v-for="q in questions.filter(x => x.section === 'Pelaksanaan')" :key="q.key">
-                                    <div class="flex flex-col gap-1 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-start sm:justify-between">
-                                        <span class="text-sm text-slate-600">{{ q.label }}</span>
-                                        <span class="text-sm font-semibold sm:text-right" :class="getElegantAnswerColor(selectedMonev[q.key])">
-                                            {{ selectedMonev[q.key] || '-' }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Capaian & Dampak -->
-                        <div>
-                            <h4 class="mb-2 flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
-                                <Icon icon="solar:chart-bold" class="h-4 w-4 text-slate-500" />
-                                Capaian & Dampak
-                            </h4>
-                            <div>
-                                <template v-for="q in questions.filter(x => x.section === 'Capaian')" :key="q.key">
-                                    <div class="flex flex-col gap-1 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-start sm:justify-between">
-                                        <span class="text-sm text-slate-600">{{ q.label }}</span>
-                                        <span class="text-sm font-semibold sm:text-right" :class="getElegantAnswerColor(selectedMonev[q.key])">
-                                            {{ selectedMonev[q.key] || '-' }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Administrasi -->
-                        <div>
-                            <h4 class="mb-2 flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
-                                <Icon icon="solar:document-text-bold" class="h-4 w-4 text-slate-500" />
-                                Administrasi
-                            </h4>
-                            <div>
-                                <template v-for="q in questions.filter(x => x.section === 'Administrasi')" :key="q.key">
-                                    <div class="flex flex-col gap-1 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-start sm:justify-between">
-                                        <span class="text-sm text-slate-600">{{ q.label }}</span>
-                                        <span class="text-sm font-semibold sm:text-right" :class="getElegantAnswerColor(selectedMonev[q.key])">
-                                            {{ selectedMonev[q.key] || '-' }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
-                        <!-- Rekomendasi -->
-                        <div>
-                            <h4 class="mb-2 flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
-                                <Icon icon="solar:flag-bold" class="h-4 w-4 text-slate-500" />
-                                Rekomendasi
-                            </h4>
-                            <div>
-                                <template v-for="q in questions.filter(x => x.section === 'Rekomendasi')" :key="q.key">
-                                    <div class="flex flex-col gap-1 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-start sm:justify-between">
-                                        <span class="text-sm text-slate-600">{{ q.label }}</span>
-                                        <span class="text-sm font-semibold sm:text-right" :class="getElegantAnswerColor(selectedMonev[q.key])">
-                                            {{ selectedMonev[q.key] || '-' }}
-                                        </span>
-                                    </div>
-                                </template>
+                    <div class="rounded-lg border border-slate-200 p-4">
+                        <h4 class="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-800">
+                            <Icon icon="solar:checklist-minimalistic-bold" class="h-4 w-4 text-slate-500" />
+                            Ringkasan Jawaban
+                        </h4>
+                        <div class="grid gap-x-6 gap-y-1" :class="getQuestionGridClass(selectedMonev.submitter_role)">
+                            <div v-for="q in getQuestionsForRole(selectedMonev.submitter_role)" :key="q.key" class="flex flex-col gap-1 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-start sm:justify-between">
+                                <span class="text-sm text-slate-600">{{ q.label }}</span>
+                                <span class="text-sm font-semibold sm:text-right" :class="getElegantAnswerColor(selectedMonev[q.key])">
+                                    {{ selectedMonev[q.key] || '-' }}
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Notes Section -->
-                    <div v-if="selectedMonev.kendala_administrasi || selectedMonev.saran_rekomendasi" class="grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 md:grid-cols-2">
+                    <div
+                        v-if="selectedMonev.kendala_administrasi || selectedMonev.saran_rekomendasi || selectedMonev.pmh_pemanfaatan_hasil || selectedMonev.pmh_kendala_lapangan || selectedMonev.tkl_temuan_pengawasan || selectedMonev.tkl_catatan"
+                        class="grid grid-cols-1 gap-4 border-t border-slate-200 pt-4 md:grid-cols-2"
+                    >
                         <div v-if="selectedMonev.kendala_administrasi">
                             <h4 class="mb-2 text-sm font-semibold text-slate-800">Kendala Administrasi</h4>
                             <p class="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{{ selectedMonev.kendala_administrasi }}</p>
@@ -664,13 +710,28 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                             <h4 class="mb-2 text-sm font-semibold text-slate-800">Saran & Rekomendasi</h4>
                             <p class="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{{ selectedMonev.saran_rekomendasi }}</p>
                         </div>
+                        <div v-if="selectedMonev.pmh_pemanfaatan_hasil">
+                            <h4 class="mb-2 text-sm font-semibold text-slate-800">Pemanfaatan Hasil</h4>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{{ selectedMonev.pmh_pemanfaatan_hasil }}</p>
+                        </div>
+                        <div v-if="selectedMonev.pmh_kendala_lapangan">
+                            <h4 class="mb-2 text-sm font-semibold text-slate-800">Kendala Lapangan</h4>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{{ selectedMonev.pmh_kendala_lapangan }}</p>
+                        </div>
+                        <div v-if="selectedMonev.tkl_temuan_pengawasan">
+                            <h4 class="mb-2 text-sm font-semibold text-slate-800">Temuan Pengawasan</h4>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{{ selectedMonev.tkl_temuan_pengawasan }}</p>
+                        </div>
+                        <div v-if="selectedMonev.tkl_catatan">
+                            <h4 class="mb-2 text-sm font-semibold text-slate-800">Catatan TKKSD Lokus</h4>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-600">{{ selectedMonev.tkl_catatan }}</p>
+                        </div>
                     </div>
 
-                    <!-- File Bukti -->
-                    <div v-if="selectedMonev.file_bukti" class="border-t border-slate-200 pt-4">
-                        <a :href="`/storage/${selectedMonev.file_bukti}`" target="_blank" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
+                    <div v-if="getSupportFile(selectedMonev)" class="border-t border-slate-200 pt-4">
+                        <a :href="`/storage/${getSupportFile(selectedMonev)}`" target="_blank" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50">
                             <Icon icon="solar:file-download-linear" class="w-4 h-4" />
-                            Unduh Bukti Pendukung
+                            Unduh Berkas Pendukung
                         </a>
                     </div>
                 </div>
@@ -778,16 +839,16 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 <Icon icon="solar:calendar-linear" class="h-3.5 w-3.5" />
                                 {{ formatDate(m.tanggal_evaluasi) }}
                             </span>
-                            <Tag v-if="m.rekomendasi_lanjutan" :value="m.rekomendasi_lanjutan" :severity="m.rekomendasi_lanjutan === 'Dilanjutkan' ? 'success' : m.rekomendasi_lanjutan === 'Diperluas' ? 'info' : 'danger'" />
+                            <Tag v-if="getRecommendationValue(m)" :value="getRecommendationValue(m)" :severity="getRecommendationSeverity(getRecommendationValue(m))" />
                         </div>
                     </div>
-                    <div class="mt-3 grid grid-cols-1 gap-x-8 px-1 text-sm md:grid-cols-2">
-                        <div v-for="q in questions" :key="q.key" class="flex flex-col gap-1 border-b border-slate-100 py-2 sm:flex-row sm:justify-between sm:gap-3">
+                    <div class="mt-3 grid grid-cols-1 gap-x-8 px-1 text-sm" :class="getQuestionGridClass(m.submitter_role)">
+                        <div v-for="q in getQuestionsForRole(m.submitter_role)" :key="q.key" class="flex flex-col gap-1 border-b border-slate-100 py-2 sm:flex-row sm:justify-between sm:gap-3">
                             <span class="text-slate-600">{{ q.label }}</span>
                             <span class="font-semibold sm:text-right" :class="getElegantAnswerColor(m[q.key])">{{ m[q.key] || '-' }}</span>
                         </div>
                     </div>
-                    <div v-if="m.kendala_administrasi || m.saran_rekomendasi" class="mt-3 grid grid-cols-1 gap-3 px-1 md:grid-cols-2">
+                    <div v-if="m.kendala_administrasi || m.saran_rekomendasi || m.pmh_pemanfaatan_hasil || m.pmh_kendala_lapangan || m.tkl_temuan_pengawasan || m.tkl_catatan" class="mt-3 grid grid-cols-1 gap-3 px-1 md:grid-cols-2">
                         <div v-if="m.kendala_administrasi">
                             <h5 class="text-xs font-semibold text-slate-700 mb-1">Kendala Administrasi</h5>
                             <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ m.kendala_administrasi }}</p>
@@ -796,20 +857,36 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                             <h5 class="text-xs font-semibold text-slate-700 mb-1">Saran & Rekomendasi</h5>
                             <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ m.saran_rekomendasi }}</p>
                         </div>
+                        <div v-if="m.pmh_pemanfaatan_hasil">
+                            <h5 class="text-xs font-semibold text-slate-700 mb-1">Pemanfaatan Hasil</h5>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ m.pmh_pemanfaatan_hasil }}</p>
+                        </div>
+                        <div v-if="m.pmh_kendala_lapangan">
+                            <h5 class="text-xs font-semibold text-slate-700 mb-1">Kendala Lapangan</h5>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ m.pmh_kendala_lapangan }}</p>
+                        </div>
+                        <div v-if="m.tkl_temuan_pengawasan">
+                            <h5 class="text-xs font-semibold text-slate-700 mb-1">Temuan Pengawasan</h5>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ m.tkl_temuan_pengawasan }}</p>
+                        </div>
+                        <div v-if="m.tkl_catatan">
+                            <h5 class="text-xs font-semibold text-slate-700 mb-1">Catatan TKKSD Lokus</h5>
+                            <p class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{{ m.tkl_catatan }}</p>
+                        </div>
                     </div>
-                    <div v-if="m.file_bukti" class="px-1">
+                    <div v-if="getSupportFile(m)" class="px-1">
                         <div class="mt-3 border-t border-slate-100 pt-3">
                             <h5 class="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
                                 <Icon icon="solar:paperclip-bold" class="w-3.5 h-3.5 text-slate-500" />
                                 Data Dukung / Bukti Pendukung
                             </h5>
                             <a
-                                :href="`/storage/${m.file_bukti}`"
+                                :href="`/storage/${getSupportFile(m)}`"
                                 target="_blank"
                                 class="inline-flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100"
                             >
                                 <Icon icon="solar:file-bold-duotone" class="w-4 h-4" />
-                                <span class="truncate max-w-xs">{{ m.file_bukti.split('/').pop() }}</span>
+                                <span class="truncate max-w-xs">{{ getSupportFile(m).split('/').pop() }}</span>
                                 <Icon icon="solar:download-bold" class="w-3.5 h-3.5 ml-1" />
                             </a>
                         </div>

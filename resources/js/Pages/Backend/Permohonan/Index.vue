@@ -81,9 +81,12 @@ const editDialog = ref(false);
 const trackingSidebar = ref(false);
 const detailDialog = ref(false);
 const uploadDialog = ref(false);
+const statusActionDialog = ref(false);
 const selectedItem = ref(null);
 const detailData = ref(null);
 const loadingDetail = ref(false);
+const pendingStatusAction = ref(null);
+const statusReason = ref('');
 
 onMounted(() => {
     if (props.filters?.detail) {
@@ -178,12 +181,62 @@ const goToDetail = (item) => {
     openDetailModal(item);
 };
 
+const updateExecutionStatus = (nextStatus) => {
+    if (!detailData.value?.uuid) return;
+
+    if (nextStatus === 7) {
+        if (!confirm('Tandai kerjasama ini sebagai selesai?')) return;
+        router.post(route('permohonan.status', detailData.value.uuid), {
+            status: 7,
+            keterangan: 'Kerjasama ditutup oleh admin pada tahap pelaksanaan.',
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Kerjasama berhasil ditandai selesai.');
+                openDetailModal({ uuid: detailData.value.uuid });
+            },
+        });
+        return;
+    }
+
+    pendingStatusAction.value = 8;
+    statusReason.value = '';
+    statusActionDialog.value = true;
+};
+
+const submitStatusAction = () => {
+    if (!detailData.value?.uuid || pendingStatusAction.value !== 8) return;
+    if (!statusReason.value.trim()) {
+        toast.error('Alasan pencabutan wajib diisi.');
+        return;
+    }
+
+    router.post(route('permohonan.status', detailData.value.uuid), {
+        status: 8,
+        keterangan: statusReason.value.trim(),
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success('Kerjasama berhasil dicabut.');
+            statusActionDialog.value = false;
+            openDetailModal({ uuid: detailData.value.uuid });
+        },
+    });
+};
+
 const isAdmin = computed(() => {
     // HandleInertiaRequests menyediakan auth.role (slug terakhir) dan auth.roles (array slug)
     const role = page.props.auth?.role;
     const roles = page.props.auth?.roles || [];
     const adminSlugs = ['administrator', 'admin', 'superadmin', 'super-admin', 'verifikator', 'tkksd'];
     return adminSlugs.includes(role) || roles.some((r) => adminSlugs.includes(r));
+});
+
+const canCreatePermohonan = computed(() => {
+    const role = page.props.auth?.role;
+    const roles = page.props.auth?.roles || [];
+    const blocked = ['administrator', 'admin', 'superadmin'];
+    return !(blocked.includes(role) || roles.some((r) => blocked.includes(r)));
 });
 
 const groupedData = computed(() => {
@@ -224,6 +277,7 @@ const groupedData = computed(() => {
                     v-model:filterQuery="filterQuery" 
                     v-model:viewMode="viewMode" 
                     v-model:groupBy="groupBy" 
+                    :showCreate="canCreatePermohonan"
                     @create="openCreateModal"
                 />
 
@@ -232,6 +286,7 @@ const groupedData = computed(() => {
                     :viewMode="viewMode"
                     :isAdmin="isAdmin"
                     :hasData="filteredData.length > 0"
+                    :showCreate="canCreatePermohonan"
                     @create="openCreateModal"
                     @detail="goToDetail"
                     @edit="openEditModal"
@@ -284,6 +339,42 @@ const groupedData = computed(() => {
             />
         </Dialog>
 
+        <Dialog
+            v-model:visible="statusActionDialog"
+            modal
+            header="Cabut Kerjasama"
+            :style="{ width: '520px' }"
+            :breakpoints="{ '640px': '95vw' }"
+        >
+            <div class="space-y-3">
+                <p class="text-sm text-gray-600 dark:text-gray-300">Masukkan alasan pencabutan kerjasama.</p>
+                <textarea
+                    v-model="statusReason"
+                    rows="4"
+                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    placeholder="Contoh: Salah satu pihak melanggar ketentuan pada pasal ..."
+                />
+            </div>
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        @click="statusActionDialog = false"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                        @click="submitStatusAction"
+                    >
+                        Simpan Pencabutan
+                    </button>
+                </div>
+            </template>
+        </Dialog>
+
         <Dialog v-model:visible="jadwalDialog" modal header="Pengajuan Jadwal" :style="{ width: '50rem' }" :breakpoints="{ '1199px': '75vw', '575px': '90vw' }">
             <JadwalForm :permohonan="selectedItem" @close="jadwalDialog = false" @submitted="handleJadwalSuccess" />
         </Dialog>
@@ -308,6 +399,28 @@ const groupedData = computed(() => {
             :isAdmin="isAdmin"
             @refresh="openDetailModal(detailData)" 
             @upload-complete="handleDetailUploadSuccess"
-        />
+        >
+            <template #footer="{ data }">
+                <div
+                    v-if="isAdmin && Number(data?.status) === 6"
+                    class="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                >
+                    <button
+                        type="button"
+                        class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                        @click="updateExecutionStatus(8)"
+                    >
+                        Cabut Kerjasama
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                        @click="updateExecutionStatus(7)"
+                    >
+                        Tandai Selesai
+                    </button>
+                </div>
+            </template>
+        </DetailModal>
     </AuthenticatedLayout>
 </template>

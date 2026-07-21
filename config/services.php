@@ -70,9 +70,13 @@ return [
         explode(',', env('ADMIN_NOTIFICATION_RECIPIENTS', ''))
     )),
 
-    'ollama' => [
-        'url' => env('OLLAMA_URL', 'http://localhost:11434'),
-        'model' => env('OLLAMA_MODEL', 'llama3.2'),
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
+        'url' => env('GROQ_URL', 'https://api.groq.com/openai/v1'),
+        'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+        'timeout' => env('GROQ_TIMEOUT', 120),
+        'response_cache_ttl' => env('GROQ_RESPONSE_CACHE_TTL', 900),
+        'knowledge_cache_ttl' => env('GROQ_KNOWLEDGE_CACHE_TTL', 600),
     ],
 
 ];

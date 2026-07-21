@@ -12,6 +12,7 @@ const props = defineProps({
       penjadwalan: 0,
       disetujui: 0,
       selesai: 0,
+      dicabut: 0,
       ditolak: 0
     })
   }
@@ -31,12 +32,13 @@ const status_pengajuan = {
   penjadwalan: { label: "Menunggu Penjadwalan",    label_short: "Penjadwalan", color: "from-sky-800 to-sky-600",     icon: "solar:shield-check-broken" },
   disetujui: { label: "Disetujui / TTD",          label_short: "Disetujui", color: "from-blue-800 to-blue-600",   icon: "solar:document-add-broken" },
   selesai: { label: "Selesai",                   label_short: "Selesai",          color: "from-emerald-800 to-emerald-600", icon: "solar:check-circle-broken" },
+  dicabut: { label: "Kerjasama Dicabut",         label_short: "Dicabut",          color: "from-rose-800 to-rose-600", icon: "solar:close-circle-broken" },
   ditolak: { label: "Ditolak / Revisi",        label_short: "Ditolak",    color: "from-red-800 to-red-600", icon: "solar:close-circle-broken" },
 };
 </script>
 
 <template>
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
     <template v-for="(config, key) in status_pengajuan" :key="key">
       <div class="relative flex cursor-pointer flex-col bg-clip-border rounded-xl text-white shadow-md overflow-hidden
                   hover:shadow-xl transition-shadow duration-300 bg-white dark:bg-gray-800">

@@ -1,7 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 
-import { createInertiaApp, Link, Head } from '@inertiajs/vue3';
+import { createInertiaApp, Link, Head, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue, route } from '../../vendor/tightenco/ziggy';
@@ -9,7 +9,7 @@ import { ZiggyVue, route } from '../../vendor/tightenco/ziggy';
 import { DateTime } from 'luxon';
 import { Icon } from '@iconify/vue';
 
-import Toast from "vue-toastification";
+import Toast, { useToast } from "vue-toastification";
 import "vue-toastification/dist/index.css";
 
 import ConfirmationService from 'primevue/confirmationservice';
@@ -217,6 +217,28 @@ createInertiaApp({
             .use(ConfirmationService)
             .use(PrimeVue, PrimeCustom)
             .directive('tooltip', Tooltip);
+
+        // Global Inertia flash → toast bridge.
+        // Controller `redirect()->with('success', ...)` / 'error' / 'warning' / 'info'
+        // otomatis muncul sebagai toast tanpa perlu setup di tiap halaman.
+        // Gunakan useToast() langsung karena vue-toastification hanya pakai inject(),
+        // bukan globalProperties — jadi $toast selalu undefined.
+        const globalToast = useToast();
+        const showFlashToasts = (flash) => {
+            if (!flash) return;
+            if (flash.success) globalToast.success(flash.success);
+            if (flash.error) globalToast.error(flash.error);
+            if (flash.warning) globalToast.warning(flash.warning);
+            if (flash.info) globalToast.info(flash.info);
+        };
+
+        // Listener untuk navigasi Inertia (POST sukses, redirect, dll).
+        router.on('success', (event) => {
+            showFlashToasts(event.detail?.page?.props?.flash);
+        });
+
+        // Cek flash di props saat halaman pertama kali load (mis. setelah hard refresh).
+        showFlashToasts(props.initialPage?.props?.flash);
 
         app.mount(el);
     },

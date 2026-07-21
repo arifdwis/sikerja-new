@@ -20,6 +20,7 @@ class User extends Authenticatable
         'photo',
         'name',
         'email',
+        'notification_email',
         'email_verified_at',
         'password',
         'phone',
@@ -185,23 +186,48 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope: penerima notifikasi admin.
-     *
-     * Bila `services.admin_notification_recipients` di-set, hanya akun dengan
-     * email yang cocok di whitelist itu yang dipilih (bahkan jika sistem punya
-     * banyak akun administrator). Bila kosong, fallback ke semua user
-     * ber-role administrator/superadmin.
+     * Get the active email for receiving notifications.
+     * Falls back to `email` if it is a valid email format.
+     */
+    public function getTargetNotificationEmailAttribute(): ?string
+    {
+        if (!empty($this->notification_email) && filter_var($this->notification_email, FILTER_VALIDATE_EMAIL)) {
+            return $this->notification_email;
+        }
+
+        if (!empty($this->email) && filter_var($this->email, FILTER_VALIDATE_EMAIL)) {
+            return $this->email;
+        }
+
+        return null;
+    }
+
+    /**
+     * Scope: penerima notifikasi admin (semua administrator, superadmin, dan tkksd),
+     * memfilter akun yang dikecualikan (novay & alfi).
      */
     public function scopeAdminNotificationRecipients($query)
     {
         $whitelist = config('services.admin_notification_recipients', []);
+        $excludedEmails = ['novay@btekno.id', 'alfi.haryadi11@gmail.com'];
+        $excludedIds = [3, 6];
 
-        if (!empty($whitelist)) {
-            return $query->whereIn('email', $whitelist);
-        }
+        return $query->where(function ($q) use ($whitelist) {
+            $q->whereHas('roles', function ($roleQuery) {
+                $roleQuery->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
+            });
 
-        return $query->whereHas('roles', function ($q) {
-            $q->whereIn('slug', ['administrator', 'superadmin']);
+            if (!empty($whitelist)) {
+                $q->orWhereIn('email', $whitelist)
+                  ->orWhereIn('notification_email', $whitelist)
+                  ->orWhereIn('uid', $whitelist);
+            }
+        })
+        ->whereNotIn('id', $excludedIds)
+        ->whereNotIn('email', $excludedEmails)
+        ->where(function ($q) use ($excludedEmails) {
+            $q->whereNull('notification_email')
+              ->orWhereNotIn('notification_email', $excludedEmails);
         });
     }
 }

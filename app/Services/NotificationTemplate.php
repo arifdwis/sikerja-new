@@ -181,6 +181,17 @@ class NotificationTemplate
         ];
     }
 
+    public static function kerjasamaDicabut(string $namaPemohon, Permohonan $p, string $alasan): array
+    {
+        $title = 'Kerjasama Dicabut';
+        $msg = "Kerja sama yang sedang berjalan dinyatakan dicabut dan tidak dapat dilanjutkan. Mohon menghentikan pelaksanaan kegiatan serta berkoordinasi dengan pihak terkait sesuai ketentuan yang berlaku.";
+
+        return [
+            'system' => ['title' => $title, 'message' => 'Kerja sama "' . $p->label . '" dicabut. ' . $alasan],
+            'wa'     => self::formalToPemohon($title, $namaPemohon, $p, $msg, $alasan),
+        ];
+    }
+
     /** Tahap 1 → 2: Pembahasan selesai, pemohon ajukan jadwal. */
     public static function pembahasanSelesai(string $namaPemohon, Permohonan $p): array
     {

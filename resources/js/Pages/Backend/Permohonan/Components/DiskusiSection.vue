@@ -1,9 +1,8 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import { Icon } from '@iconify/vue';
 import axios from 'axios';
-import moment from 'moment';
 
 const props = defineProps({
     permohonan: Object,
@@ -19,6 +18,8 @@ const isLoading = ref(false);
 const isSending = ref(false);
 const fileInput = ref(null);
 const chatContainer = ref(null);
+
+let pollInterval = null;
 
 const fileTypes = [
     { id: 'surat_penawaran', label: 'Surat Penawaran Kerjasama', icon: 'solar:file-text-bold', color: 'text-blue-500' },
@@ -161,8 +162,11 @@ const updateFileStatusInMessages = (fileId, newStatus) => {
 
 onMounted(() => {
     fetchMessages();
-    // Poll for new messages every 10 seconds
-    setInterval(fetchMessages, 10000);
+    pollInterval = setInterval(fetchMessages, 10000);
+});
+
+onUnmounted(() => {
+    if (pollInterval) clearInterval(pollInterval);
 });
 </script>
 
@@ -252,7 +256,7 @@ onMounted(() => {
         <!-- Input Area -->
         <div class="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
             <!-- File Upload Suggestions (Hidden if Admin or Status Selesai/Ditolak) -->
-            <div v-if="!isAdmin && ![4, 9].includes(permohonan.status)" class="flex gap-2 mb-3 overflow-x-auto pb-2">
+            <div v-if="!isAdmin && ![4, 8, 9].includes(permohonan.status)" class="flex gap-2 mb-3 overflow-x-auto pb-2">
                 <button v-for="type in fileTypes" :key="type.id" 
                     @click="openUploadDialog(type)"
                     class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all shrink-0"

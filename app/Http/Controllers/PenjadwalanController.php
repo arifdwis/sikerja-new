@@ -33,9 +33,7 @@ class PenjadwalanController extends Controller implements HasMiddleware
     {
         return [
             new Middleware('can:penjadwalan.index', only: ['index']),
-            // Custom authorization for store to allow pemohon
-            // new Middleware('can:penjadwalan.create', only: ['create', 'store']),
-            new Middleware('can:penjadwalan.edit', only: ['edit', 'update']),
+            new Middleware('can:penjadwalan.edit', only: ['edit', 'update', 'review']),
         ];
     }
 
@@ -154,10 +152,9 @@ class PenjadwalanController extends Controller implements HasMiddleware
      */
     public function review(Request $request, string $uuid)
     {
-        // Check permission (Admin only)
-        // if (!$request->user()->can('penjadwalan.edit')) {
-        //     abort(403);
-        // }
+        if (!$request->user()->can('penjadwalan.edit')) {
+            abort(403);
+        }
 
         $request->validate([
             'status' => 'required|in:1,2', // 1: Approve, 2: Reject

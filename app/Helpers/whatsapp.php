@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\SendWhatsAppJob;
+use App\Services\WhatsappService;
 
 /**
  * Normalize phone number to standard format (628xxx)
@@ -31,119 +32,46 @@ if (!function_exists('normalize_phone')) {
 }
 
 /**
- * Send WhatsApp message to a number (async via Job)
+ * Send email notification to a user/number
  */
 if (!function_exists('send_whatsapp')) {
-    function send_whatsapp($number, $message)
+    function send_whatsapp($target, $message)
     {
-        if (!config('services.whatsapp.enabled', false)) {
-            return false;
-        }
-
-        $normalizedNumber = normalize_phone($number);
-        if (!$normalizedNumber) {
-            \Log::warning('WhatsApp: Invalid phone number', ['number' => $number]);
-            return false;
-        }
-
-        $finalNumber = $normalizedNumber . '@s.whatsapp.net';
-        SendWhatsAppJob::dispatch($finalNumber, $message)->delay(3);
-        return true;
+        return app(WhatsappService::class)->sendMessage($target, $message);
     }
 }
 
 /**
- * Send WhatsApp message to group (async via Job)
+ * Send email notification to group (admins & TKKSD)
  */
 if (!function_exists('send_group_whatsapp')) {
     function send_group_whatsapp($message, $groupId = null)
     {
-        if (!config('services.whatsapp.enabled', false)) {
-            return false;
-        }
-
-        $number = $groupId ?? config('services.whatsapp.group_id');
-        SendWhatsAppJob::dispatch($number, $message)->delay(3);
-        return true;
+        return app(WhatsappService::class)->sendToGroup($message, $groupId);
     }
 }
 
 /**
- * Send WhatsApp message to admin group (async via Job)
+ * Send email notification to admin group
  */
 if (!function_exists('send_admin_whatsapp')) {
     function send_admin_whatsapp($message)
     {
-        if (!config('services.whatsapp.enabled', false)) {
-            return false;
-        }
-
-        $groupId = config('services.whatsapp.admin_group_id');
-        SendWhatsAppJob::dispatch($groupId, $message)->delay(3);
-        return true;
+        return app(WhatsappService::class)->sendToAdmin('admin', $message);
     }
 }
 
 /**
- * Send WhatsApp message synchronously (for immediate sending)
+ * Send email notification synchronously
  */
 if (!function_exists('send_whatsapp_sync')) {
-    function send_whatsapp_sync($number, $message)
+    function send_whatsapp_sync($target, $message)
     {
-        if (!config('services.whatsapp.enabled', false)) {
-            return ['success' => false, 'message' => 'WA Gateway is disabled'];
-        }
-
-        $url = config('services.whatsapp.url');
-        $username = config('services.whatsapp.username');
-        $password = config('services.whatsapp.password');
-
-        if (strpos($number, '@') === false) {
-            $normalized = normalize_phone($number);
-            if ($normalized) {
-                $number = $normalized . '@s.whatsapp.net';
-            }
-        }
-
-        try {
-            $client = new \GuzzleHttp\Client([
-                'verify' => false,
-                'timeout' => 15,
-                'http_errors' => false
-            ]);
-
-            $res = $client->post($url, [
-                'auth' => [$username, $password],
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => [
-                    'number' => $number,
-                    'message' => $message,
-                ],
-            ]);
-
-            $statusCode = $res->getStatusCode();
-            $response = json_decode($res->getBody(), true);
-
-            return [
-                'success' => $statusCode === 200,
-                'status' => $statusCode,
-                'data' => $response
-            ];
-
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
-            return [
-                'success' => false,
-                'message' => 'Request Error: ' . $e->getMessage(),
-                'code' => $e->getCode()
-            ];
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'General Error: ' . $e->getMessage(),
-            ];
-        }
+        $success = app(WhatsappService::class)->sendMessage($target, $message);
+        return [
+            'success' => $success,
+            'status'  => $success ? 200 : 500,
+            'data'    => ['message' => $success ? 'Mail sent' : 'Mail failed']
+        ];
     }
 }

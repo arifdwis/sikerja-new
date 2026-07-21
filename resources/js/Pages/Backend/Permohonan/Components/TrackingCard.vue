@@ -10,12 +10,16 @@ const props = defineProps({
 const page = usePage();
 
 // Status Mapping (From Permohonan Model)
-// 0: PERMOHONAN, 1: PEMBAHASAN, 2: PENJADWALAN, 3: DISETUJUI, 4: SELESAI, 9: DITOLAK
+// 0..7 proses utama, 8 dicabut, 9 ditolak/revisi
 const statusSteps = [
-    { id: 0, label: 'Permohonan Masuk', icon: 'solar:file-send-linear', color: 'text-yellow-600', ring: 'ring-yellow-500', bg: 'bg-yellow-500' },
-    { id: 1, label: 'Validasi & Pembahasan', icon: 'solar:clipboard-check-linear', color: 'text-blue-600', ring: 'ring-blue-500', bg: 'bg-blue-500' },
-    { id: 2, label: 'Penjadwalan', icon: 'solar:calendar-date-linear', color: 'text-indigo-600', ring: 'ring-indigo-500', bg: 'bg-indigo-500' },
-    { id: 4, label: 'Selesai', icon: 'solar:check-circle-linear', color: 'text-green-600', ring: 'ring-green-500', bg: 'bg-green-500' }
+    { id: 0, label: 'Permohonan Masuk', icon: 'solar:file-send-linear', activeClass: 'border-amber-500 text-amber-600 ring-4 ring-amber-100' },
+    { id: 1, label: 'Validasi & Pembahasan', icon: 'solar:clipboard-check-linear', activeClass: 'border-sky-500 text-sky-600 ring-4 ring-sky-100' },
+    { id: 2, label: 'Penjadwalan', icon: 'solar:calendar-date-linear', activeClass: 'border-blue-500 text-blue-600 ring-4 ring-blue-100' },
+    { id: 3, label: 'Upload PKS Final (Admin)', icon: 'solar:document-add-linear', activeClass: 'border-violet-500 text-violet-600 ring-4 ring-violet-100' },
+    { id: 4, label: 'Menunggu Penandatanganan', icon: 'solar:pen-new-square-linear', activeClass: 'border-pink-500 text-pink-600 ring-4 ring-pink-100' },
+    { id: 5, label: 'Validasi Dokumen TTD', icon: 'solar:shield-check-linear', activeClass: 'border-orange-500 text-orange-600 ring-4 ring-orange-100' },
+    { id: 6, label: 'Pelaksanaan Kerjasama', icon: 'solar:buildings-3-linear', activeClass: 'border-teal-500 text-teal-600 ring-4 ring-teal-100' },
+    { id: 7, label: 'Selesai', icon: 'solar:check-circle-linear', activeClass: 'border-emerald-500 text-emerald-600 ring-4 ring-emerald-100' },
 ];
 
 const currentStatusId = computed(() => {
@@ -25,12 +29,9 @@ const currentStatusId = computed(() => {
 const getStepState = (stepId) => {
     const current = currentStatusId.value;
     
-    // If rejected
-    if (current === 9) return 'rejected';
+    // Dicabut atau ditolak tidak berada di jalur progres normal
+    if ([8, 9].includes(current)) return 'rejected';
     
-    // Status 3 (Disetujui) maps to completion of Penjadwalan (2)
-    if (current === 3 && stepId <= 2) return 'completed';
-
     if (current > stepId) return 'completed';
     if (current === stepId) return 'active';
     
@@ -59,7 +60,7 @@ const histories = computed(() => {
 
         <!-- Timeline -->
         <div class="relative">
-            <div v-for="(step, index) in statusSteps" :key="step.id" class="flex gap-4 mb-8 relative last:mb-0">
+            <div v-for="(step, index) in statusSteps" :key="step.id" class="flex gap-4 mb-6 relative last:mb-0">
                 
                 <!-- Connector Line -->
                 <div v-if="index < statusSteps.length - 1" 
@@ -71,7 +72,7 @@ const histories = computed(() => {
                 <div class="relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-gray-800 transition-all duration-300"
                      :class="[
                         getStepState(step.id) === 'completed' ? 'border-green-500 text-green-500' : 
-                        getStepState(step.id) === 'active' ? `border-${step.ring ? step.ring.split('-')[1] : 'blue'}-500 ${step.color} ring-4 ring-opacity-20 ${step.ring}` : 
+                        getStepState(step.id) === 'active' ? step.activeClass :
                         'border-gray-300 text-gray-400 dark:border-gray-600'
                      ]"
                 >
@@ -106,6 +107,19 @@ const histories = computed(() => {
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div
+            v-if="currentStatusId === 9"
+            class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
+        >
+            Permohonan berstatus ditolak/revisi. Silakan perbaiki data lalu ajukan ulang.
+        </div>
+        <div
+            v-else-if="currentStatusId === 8"
+            class="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300"
+        >
+            Kerjasama dicabut pada tahap pelaksanaan. Proses dihentikan dan tidak dapat dilanjutkan.
         </div>
 
         <!-- Full History List Toggle or Footer -->

@@ -69,20 +69,28 @@ const applyFilters = () => {
 };
 
 const statusColors = {
-    0: 'bg-teal-50 text-teal-700 border-teal-200', // Baru
-    1: 'bg-cyan-50 text-cyan-700 border-cyan-200', // Pembahasan
-    2: 'bg-blue-50 text-blue-700 border-blue-200', // Penjadwalan
-    3: 'bg-indigo-50 text-indigo-700 border-indigo-200', // Disetujui
-    4: 'bg-green-50 text-green-700 border-green-200', // Selesai
-    9: 'bg-red-50 text-red-700 border-red-200', // Ditolak
+    0: 'bg-amber-50 text-amber-700 border-amber-200',
+    1: 'bg-sky-50 text-sky-700 border-sky-200',
+    2: 'bg-blue-50 text-blue-700 border-blue-200',
+    3: 'bg-violet-50 text-violet-700 border-violet-200',
+    4: 'bg-pink-50 text-pink-700 border-pink-200',
+    5: 'bg-orange-50 text-orange-700 border-orange-200',
+    6: 'bg-teal-50 text-teal-700 border-teal-200',
+    7: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    8: 'bg-rose-50 text-rose-700 border-rose-200',
+    9: 'bg-red-50 text-red-700 border-red-200',
 };
 
 const statusLabels = {
-    0: 'Permohonan',
-    1: 'Pembahasan',
-    2: 'Penjadwalan',
-    3: 'Persetujuan', 
-    4: 'Selesai',
+    0: 'Menunggu Validasi',
+    1: 'Dalam Pembahasan',
+    2: 'Menunggu Jadwal Penandatanganan',
+    3: 'Upload PKS Final',
+    4: 'Menunggu Penandatanganan',
+    5: 'Validasi Dokumen Pasca-Tandatangan',
+    6: 'Pelaksanaan Kerjasama',
+    7: 'Selesai',
+    8: 'Dicabut',
     9: 'Ditolak',
 };
 

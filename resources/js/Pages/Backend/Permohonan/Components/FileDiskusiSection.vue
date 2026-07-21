@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'vue-toastification';
@@ -23,6 +23,8 @@ const newMessage = ref('');
 const isLoading = ref(false);
 const isSending = ref(false);
 const chatContainer = ref(null);
+
+let pollInterval = null;
 
 // File review state
 const isReviewing = ref(false);
@@ -241,8 +243,11 @@ watch(() => props.file, (newFile) => {
 }, { immediate: true });
 
 onMounted(() => {
-    // Poll for new messages every 15 seconds
-    setInterval(fetchMessages, 15000);
+    pollInterval = setInterval(fetchMessages, 15000);
+});
+
+onUnmounted(() => {
+    if (pollInterval) clearInterval(pollInterval);
 });
 </script>
 

@@ -32,7 +32,7 @@ const closeAfterUpload = () => {
 
 // Status mapping (sesuai konstanta Permohonan)
 // 0 Permohonan Baru | 1 Pembahasan | 2 Penjadwalan | 3 Jadwal Disetujui (Upload PKS)
-// 4 Menunggu TTD | 5 Pasca-TTD | 6 Pelaksanaan | 7 Selesai | 9 Ditolak
+// 4 Menunggu TTD | 5 Pasca-TTD | 6 Pelaksanaan | 7 Selesai | 8 Dicabut | 9 Ditolak
 const status = computed(() => Number(props.data?.status ?? 0));
 
 const showSchedule = computed(() => status.value >= 2 || (props.data?.penjadwalans?.length ?? 0) > 0);
@@ -44,7 +44,7 @@ const showDocuments = computed(() => true);
 const isInitialStage = computed(() => [0, 1, 9].includes(status.value));
 const isScheduleStage = computed(() => status.value === 2);
 const isSigningStage = computed(() => [3, 4, 5].includes(status.value));
-const isExecutionStage = computed(() => [6, 7].includes(status.value));
+const isExecutionStage = computed(() => [6, 7, 8].includes(status.value));
 
 const stages = [
     { order: 0, ids: [0], label: 'Validasi', icon: 'solar:clipboard-check-bold' },
@@ -53,6 +53,7 @@ const stages = [
     { order: 3, ids: [3, 4, 5], label: 'Tanda Tangan', icon: 'solar:pen-new-square-bold' },
     { order: 4, ids: [6], label: 'Pelaksanaan', icon: 'solar:rocket-bold' },
     { order: 5, ids: [7], label: 'Selesai', icon: 'solar:verified-check-bold' },
+    { order: 6, ids: [8], label: 'Dicabut', icon: 'solar:close-circle-bold' },
 ];
 
 const stageContext = computed(() => {
@@ -105,6 +106,12 @@ const stageContext = computed(() => {
             tone: 'border-emerald-200 bg-white text-slate-900',
             icon: 'solar:verified-check-bold',
         },
+        8: {
+            title: 'Kerja Sama Dicabut',
+            detail: 'Kerja sama dihentikan sebelum selesai karena pelanggaran atau keputusan pencabutan.',
+            tone: 'border-rose-200 bg-rose-50 text-rose-900',
+            icon: 'solar:close-circle-bold',
+        },
         9: {
             title: 'Permohonan Perlu Revisi',
             detail: 'Perbaiki data permohonan lalu ajukan kembali sesuai alasan penolakan.',
@@ -126,6 +133,7 @@ const stageState = (stage) => {
         5: 3,
         6: 4,
         7: 5,
+        8: 6,
         9: 1,
     }[status.value] ?? 0;
 

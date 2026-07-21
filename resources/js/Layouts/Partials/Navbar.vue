@@ -56,6 +56,7 @@ const getInitials = (name) => {
 };
 
 const currentDateTime = ref('');
+let clockInterval = null;
 const getCurrentDateTime = () => {
   const now = new Date();
   return now.toISOString().slice(0, 19).replace('T', ' ');
@@ -63,7 +64,7 @@ const getCurrentDateTime = () => {
 
 onMounted(() => {
   currentDateTime.value = getCurrentDateTime();
-  setInterval(() => {
+  clockInterval = setInterval(() => {
     currentDateTime.value = getCurrentDateTime();
   }, 1000);
 
@@ -81,6 +82,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (clockInterval) clearInterval(clockInterval);
   window.removeEventListener('resize', updateMobileState);
 });
 

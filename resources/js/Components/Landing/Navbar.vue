@@ -47,70 +47,77 @@ onUnmounted(() => {
 
 <template>
     <nav :class="[
-        'fixed top-0 left-0 right-0 z-[100] transition-all duration-300',
-        isScrolled ? 'bg-white/95 backdrop-blur-lg shadow-lg' : 'bg-white/10 backdrop-blur-md border-b border-white/20'
+        'fixed left-0 right-0 z-[100] transition-all duration-500',
+        isScrolled 
+            ? 'top-4 max-w-7xl mx-4 lg:mx-auto bg-white/85 dark:bg-slate-950/85 backdrop-blur-xl shadow-xl shadow-slate-900/5 border border-slate-200/60 dark:border-slate-800/60 rounded-3xl' 
+            : 'top-0 bg-transparent border-b border-white/10'
     ]" class="font-['Inter']">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="flex items-center justify-between h-20">
+        <div class="max-w-7xl mx-auto">
+            <div :class="[
+                'flex items-center justify-between transition-all duration-500',
+                isScrolled ? 'h-16 px-6 lg:px-8' : 'h-20 px-6 lg:px-8'
+            ]">
                 <Link href="/" class="flex items-center gap-3">
-                    <img src="/foto/logo-sikerja.svg" alt="SiKerja" class="w-10 h-10 rounded-lg shadow-lg" />
+                    <img src="/foto/logo-sikerja.svg" alt="SiKerja" class="w-10 h-10 rounded-xl shadow-lg border border-white/20 transition-transform duration-300 hover:scale-105" />
                     <span :class="[
-                        'font-[\'Outfit\'] text-xl font-black transition-colors',
-                        isScrolled ? 'text-gray-900 dark:text-white' : 'text-white'
+                        'font-[\'Outfit\'] text-xl font-black tracking-wider transition-colors',
+                        isScrolled ? 'text-slate-900 dark:text-white' : 'text-white'
                     ]">SIKERJA</span>
                 </Link>
 
                 <div class="hidden md:flex items-center gap-8">
                     <Link href="/" :class="[
-                        'font-semibold hover:text-amber-300 transition-colors',
-                        isScrolled ? 'text-gray-900' : 'text-white'
+                        'font-semibold transition-colors',
+                        isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Beranda</Link>
                     <Link href="/alur" :class="[
-                        'font-semibold hover:text-amber-300 transition-colors',
-                        isScrolled ? 'text-gray-900' : 'text-white'
+                        'font-semibold transition-colors',
+                        isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Alur Proses</Link>
                     <Link href="/infografis" :class="[
-                        'font-semibold hover:text-amber-300 transition-colors',
-                        isScrolled ? 'text-gray-900' : 'text-white'
+                        'font-semibold transition-colors',
+                        isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Infografis</Link>
                     
                     <!-- Mega Menu Dropdown -->
                     <div class="relative group" v-if="lamanMenu.length">
-                        <button class="flex items-center gap-1 font-semibold hover:text-amber-300 transition-colors py-8"
-                            :class="isScrolled ? 'text-gray-900' : 'text-white'">
+                        <button class="flex items-center gap-1 font-semibold transition-colors py-4"
+                            :class="isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'">
                             Informasi
                             <Icon icon="solar:alt-arrow-down-bold" class="w-4 h-4 transition-transform duration-200 group-hover:rotate-180" />
                         </button>
                         
                         <!-- Mega Menu Content -->
-                        <div class="absolute top-full right-[-100px] mt-0 w-[800px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden transform opacity-0 translate-y-2 invisible group-hover:opacity-100 group-hover:translate-y-0 group-hover:visible transition-all duration-300">
-                            <div class="grid grid-cols-3 gap-0 divide-x divide-gray-100 dark:divide-gray-800">
+                        <div class="absolute top-full right-[-100px] mt-0 w-[800px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden transform opacity-0 translate-y-2 invisible group-hover:opacity-100 group-hover:translate-y-0 group-hover:visible transition-all duration-300">
+                            <div class="grid grid-cols-3 gap-0 divide-x divide-slate-100 dark:divide-slate-800">
                                 <div v-for="(group, key) in groupedLaman" :key="key" class="p-6">
                                     <div class="flex items-center gap-3 mb-4">
-                                        <div :class="['p-2 rounded-lg bg-gray-50 dark:bg-gray-800', group.color]">
+                                        <div :class="['p-2 rounded-lg bg-slate-50 dark:bg-slate-800', group.color]">
                                             <Icon :icon="group.icon" class="w-5 h-5" />
                                         </div>
-                                        <h3 class="font-bold text-gray-900 dark:text-white">{{ group.title }}</h3>
+                                        <h3 class="font-bold text-slate-900 dark:text-white">{{ group.title }}</h3>
                                     </div>
-                                    <ul class="space-y-3">
+                                    <ul class="space-y-1.5">
                                         <li v-for="(item, idx) in group.items" :key="idx">
-                                            <Link :href="item.url" class="group/item flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-amber-600 transition-colors">
-                                                <Icon icon="solar:arrow-right-linear" class="w-4 h-4 mt-0.5 opacity-0 -translate-x-2 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all text-amber-500" />
-                                                <span class="line-clamp-2 transform translate-x-[-1rem] group-hover/item:translate-x-0 transition-transform duration-200">{{ item.label }}</span>
+                                            <Link :href="item.url" class="group/item flex items-center gap-3 p-2 rounded-xl hover:bg-amber-500/10 dark:hover:bg-amber-400/10 text-sm text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 transition-all duration-200">
+                                                <div class="w-7 h-7 rounded-lg bg-slate-50 dark:bg-slate-800 group-hover/item:bg-amber-500/20 flex items-center justify-center shrink-0 transition-colors">
+                                                    <Icon icon="solar:document-linear" class="w-4.5 h-4.5 text-slate-400 dark:text-slate-500 group-hover/item:text-amber-500 dark:group-hover/item:text-amber-400 transition-colors" />
+                                                </div>
+                                                <span class="font-medium line-clamp-2 transition-transform duration-200 group-hover/item:translate-x-1">{{ item.label }}</span>
                                             </Link>
                                         </li>
-                                        <li v-if="group.items.length === 0" class="text-xs text-gray-400 italic">Tidak ada dokumen</li>
+                                        <li v-if="group.items.length === 0" class="text-xs text-slate-400 italic px-2 py-1">Tidak ada dokumen</li>
                                     </ul>
                                 </div>
                             </div>
                             <!-- Static Footer Links inside Menu -->
-                            <div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-3 flex justify-between items-center border-t border-gray-100 dark:border-gray-800">
-                                <span class="text-xs text-gray-500 font-medium tracking-wide">PUSAT BANTUAN</span>
+                            <div class="bg-slate-50/50 dark:bg-slate-800/30 px-6 py-3 flex justify-between items-center border-t border-slate-100 dark:border-slate-800">
+                                <span class="text-xs text-slate-500 font-medium tracking-wide">PUSAT BANTUAN</span>
                                 <div class="flex gap-4 text-sm font-semibold">
-                                    <Link href="/tentang" class="text-gray-600 hover:text-amber-600 transition-colors flex items-center gap-1">
+                                    <Link href="/tentang" class="text-slate-600 hover:text-amber-600 transition-colors flex items-center gap-1">
                                         Tentang Kami
                                     </Link>
-                                    <Link href="/faq" class="text-gray-600 hover:text-amber-600 transition-colors flex items-center gap-1">
+                                    <Link href="/faq" class="text-slate-600 hover:text-amber-600 transition-colors flex items-center gap-1">
                                         FAQ
                                     </Link>
                                 </div>
@@ -119,11 +126,11 @@ onUnmounted(() => {
                     </div>
                     
                     <Link v-else href="/tentang" :class="[
-                        'font-semibold hover:text-amber-300 transition-colors',
-                        isScrolled ? 'text-gray-900' : 'text-white'
+                        'font-semibold transition-colors',
+                        isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Tentang</Link>
 
-                    <Link href="/login" class="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-amber-400 text-slate-900 shadow-lg hover:shadow-xl hover:scale-[1.03] transition-all duration-300">
+                    <Link href="/login" class="inline-flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded-xl bg-amber-400 text-slate-900 shadow-lg shadow-amber-400/20 hover:shadow-xl hover:scale-[1.03] transition-all duration-300">
                         <Icon icon="solar:login-3-bold" class="w-4 h-4" />
                         Masuk
                     </Link>
@@ -143,14 +150,15 @@ onUnmounted(() => {
                 <Link href="/alur" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Alur Proses</Link>
                 <Link href="/infografis" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Infografis</Link>
                 
-                <div v-if="lamanMenu.length" class="space-y-4 pl-4 border-l-2 border-gray-100 dark:border-gray-800 my-2">
+                <div v-if="lamanMenu.length" class="space-y-4 pl-4 border-l border-gray-200 dark:border-gray-800 my-2">
                     <div v-for="(group, key) in groupedLaman" :key="key">
-                        <div class="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                            <Icon :icon="group.icon" /> {{ group.title }}
+                        <div class="flex items-center gap-2 mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                            <Icon :icon="group.icon" class="w-4 h-4 text-amber-500" /> {{ group.title }}
                         </div>
-                        <div class="space-y-2">
-                            <Link v-for="(item, idx) in group.items" :key="idx" :href="item.url" class="block py-1 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-amber-500">
-                                {{ item.label }}
+                        <div class="space-y-1">
+                            <Link v-for="(item, idx) in group.items" :key="idx" :href="item.url" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-amber-500/10 hover:text-amber-600 transition-colors">
+                                <Icon icon="solar:document-linear" class="w-4 h-4 text-gray-400 shrink-0" />
+                                <span class="truncate">{{ item.label }}</span>
                             </Link>
                         </div>
                     </div>

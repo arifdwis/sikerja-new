@@ -56,9 +56,9 @@ Route::get('/api/kotas-all', function () {
     }));
 })->name('api.kotas.all');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified', 'pemohon.profile'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified', 'ensure.email', 'pemohon.profile'])->name('dashboard');
 
-Route::middleware(['auth', 'pemohon.profile'])->group(function () {
+Route::middleware(['auth', 'ensure.email', 'pemohon.profile'])->group(function () {
 
     // PEMOHON Routings
     require __DIR__ . '/pemohon.php';

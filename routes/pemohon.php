@@ -25,6 +25,14 @@ Route::post('permohonan/file/{uuid}/diskusi', [PermohonanController::class, 'sto
 Route::put('permohonan/file/{uuid}/review', [PermohonanController::class, 'reviewFile'])->name('permohonan.file.review');
 Route::post('permohonan/file/{uuid}/revision', [PermohonanController::class, 'uploadFileRevision'])->name('permohonan.file.revision');
 
+// Diskusi Pembahasan (API-like JSON endpoints — new controller)
+Route::get('permohonan/{uuid}/pembahasan', [\App\Http\Controllers\PermohonanPembahasanController::class, 'index'])->name('permohonan.pembahasan.index');
+Route::post('permohonan/{uuid}/pembahasan', [\App\Http\Controllers\PermohonanPembahasanController::class, 'store'])->name('permohonan.pembahasan.store');
+Route::get('permohonan/file/{fileUuid}/pembahasan', [\App\Http\Controllers\PermohonanPembahasanController::class, 'fileIndex'])->name('permohonan.file.pembahasan.index');
+Route::post('permohonan/file/{fileUuid}/pembahasan', [\App\Http\Controllers\PermohonanPembahasanController::class, 'fileStore'])->name('permohonan.file.pembahasan.store');
+Route::put('permohonan/file/{fileUuid}/pembahasan-review', [\App\Http\Controllers\PermohonanPembahasanController::class, 'reviewFile'])->name('permohonan.file.pembahasan-review');
+Route::post('permohonan/file/{fileUuid}/pembahasan-revision', [\App\Http\Controllers\PermohonanPembahasanController::class, 'uploadRevision'])->name('permohonan.file.pembahasan-revision');
+
 // Monev (Pemohon & Admin)
 Route::get('monev', [MonevController::class, 'index'])->name('monev.index');
 Route::get('monev/create', [MonevController::class, 'create'])->name('monev.create');
@@ -40,3 +48,11 @@ Route::post('permohonan/{uuid}/pks', [\App\Http\Controllers\PksController::class
 // Upload dokumen tertandatangani (Req 9) - Pemohon
 Route::post('permohonan/{uuid}/ttd', [\App\Http\Controllers\PenandatangananController::class, 'uploadTtd'])
     ->name('permohonan.ttd.store');
+
+// Notifikasi (In-app)
+Route::get('notifikasi', [\App\Http\Controllers\NotifikasiController::class, 'index'])->name('notifikasi.index');
+Route::get('notifikasi/unread-count', [\App\Http\Controllers\NotifikasiController::class, 'unreadCount'])->name('notifikasi.unread-count');
+Route::get('notifikasi/recent', [\App\Http\Controllers\NotifikasiController::class, 'recent'])->name('notifikasi.recent');
+Route::put('notifikasi/{uuid}/read', [\App\Http\Controllers\NotifikasiController::class, 'markAsRead'])->name('notifikasi.mark-read');
+Route::put('notifikasi/read-all', [\App\Http\Controllers\NotifikasiController::class, 'markAllAsRead'])->name('notifikasi.read-all');
+Route::delete('notifikasi/{uuid}', [\App\Http\Controllers\NotifikasiController::class, 'destroy'])->name('notifikasi.destroy');

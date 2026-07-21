@@ -11,6 +11,7 @@
  *   5 = Validasi Dokumen Pasca-Tandatangan
  *   6 = Pelaksanaan Kerjasama
  *   7 = Selesai
+ *   8 = Dicabut
  *   9 = Ditolak / Revisi
  */
 
@@ -23,6 +24,7 @@ export const STATUS_LABEL = {
     5: 'Validasi Dokumen Pasca-Tandatangan',
     6: 'Pelaksanaan Kerjasama',
     7: 'Selesai',
+    8: 'Dicabut',
     9: 'Ditolak',
 };
 
@@ -40,6 +42,7 @@ export const STATUS_THEME = {
     5: { solid: 'bg-orange-500 text-white',    subtle: 'bg-orange-50 text-orange-700 ring-orange-200',  text: 'text-orange-700',    accent: 'orange'  },
     6: { solid: 'bg-teal-500 text-white',      subtle: 'bg-teal-50 text-teal-700 ring-teal-200',        text: 'text-teal-700',      accent: 'teal'    },
     7: { solid: 'bg-emerald-600 text-white',   subtle: 'bg-emerald-50 text-emerald-700 ring-emerald-200', text: 'text-emerald-700', accent: 'emerald' },
+    8: { solid: 'bg-rose-700 text-white',      subtle: 'bg-rose-50 text-rose-700 ring-rose-200',        text: 'text-rose-700',      accent: 'rose'    },
     9: { solid: 'bg-red-600 text-white',       subtle: 'bg-red-50 text-red-700 ring-red-200',           text: 'text-red-700',       accent: 'red'     },
 };
 
@@ -55,6 +58,7 @@ export const STATUS_SEVERITY = {
     5: 'contrast',
     6: 'success',
     7: 'success',
+    8: 'danger',
     9: 'danger',
 };
 

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Permohonan;
 use App\Models\Kategori;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +64,7 @@ class DashboardController extends Controller
             'penjadwalan' => $statusCounts[Permohonan::STATUS_PENJADWALAN] ?? 0,
             'disetujui' => $statusCounts[Permohonan::STATUS_PELAKSANAAN] ?? 0,
             'selesai' => $statusCounts[Permohonan::STATUS_SELESAI] ?? 0,
+            'dicabut' => $statusCounts[Permohonan::STATUS_DICABUT] ?? 0,
             'ditolak' => $statusCounts[Permohonan::STATUS_DITOLAK] ?? 0,
         ];
 
@@ -287,6 +287,7 @@ class DashboardController extends Controller
             'penjadwalan' => $statusCounts[Permohonan::STATUS_PENJADWALAN] ?? 0,
             'pelaksanaan' => $statusCounts[Permohonan::STATUS_PELAKSANAAN] ?? 0,
             'selesai' => $statusCounts[Permohonan::STATUS_SELESAI] ?? 0,
+            'dicabut' => $statusCounts[Permohonan::STATUS_DICABUT] ?? 0,
             'ditolak' => $statusCounts[Permohonan::STATUS_DITOLAK] ?? 0,
         ];
 
@@ -383,6 +384,7 @@ class DashboardController extends Controller
                 Permohonan::STATUS_PASCA_TANDATANGAN,
             ])->count(),
             'pelaksanaan' => (clone $base)->where('status', Permohonan::STATUS_PELAKSANAAN)->count(),
+            'dicabut' => (clone $base)->where('status', Permohonan::STATUS_DICABUT)->count(),
             'ditolak' => (clone $base)->where('status', Permohonan::STATUS_DITOLAK)->count(),
         ];
 

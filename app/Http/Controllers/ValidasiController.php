@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Permohonan;
-use App\Models\User;
 use App\Services\WhatsappService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;

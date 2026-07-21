@@ -23,6 +23,7 @@ const stageCounts = computed(() => ({
     penjadwalan: props.stats?.persetujuan_jadwal || 0,
     disetujui: props.stats?.penandatanganan || 0,
     selesai: props.stats?.pelaksanaan || 0,
+    dicabut: props.stats?.dicabut || 0,
     ditolak: props.stats?.ditolak || 0,
 }));
 

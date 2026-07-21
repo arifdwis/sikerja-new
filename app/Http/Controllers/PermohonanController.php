@@ -116,13 +116,14 @@ class PermohonanController extends Controller implements HasMiddleware
             $pageTitle = 'Permohonan Selesai';
         } else {
             // Default permohonan.index ("Permohonan Saya"):
-            // Pemohon hanya melihat alur aktif. Status Pelaksanaan/Selesai/Ditolak
+            // Pemohon hanya melihat alur aktif. Status final dipindah ke menu Riwayat.
             // tampil di menu Riwayat agar tidak campur dengan permohonan yang masih berproses.
             if (Auth::user()->hasRole('pemohon')
                 && !Auth::user()->hasRole(['administrator', 'superadmin', 'tkksd', 'tkksd_lokus'])) {
                 $query->whereNotIn('status', [
                     Permohonan::STATUS_PELAKSANAAN,
                     Permohonan::STATUS_SELESAI,
+                    Permohonan::STATUS_DICABUT,
                     Permohonan::STATUS_DITOLAK,
                 ]);
             }
@@ -215,10 +216,12 @@ class PermohonanController extends Controller implements HasMiddleware
         // Riwayat menampilkan semua kerjasama yang sudah keluar dari alur aktif:
         // - 6 = Pelaksanaan (sedang terlaksana, sebelum tanggal_berakhir)
         // - 7 = Selesai (tanggal_berakhir kerjasama sudah lewat)
-        // - 9 = Ditolak
+        // - 8 = Dicabut
+        // - 9 = Ditolak (revisi)
         $finalStatuses = [
             Permohonan::STATUS_PELAKSANAAN,
             Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DICABUT,
             Permohonan::STATUS_DITOLAK,
         ];
 
@@ -263,6 +266,10 @@ class PermohonanController extends Controller implements HasMiddleware
     public function create()
     {
         $user = Auth::user();
+        if ($this->isPrivilegedAdmin($user)) {
+            abort(403, 'Akun admin/superadmin tidak dapat mengajukan permohonan kerjasama.');
+        }
+
         $kategoris = Kategori::all();
         $provinsis = Provinsi::all();
         $opds = \App\Models\Opd::active()->orderBy('nama')->get();
@@ -300,6 +307,10 @@ class PermohonanController extends Controller implements HasMiddleware
      */
     public function store(Request $request)
     {
+        if ($this->isPrivilegedAdmin(Auth::user())) {
+            return redirect()->back()->with('error', 'Akun admin/superadmin tidak dapat mengajukan permohonan kerjasama.');
+        }
+
         $validated = $request->validate([
             'id_kategori' => 'required|exists:kategori,id',
             'label' => 'required|string|max:255',
@@ -361,6 +372,16 @@ class PermohonanController extends Controller implements HasMiddleware
 
         return redirect()->route("$this->prefix.index", ['detail' => $permohonan->uuid])
             ->with('success', 'Permohonan berhasil dibuat.');
+    }
+
+    /**
+     * Admin & superadmin berperan sebagai reviewer/manajer alur,
+     * bukan pihak pengaju permohonan.
+     */
+    private function isPrivilegedAdmin(?User $user): bool
+    {
+        if (!$user) return false;
+        return $user->hasRole(['administrator', 'superadmin', 'admin']);
     }
 
     /**
@@ -591,16 +612,31 @@ class PermohonanController extends Controller implements HasMiddleware
         $permohonan = $this->data::uuid($uuid)->firstOrFail();
 
         $validated = $request->validate([
-            'status' => 'required|integer|in:0,1,2,4,9',
-            'keterangan' => 'nullable|string',
+            'status' => 'required|integer|in:0,1,2,4,7,8,9',
+            'keterangan' => 'nullable|string|max:2000',
         ]);
 
         $oldStatus = $permohonan->status;
-        $permohonan->update(['status' => $validated['status']]);
 
-        if ($validated['status'] == Permohonan::STATUS_DITOLAK && isset($validated['keterangan'])) {
-            $permohonan->update(['alasan_tolak' => $validated['keterangan']]);
+        // Aturan khusus tahap pelaksanaan:
+        // - hanya boleh ditandai selesai (7)
+        // - atau dicabut (8) dengan alasan wajib
+        if ($oldStatus == Permohonan::STATUS_PELAKSANAAN) {
+            if (!in_array($validated['status'], [Permohonan::STATUS_SELESAI, Permohonan::STATUS_DICABUT], true)) {
+                return redirect()->back()->with('error', 'Status pelaksanaan hanya dapat diubah ke Selesai atau Dicabut.');
+            }
+            if ($validated['status'] == Permohonan::STATUS_DICABUT && empty(trim($validated['keterangan'] ?? ''))) {
+                return redirect()->back()->with('error', 'Alasan pencabutan wajib diisi.');
+            }
         }
+
+        $updatePayload = ['status' => $validated['status']];
+        if (in_array($validated['status'], [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT], true)) {
+            $updatePayload['alasan_tolak'] = isset($validated['keterangan']) ? trim($validated['keterangan']) : null;
+        } else {
+            $updatePayload['alasan_tolak'] = null;
+        }
+        $permohonan->update($updatePayload);
 
         $statusLabels = Permohonan::statusLabels();
         $oldLabel = $statusLabels[$oldStatus]['label'] ?? 'Unknown';

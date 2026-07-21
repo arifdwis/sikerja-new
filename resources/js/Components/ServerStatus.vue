@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import ApexCharts from 'apexcharts';
 import axios from 'axios';
 
@@ -32,7 +32,7 @@ let lastDate = new Date( )
 // Function to fetch server status (simulated or actual API)
 const fetchServerStatus = async ( ) => {
   try {
-    const response = await axios.get( 'https://des2024.test/api/server-status' );
+    const response = await axios.get( '/api/server-status' );
     const dataFromApi = response.data;
 
     memoryUsage.value = dataFromApi.memoryUsage;
@@ -163,6 +163,7 @@ const cpuChartOptions = {
 // Initialize both charts when mounted
 let memoryChart = null;
 let cpuChart = null;
+let fetchInterval = null;
 
 onMounted( ( ) => {
   // Create the memory usage realtime chart
@@ -175,7 +176,13 @@ onMounted( ( ) => {
 
   // Fetch server status and update chart every 5 seconds
   fetchServerStatus( );
-  setInterval( fetchServerStatus, 5000 ); // Update every 5 seconds
+  fetchInterval = setInterval( fetchServerStatus, 5000 );
+} );
+
+onUnmounted( ( ) => {
+  if ( fetchInterval ) clearInterval( fetchInterval );
+  if ( memoryChart ) memoryChart.destroy( );
+  if ( cpuChart ) cpuChart.destroy( );
 } );
 
 </script>

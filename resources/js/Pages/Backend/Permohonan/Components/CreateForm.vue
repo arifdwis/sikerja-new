@@ -50,8 +50,6 @@ const getInitialOpdIds = () => {
     return [];
 };
 
-const isOpdLocked = !!props.userOpd && props.mode !== 'edit';
-
 const form = useForm({
     id: props.initialData?.id || null,
     uuid: props.initialData?.uuid || null,
@@ -189,7 +187,6 @@ const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id,
                 :form="form" 
                 :opds="opds"
                 :userOpd="userOpd"
-                :isOpdLocked="isOpdLocked"
             />
         </form>
 

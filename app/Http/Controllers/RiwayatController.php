@@ -43,10 +43,12 @@ class RiwayatController extends Controller implements HasMiddleware
         // Riwayat berisi semua permohonan yang sudah "tidak aktif lagi di alur":
         // - 6 = Pelaksanaan Kerjasama (sudah dieksekusi, sedang berjalan)
         // - 7 = Selesai (kerjasama sudah selesai dengan monev final)
+        // - 8 = Dicabut
         // - 9 = Ditolak
         $finalStatuses = [
             Permohonan::STATUS_PELAKSANAAN,
             Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DICABUT,
             Permohonan::STATUS_DITOLAK,
         ];
 

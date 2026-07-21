@@ -2,171 +2,166 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
+use App\Mail\NotificationMail;
+use App\Models\Pemohon;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class WhatsappService
 {
     /**
-     * Send WhatsApp message to admin (administrator/superadmin).
-     * 
-     * Saat development (notify_admin_enabled=false), admin TIDAK terima notif
-     * sehingga inbox admin tidak penuh dengan data uji.
-     *
-     * @param string $phone
-     * @param string $message
-     * @return bool
+     * Send email notification to all admins (administrator/superadmin).
      */
-    public function sendToAdmin(string $phone, string $message): bool
+    public function sendToAdmin(string $target, string $message, ?string $subject = null): bool
     {
-        $adminEnabled = filter_var(
-            config('services.whatsapp.notify_admin_enabled', false),
-            FILTER_VALIDATE_BOOLEAN
-        );
-
-        if (!$adminEnabled) {
-            Log::info("WA admin notif disabled (development mode). Skip $phone.");
-            return false;
-        }
-
-        return $this->sendMessage($phone, $message);
+        return $this->sendToGroup($message, 'admin_group_id', $subject);
     }
 
     /**
-     * Send WhatsApp message to admin/notify group.
-     * 
-     * Saat sistem masih dalam tahap pengembangan (notify_group_enabled=false),
-     * pesan dialihkan ke nomor pribadi developer (dev_redirect_phone) dengan
-     * prefix "[DEV]" agar mudah dibedakan.
-     *
-     * Penggunaan: ganti $wa->sendMessage(config('services.whatsapp.group_id'), $msg)
-     * dengan       $wa->sendToGroup($msg)
-     *
-     * @param string $message
-     * @param string|null $groupKey 'group_id' atau 'admin_group_id' (default: group_id)
-     * @return bool
+     * Blast email notification to all admin, superadmin, and tkksd users in place of WA group notifications.
      */
-    public function sendToGroup(string $message, ?string $groupKey = 'group_id'): bool
+    public function sendToGroup(string $message, ?string $groupKey = 'group_id', ?string $subject = null): bool
     {
-        $groupEnabled = filter_var(
-            config('services.whatsapp.notify_group_enabled', false),
-            FILTER_VALIDATE_BOOLEAN
-        );
+        $recipients = User::adminNotificationRecipients()->get()->unique('id');
 
-        if ($groupEnabled) {
-            $groupId = config("services.whatsapp.{$groupKey}");
-            if (!$groupId) {
-                Log::warning("WA group_id ({$groupKey}) tidak diset.");
-                return false;
+        if ($recipients->isEmpty()) {
+            Log::warning("Mail Group Notification: No recipients found.");
+            return false;
+        }
+
+        $subjectTitle = $subject ?? self::extractSubject($message);
+        $sentCount = 0;
+
+        foreach ($recipients as $user) {
+            $email = $user->target_notification_email;
+            if ($email) {
+                try {
+                    Mail::to($email)->send(new NotificationMail($subjectTitle, $message));
+                    Log::info("Mail Group Notification blasted to {$email} (User: {$user->name})");
+                    $sentCount++;
+                } catch (\Throwable $e) {
+                    Log::error("Mail Group Notification Error to {$email}: " . $e->getMessage());
+                }
+            } else {
+                Log::warning("Mail Group Notification: User #{$user->id} ({$user->name}) has no valid notification email.");
             }
-            return $this->sendMessage($groupId, $message);
         }
 
-        // DEV mode: redirect ke nomor pribadi
-        $devPhone = config('services.whatsapp.dev_redirect_phone');
-        if (!$devPhone) {
-            Log::warning('WA dev_redirect_phone tidak diset, group notif dilewati.');
-            return false;
-        }
-
-        $devMessage = "[DEV — Group Notif Dialihkan]\n" . $message;
-        Log::info("WA group notif redirected to dev phone {$devPhone}");
-        return $this->sendMessage($devPhone, $devMessage);
+        return $sentCount > 0;
     }
 
     /**
-     * Send WhatsApp message directly (Sync)
-     * 
-     * @param string $target Target number or Group ID
-     * @param string $message Message content
+     * Send email notification to single target (User, Email address, or Phone recipient).
+     *
+     * @param mixed $target User instance, Email string, or Phone number string
+     * @param string $message
+     * @param string|null $subject
      * @return bool
      */
-    public function sendMessage($target, $message)
+    public function sendMessage($target, string $message, ?string $subject = null): bool
     {
-        if (!filter_var(config('services.whatsapp.enabled', false), FILTER_VALIDATE_BOOLEAN)) {
-            Log::info("WA Gateway disabled. Message to $target skipped.");
+        if (empty($target)) {
             return false;
         }
 
-        $url = config('services.whatsapp.url');
-        $user = config('services.whatsapp.username');
-        $pass = config('services.whatsapp.password');
+        // Check if target is a group identifier
+        if (is_string($target) && (strpos($target, '@g.us') !== false || strpos($target, 'group') !== false)) {
+            return $this->sendToGroup($message, null, $subject);
+        }
 
-        if (!$url || !$user || !$pass) {
-            Log::error("WA Gateway configuration missing.");
+        $email = null;
+
+        if ($target instanceof User) {
+            $email = $target->target_notification_email;
+        } elseif (is_string($target) && filter_var($target, FILTER_VALIDATE_EMAIL)) {
+            $email = $target;
+        } elseif (is_string($target)) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $target);
+
+            // 1. Search user by email or phone
+            $user = User::where('email', $target)
+                ->orWhere('notification_email', $target)
+                ->orWhere('phone', $target)
+                ->orWhere('phone', '0' . substr($cleanPhone, 2))
+                ->orWhere('phone', $cleanPhone)
+                ->first();
+
+            if (!$user) {
+                // 2. Search pemohon by phone
+                $pemohon = Pemohon::where('phone', $target)
+                    ->orWhere('phone', '0' . substr($cleanPhone, 2))
+                    ->orWhere('phone', $cleanPhone)
+                    ->first();
+
+                if ($pemohon) {
+                    $user = User::find($pemohon->id_operator);
+                }
+            }
+
+            if ($user) {
+                $email = $user->target_notification_email;
+            } elseif (filter_var($target, FILTER_VALIDATE_EMAIL)) {
+                $email = $target;
+            }
+        }
+
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Log::warning("Mail Notification: Unable to resolve a valid email address for target '{$target}'.");
             return false;
         }
+
+        $subjectTitle = $subject ?? self::extractSubject($message);
 
         try {
-            // Normalize & Suffix handling (Matching Old App Logic)
-            if (strpos($target, '@g.us') !== false) {
-                // It's a group, keep as is
-            } else {
-                // Must be an individual, normalize and append suffix
-                $normalized = self::normalizePhone($target);
-                if (!$normalized) {
-                    Log::warning("Invalid WA Target: $target");
-                    return false;
-                }
-                $target = $normalized . '@s.whatsapp.net';
-            }
-
-            // Using Laravel Http Facade with Basic Auth (Matching Old App Guzzle Auth)
-            $response = Http::withoutVerifying()
-                ->withBasicAuth($user, $pass)
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
-                ->post($url, [
-                    'number' => $target,
-                    'message' => $message,
-                ]);
-
-            if ($response->successful()) {
-                Log::info("WA Message sent to $target");
-                return true;
-            } else {
-                Log::error("WA Gateway Error ($target): " . $response->body());
-                return false;
-            }
-
-        } catch (\Exception $e) {
-            Log::error('WhatsApp Exception: ' . $e->getMessage());
+            Mail::to($email)->send(new NotificationMail($subjectTitle, $message));
+            Log::info("Mail Notification sent successfully to {$email}");
+            return true;
+        } catch (\Throwable $e) {
+            Log::error("Mail Notification Error to {$email}: " . $e->getMessage());
             return false;
         }
     }
 
     /**
-     * Normalize phone number to standard format (628xxx)
-     * for Sending to Individual
+     * Extract a clean subject line from the first line of the message body.
+     */
+    public static function extractSubject(string $message): string
+    {
+        $lines = explode("\n", trim($message));
+        $firstLine = trim($lines[0] ?? '');
+
+        // Remove markdown formatting symbols
+        $clean = trim(str_replace(['*', '_', '[NOTIFIKASI INTERNAL]', '[DEV — Group Notif Dialihkan]'], '', $firstLine));
+
+        if (!empty($clean) && strlen($clean) < 120) {
+            return $clean;
+        }
+
+        return 'Notifikasi SIKERJA Samarinda';
+    }
+
+    /**
+     * Legacy helper to normalize phone numbers
      */
     public static function normalizePhone($phone)
     {
-        if (empty($phone))
-            return null;
-
+        if (empty($phone)) return null;
         $phone = trim($phone);
         $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (empty($phone)) return null;
 
-        if (empty($phone))
-            return null;
-
-        // Handle generic 62 prefix first
         if (substr($phone, 0, 2) === '62') {
-            // Check for double prefix like 6208...
             if (substr($phone, 0, 3) === '620') {
                 return '62' . substr($phone, 3);
             }
             return $phone;
         }
 
-        // Handle standard local 08 or 0 prefix
         if (substr($phone, 0, 1) === '0') {
             return '62' . substr($phone, 1);
         }
 
-        // Handle number starting without 0 (e.g. 812...)
         if (substr($phone, 0, 1) === '8') {
             return '62' . $phone;
         }

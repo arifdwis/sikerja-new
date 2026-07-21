@@ -147,7 +147,7 @@ class LaporanController extends Controller
         $tahunFilter = $request->input('tahun');
 
         $permohonanRows = Permohonan::query()
-            ->where('status', '!=', Permohonan::STATUS_DITOLAK)
+            ->whereNotIn('status', [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT])
             ->select([
                 'id', 'uuid', 'label', 'nama_instansi', 'id_kategori',
                 'id_pemohon_0', 'tanggal_mulai', 'tanggal_berakhir', 'created_at', 'status',
@@ -285,7 +285,7 @@ class LaporanController extends Controller
         ];
 
         // Daftar tahun yang tersedia (gabungan)
-        $tahunListSistem = Permohonan::where('status', '!=', Permohonan::STATUS_DITOLAK)
+        $tahunListSistem = Permohonan::whereNotIn('status', [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT])
             ->selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')
             ->pluck('y');
         $tahunListManual = \App\Models\KerjasamaManual::selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')->pluck('y');

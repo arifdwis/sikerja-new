@@ -15,11 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\HandleCoopHeader::class,
+            \App\Http\Middleware\EnsureEmailIsFilled::class,
         ]);
 
         // Alias for route middleware
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
+            'ensure.email' => \App\Http\Middleware\EnsureEmailIsFilled::class,
             'pemohon.profile' => \App\Http\Middleware\EnsurePemohonProfileComplete::class,
         ]);
     })

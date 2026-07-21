@@ -61,15 +61,17 @@ const formatTime = (timeString) => {
             </div>
         </div>
 
-        <!-- Banner alasan penolakan (tampil hanya jika status 9 = Ditolak) -->
-        <div v-if="data.status == 9 && data.alasan_tolak"
+        <!-- Banner alasan penolakan/pencabutan -->
+        <div v-if="[8, 9].includes(Number(data.status)) && data.alasan_tolak"
             class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:bg-red-900/20">
             <div class="flex items-start gap-3">
                 <Icon icon="solar:danger-triangle-bold" class="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                 <div class="flex-1">
-                    <p class="font-bold text-red-800 dark:text-red-300 mb-1">Permohonan Ditolak — Perlu Revisi</p>
+                    <p class="font-bold text-red-800 dark:text-red-300 mb-1">
+                        {{ Number(data.status) === 8 ? 'Kerjasama Dicabut' : 'Permohonan Ditolak' }}
+                    </p>
                     <p class="text-sm text-red-700 dark:text-red-400">
-                        <span class="font-semibold">Alasan:</span> {{ data.alasan_tolak }}
+                        <span class="font-semibold">{{ Number(data.status) === 8 ? 'Alasan Pencabutan' : 'Alasan' }}:</span> {{ data.alasan_tolak }}
                     </p>
                 </div>
             </div>

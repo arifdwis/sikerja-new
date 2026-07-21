@@ -18,6 +18,7 @@ class Notifikasi extends Model
         'id_permohonan',
         'from_user_id',
         'type',
+        'category',
         'title',
         'message',
         'data',

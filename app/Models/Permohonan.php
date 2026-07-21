@@ -60,6 +60,7 @@ class Permohonan extends Model
      * 5: Pasca-Tandatangan (Pemohon upload dokumen yang sudah di-TTD)
      * 6: Pelaksanaan Kerjasama (Admin approve PKS final)
      * 7: Selesai (Monev sudah final dibuat admin)
+     * 8: Dicabut (pelanggaran saat pelaksanaan)
      * 9: Ditolak
      */
     const STATUS_PERMOHONAN           = 0;  // Permohonan Baru - Menunggu Validasi
@@ -70,6 +71,7 @@ class Permohonan extends Model
     const STATUS_PASCA_TANDATANGAN    = 5;  // Dokumen TTD diupload pemohon
     const STATUS_PELAKSANAAN          = 6;  // Pelaksanaan Kerjasama (aktif, sebelum tanggal_berakhir)
     const STATUS_SELESAI              = 7;  // Selesai (tanggal_berakhir kerjasama sudah lewat)
+    const STATUS_DICABUT              = 8;  // Dicabut saat pelaksanaan (final)
     const STATUS_DITOLAK              = 9;  // Ditolak
 
     // Backward compatibility aliases
@@ -97,6 +99,7 @@ class Permohonan extends Model
             self::STATUS_PASCA_TANDATANGAN    => ['label' => 'Validasi Dokumen Pasca-Tandatangan', 'color' => 'bg-orange-500',  'text' => 'text-orange-700',  'severity' => 'contrast'],
             self::STATUS_PELAKSANAAN          => ['label' => 'Pelaksanaan Kerjasama',              'color' => 'bg-teal-500',    'text' => 'text-teal-700',    'severity' => 'success'],
             self::STATUS_SELESAI              => ['label' => 'Selesai',                           'color' => 'bg-emerald-600', 'text' => 'text-emerald-700', 'severity' => 'success'],
+            self::STATUS_DICABUT              => ['label' => 'Dicabut',                           'color' => 'bg-rose-700',    'text' => 'text-rose-700',    'severity' => 'danger'],
             self::STATUS_DITOLAK              => ['label' => 'Ditolak',                           'color' => 'bg-red-600',     'text' => 'text-red-700',     'severity' => 'danger'],
         ];
     }

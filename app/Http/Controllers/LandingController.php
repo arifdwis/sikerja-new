@@ -27,6 +27,7 @@ class LandingController extends Controller
         $permohonanSelesai = Permohonan::where('status', Permohonan::STATUS_SELESAI)->count();
         $permohonanAktif = Permohonan::whereNotIn('status', [
             Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DICABUT,
             Permohonan::STATUS_DITOLAK,
         ])->count();
 
@@ -103,6 +104,7 @@ class LandingController extends Controller
         $dalamProses = (clone $permohonanQuery)->whereNotIn('status', [
             Permohonan::STATUS_PELAKSANAAN,
             Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DICABUT,
             Permohonan::STATUS_DITOLAK,
         ])->count();
 

@@ -10,11 +10,16 @@ const emit = defineEmits(['detail', 'tracking']);
 
 const getStatusColor = (status) => {
     const colors = {
-        0: { bg: 'bg-yellow-400', text: 'text-yellow-950', border: 'border-yellow-400' },
-        1: { bg: 'bg-blue-400', text: 'text-blue-950', border: 'border-blue-400' },
-        2: { bg: 'bg-purple-400', text: 'text-purple-950', border: 'border-purple-400' },
-        4: { bg: 'bg-green-400', text: 'text-green-950', border: 'border-green-400' },
-        9: { bg: 'bg-red-400', text: 'text-red-950', border: 'border-red-400' },
+        0: { bg: 'bg-amber-400', text: 'text-amber-950', border: 'border-amber-400' },
+        1: { bg: 'bg-sky-400', text: 'text-sky-950', border: 'border-sky-400' },
+        2: { bg: 'bg-blue-500', text: 'text-blue-950', border: 'border-blue-500' },
+        3: { bg: 'bg-violet-400', text: 'text-violet-950', border: 'border-violet-400' },
+        4: { bg: 'bg-pink-300', text: 'text-pink-950', border: 'border-pink-300' },
+        5: { bg: 'bg-orange-300', text: 'text-orange-950', border: 'border-orange-300' },
+        6: { bg: 'bg-teal-400', text: 'text-teal-950', border: 'border-teal-400' },
+        7: { bg: 'bg-emerald-500', text: 'text-emerald-950', border: 'border-emerald-500' },
+        8: { bg: 'bg-rose-500', text: 'text-rose-950', border: 'border-rose-500' },
+        9: { bg: 'bg-red-500', text: 'text-red-950', border: 'border-red-500' },
     };
     return colors[status] || { bg: 'bg-gray-400', text: 'text-gray-950', border: 'border-gray-400' };
 };

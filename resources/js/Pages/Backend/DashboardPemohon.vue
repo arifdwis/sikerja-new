@@ -48,6 +48,7 @@ const statusColors = {
     5: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
     6: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     7: 'bg-green-50 text-green-700 border-green-200',
+    8: 'bg-rose-50 text-rose-700 border-rose-200',
     9: 'bg-red-50 text-red-700 border-red-200',
 };
 
@@ -60,6 +61,7 @@ const statusLabels = {
     5: 'Validasi Dokumen Pasca-TTD',
     6: 'Pelaksanaan Kerjasama',
     7: 'Selesai',
+    8: 'Dicabut',
     9: 'Ditolak',
 };
 </script>

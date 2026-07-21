@@ -19,18 +19,19 @@ const user = usePage().props.auth.user;
 const form = useForm({
     name: user.name,
     email: user.email,
+    notification_email: user.notification_email || (user.email && user.email.includes('@') ? user.email : ''),
 });
 </script>
 
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Profile Information
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white">
+                Informasi Akun & Email Notifikasi
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600">
-                Update your account's profile information and email address.
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Kelola nama akun dan alamat email tempat Anda ingin menerima notifikasi aplikasi SIKERJA.
             </p>
         </header>
 
@@ -39,7 +40,7 @@ const form = useForm({
             class="mt-6 space-y-6"
         >
             <div>
-                <InputLabel for="name" value="Name" />
+                <InputLabel for="name" value="Nama Lengkap" />
 
                 <TextInput
                     id="name"
@@ -55,43 +56,43 @@ const form = useForm({
             </div>
 
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="notification_email" value="Alamat Email Notifikasi (Wajib Isi)" />
+
+                <TextInput
+                    id="notification_email"
+                    type="email"
+                    class="mt-1 block w-full border-blue-300 dark:border-blue-700 focus:border-blue-500"
+                    v-model="form.notification_email"
+                    required
+                    placeholder="contoh: emailanda@samarindakota.go.id"
+                />
+                <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                    * Seluruh notifikasi sistem (permohonan, persetujuan, jadwal, monev) akan dikirimkan ke alamat email ini.
+                </p>
+
+                <InputError class="mt-2" :message="form.errors.notification_email" />
+            </div>
+
+            <div>
+                <InputLabel for="email" value="Email / Username SSO (NIP/NIK)" />
 
                 <TextInput
                     id="email"
-                    type="email"
-                    class="mt-1 block w-full"
+                    type="text"
+                    class="mt-1 block w-full bg-gray-50 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400"
                     v-model="form.email"
-                    required
-                    autocomplete="username"
+                    disabled
+                    readonly
                 />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    * Identitas akun SSO (NIP/NIK). Field ini dikunci agar tidak merusak login SSO Anda.
+                </p>
 
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div v-if="mustVerifyEmail && user.email_verified_at === null">
-                <p class="mt-2 text-sm text-gray-800">
-                    Your email address is unverified.
-                    <Link
-                        :href="route('verification.send')"
-                        method="post"
-                        as="button"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Click here to re-send the verification email.
-                    </Link>
-                </p>
-
-                <div
-                    v-show="status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
-                >
-                    A new verification link has been sent to your email address.
-                </div>
-            </div>
-
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">Simpan Email Notifikasi</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -101,9 +102,9 @@ const form = useForm({
                 >
                     <p
                         v-if="form.recentlySuccessful"
-                        class="text-sm text-gray-600"
+                        class="text-sm text-green-600 dark:text-green-400 font-medium"
                     >
-                        Saved.
+                        Email notifikasi berhasil disimpan.
                     </p>
                 </Transition>
             </div>

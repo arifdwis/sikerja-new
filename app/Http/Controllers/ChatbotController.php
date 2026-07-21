@@ -34,7 +34,7 @@ class ChatbotController extends Controller
         $contextIds = collect($relevantChunks)->pluck('id')->filter()->values()->all();
         $systemPrompt = $this->buildSystemPrompt($relevantChunks, $confidence);
 
-        // Build messages array for Ollama
+        // Build messages array for Groq Chat Completions
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
         ];
@@ -62,7 +62,7 @@ class ChatbotController extends Controller
 
         if ($request->boolean('async')) {
             $requestId = (string) Str::uuid();
-            $responseTtl = (int) config('services.ollama.response_cache_ttl', 900);
+            $responseTtl = (int) config('services.groq.response_cache_ttl', 900);
 
             Cache::put("chatbot:response:{$requestId}", [
                 'status' => 'pending',
@@ -85,25 +85,28 @@ class ChatbotController extends Controller
         }
 
         try {
-            $ollamaUrl = rtrim(config('services.ollama.url', 'http://127.0.0.1:11434'), '/');
-            $ollamaModel = config('services.ollama.model', 'llama3.2');
+            $groqUrl = rtrim(config('services.groq.url', 'https://api.groq.com/openai/v1'), '/');
+            $groqModel = config('services.groq.model', 'llama-3.3-70b-versatile');
+            $groqApiKey = config('services.groq.api_key');
 
-            $timeout = (int) config('services.ollama.timeout', 120);
-            $response = Http::timeout($timeout)->post("{$ollamaUrl}/api/chat", [
-                'model' => $ollamaModel,
+            if (empty($groqApiKey)) {
+                throw new \RuntimeException('GROQ_API_KEY is not configured.');
+            }
+
+            $timeout = (int) config('services.groq.timeout', 120);
+            $response = Http::withToken($groqApiKey)->timeout($timeout)->post("{$groqUrl}/chat/completions", [
+                'model' => $groqModel,
                 'messages' => $messages,
                 'stream' => false,
-                'options' => [
-                    // Lower temperature for more deterministic and policy-grounded answers.
-                    'temperature' => 0.15,
-                    'top_p' => 0.9,
-                    'num_predict' => 500,
-                ],
+                // Lower temperature for more deterministic and policy-grounded answers.
+                'temperature' => 0.15,
+                'top_p' => 0.9,
+                'max_completion_tokens' => 500,
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                $reply = $data['message']['content'] ?? 'Maaf, saya tidak bisa memproses permintaan Anda saat ini.';
+                $reply = $data['choices'][0]['message']['content'] ?? 'Maaf, saya tidak bisa memproses permintaan Anda saat ini.';
 
                 if ($this->shouldLogAsFeedbackCandidate($confidence, $reply)) {
                     $this->storeFeedbackCandidate(
@@ -121,14 +124,14 @@ class ChatbotController extends Controller
                 ]);
             }
 
-            Log::error('Ollama API error', ['status' => $response->status(), 'body' => $response->body()]);
+            Log::error('Groq API error', ['status' => $response->status(), 'body' => $response->body()]);
 
             $this->storeFeedbackCandidate(
                 question: $userMessage,
                 answer: null,
                 confidence: $confidence,
                 contextIds: $contextIds,
-                failureReason: 'ollama_api_error_' . $response->status()
+                failureReason: 'groq_api_error_' . $response->status()
             );
 
             return response()->json([
@@ -159,7 +162,7 @@ class ChatbotController extends Controller
      */
     private function buildKnowledgeBase(): array
     {
-        $ttl = (int) config('services.ollama.knowledge_cache_ttl', 600);
+        $ttl = (int) config('services.groq.knowledge_cache_ttl', 600);
         return Cache::remember('chatbot:knowledge_base', $ttl, function () {
             return $this->buildKnowledgeBaseRaw();
         });

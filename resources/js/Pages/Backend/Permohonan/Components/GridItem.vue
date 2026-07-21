@@ -43,6 +43,7 @@ const getStatusColor = (status) => {
         5: { bg: 'bg-orange-300',   text: 'text-orange-950',   border: 'border-orange-500' },
         6: { bg: 'bg-teal-300',     text: 'text-teal-950',     border: 'border-teal-500' },
         7: { bg: 'bg-emerald-400',  text: 'text-emerald-950',  border: 'border-emerald-600' },
+        8: { bg: 'bg-rose-300',     text: 'text-rose-950',     border: 'border-rose-500' },
         9: { bg: 'bg-red-300',      text: 'text-red-950',      border: 'border-red-500' },
     };
     return colors[status] || { bg: 'bg-gray-300', text: 'text-gray-950', border: 'border-gray-500' };
@@ -62,6 +63,7 @@ const getUploadButtonLabel = (item) => {
  * - Status >= 2 = Penjadwalan/Penandatanganan/Pelaksanaan → upload PKS & TTD
  *   pakai tombol terpisah di halaman Detail
  * - Status 9 = Ditolak → pemohon klik "Revisi & Ajukan Ulang", bukan upload
+ * - Status 8 = Dicabut → final, tidak bisa revisi
  */
 const canManageFiles = (item) => {
     if (props.isAdmin) return false;
@@ -109,13 +111,13 @@ const canManageFiles = (item) => {
                 </h4>
             </div>
 
-            <!-- Alasan Penolakan (hanya muncul jika status ditolak = 9) -->
-            <div v-if="item.status == 9 && item.alasan_tolak"
+            <!-- Alasan penolakan/pencabutan -->
+            <div v-if="[8,9].includes(Number(item.status)) && item.alasan_tolak"
                 class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div class="flex items-start gap-2 text-red-800">
                     <Icon icon="solar:danger-triangle-bold" class="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <div class="text-xs">
-                        <p class="font-bold uppercase tracking-wide mb-0.5">Alasan Penolakan</p>
+                        <p class="font-bold uppercase tracking-wide mb-0.5">{{ Number(item.status) === 8 ? 'Alasan Pencabutan' : 'Alasan Penolakan' }}</p>
                         <p class="font-medium">{{ item.alasan_tolak }}</p>
                     </div>
                 </div>

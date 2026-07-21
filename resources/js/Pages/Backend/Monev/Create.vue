@@ -14,7 +14,8 @@ const props = defineProps({
     share: Object,
     permohonans: Array,
     selectedPermohonan: Object,
-    operator: Object,
+    pemohon: Object,
+    submitterRole: String,
 });
 
 const form = useForm({

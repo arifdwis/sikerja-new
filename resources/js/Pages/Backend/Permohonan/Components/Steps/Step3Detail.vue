@@ -10,14 +10,6 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
-    userOpd: {
-        type: Object,
-        default: null
-    },
-    isOpdLocked: {
-        type: Boolean,
-        default: false
-    },
 });
 
 const opdOptions = computed(() => (props.opds || []).map(o => ({
@@ -84,26 +76,12 @@ watch([
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     OPD Terkait <span class="text-red-500">*</span>
-                    <span v-if="isOpdLocked" class="ml-2 text-xs text-blue-600 dark:text-blue-400">
-                        <Icon icon="solar:lock-bold" class="inline w-3 h-3" />
-                        Terhubung otomatis dari profil Anda
-                    </span>
                 </label>
-                <p v-if="!isOpdLocked" class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
                     Pilih satu atau lebih OPD yang terlibat dalam kerjasama ini
                 </p>
 
-                <!-- Auto-fill chip ketika user Pemkot dengan id_opd -->
-                <div v-if="isOpdLocked && userOpd" class="flex flex-wrap gap-2">
-                    <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
-                        <Icon icon="solar:building-bold" class="w-4 h-4" />
-                        {{ userOpd.nama }}{{ userOpd.singkatan ? ` (${userOpd.singkatan})` : '' }}
-                    </span>
-                </div>
-
-                <!-- Multi-select untuk user yang tidak terkunci -->
                 <MultiSelect
-                    v-else
                     v-model="form.opd_ids"
                     :options="opdOptions"
                     option-label="label"

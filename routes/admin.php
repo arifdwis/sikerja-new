@@ -101,3 +101,7 @@ Route::get('penandatanganan', [\App\Http\Controllers\PermohonanController::class
 // Tahap Pelaksanaan (status 6) — kerjasama yang sedang aktif berjalan
 Route::get('pelaksanaan', [\App\Http\Controllers\PermohonanController::class, 'index'])
     ->name('pelaksanaan.index');
+
+// Update status permohonan (admin/verifikator yang punya permission permohonan.status)
+Route::post('permohonan/{uuid}/status', [\App\Http\Controllers\PermohonanController::class, 'updateStatus'])
+    ->name('permohonan.status');

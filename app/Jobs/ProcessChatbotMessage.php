@@ -28,26 +28,29 @@ class ProcessChatbotMessage implements ShouldQueue
 
     public function handle(): void
     {
-        $responseTtl = (int) config('services.ollama.response_cache_ttl', 900);
-        $ollamaUrl = rtrim(config('services.ollama.url', 'http://127.0.0.1:11434'), '/');
-        $ollamaModel = config('services.ollama.model', 'llama3.2');
-        $timeout = (int) config('services.ollama.timeout', 120);
+        $responseTtl = (int) config('services.groq.response_cache_ttl', 900);
+        $groqUrl = rtrim(config('services.groq.url', 'https://api.groq.com/openai/v1'), '/');
+        $groqModel = config('services.groq.model', 'llama-3.3-70b-versatile');
+        $groqApiKey = config('services.groq.api_key');
+        $timeout = (int) config('services.groq.timeout', 120);
 
         try {
-            $response = Http::timeout($timeout)->post("{$ollamaUrl}/api/chat", [
-                'model' => $ollamaModel,
+            if (empty($groqApiKey)) {
+                throw new \RuntimeException('GROQ_API_KEY is not configured.');
+            }
+
+            $response = Http::withToken($groqApiKey)->timeout($timeout)->post("{$groqUrl}/chat/completions", [
+                'model' => $groqModel,
                 'messages' => $this->messages,
                 'stream' => false,
-                'options' => [
-                    'temperature' => 0.15,
-                    'top_p' => 0.9,
-                    'num_predict' => 500,
-                ],
+                'temperature' => 0.15,
+                'top_p' => 0.9,
+                'max_completion_tokens' => 500,
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                $reply = $data['message']['content'] ?? 'Maaf, saya tidak bisa memproses permintaan Anda saat ini.';
+                $reply = $data['choices'][0]['message']['content'] ?? 'Maaf, saya tidak bisa memproses permintaan Anda saat ini.';
 
                 Cache::put("chatbot:response:{$this->requestId}", [
                     'status' => 'done',
@@ -77,12 +80,12 @@ class ProcessChatbotMessage implements ShouldQueue
                 answer: null,
                 confidence: $this->confidence,
                 contextIds: $this->contextIds,
-                failureReason: 'ollama_api_error_' . $response->status()
+                failureReason: 'groq_api_error_' . $response->status()
             );
         } catch (\Throwable $e) {
             Cache::put("chatbot:response:{$this->requestId}", [
                 'status' => 'failed',
-                'reply' => 'Maaf, Gagal ngehubungin Ollama. Silakan coba lagi nanti.',
+                'reply' => 'Maaf, layanan AI sedang tidak tersedia. Silakan coba lagi nanti.',
             ], $responseTtl);
 
             Log::error('Chatbot async error: ' . $e->getMessage());
