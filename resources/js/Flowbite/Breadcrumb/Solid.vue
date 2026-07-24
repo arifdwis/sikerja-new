@@ -12,7 +12,8 @@ const capitalize = ( str ) => {
 
 // Ambil path dari URL dan konversi ke breadcrumb
 const breadcrumbs = computed( ( ) => {
-  const pathArray = window.location.pathname
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
+  const pathArray = currentPath
     .split( '/' ) // Pisahkan berdasarkan '/'
     .filter( segment => segment ) // Hilangkan string kosong
     .map( ( segment, index, arr ) => ( {

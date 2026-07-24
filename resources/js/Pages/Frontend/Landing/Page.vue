@@ -20,11 +20,18 @@ const props = defineProps({
 })
 
 const sharedProps = usePage().props
-const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
+const appUrl = import.meta.env.VITE_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')
+const currentPathname = computed(() => typeof window !== 'undefined' ? window.location.pathname : '')
 const allPages = computed(() => sharedProps.laman_menu || [])
 
 const relatedPages = computed(() => {
-    return allPages.value.filter(p => p.url !== window.location.pathname).slice(0, 5)
+    return allPages.value.filter(p => p.url !== currentPathname.value).slice(0, 5)
+})
+
+const waShareUrl = computed(() => {
+    const title = props.page?.label || ''
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : (appUrl + currentPathname.value)
+    return 'https://api.whatsapp.com/send?text=' + encodeURIComponent(title + ' ' + currentUrl)
 })
 
 const safeContent = computed(() => {
@@ -57,7 +64,9 @@ const filteredFileLinks = computed(() => {
 // Share state
 const copied = ref(false)
 const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href)
+    if (typeof window !== 'undefined' && navigator?.clipboard) {
+        navigator.clipboard.writeText(window.location.href)
+    }
     copied.value = true
     setTimeout(() => {
         copied.value = false
@@ -267,7 +276,7 @@ onUnmounted(() => {
                                     </button>
 
                                     <a 
-                                        :href="'https://api.whatsapp.com/send?text=' + encodeURIComponent(page.label + ' ' + appUrl + window.location.pathname)"
+                                        :href="waShareUrl"
                                         target="_blank"
                                         class="p-2 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 text-[#25D366] transition-all flex items-center justify-center"
                                         title="Bagikan ke WhatsApp"
