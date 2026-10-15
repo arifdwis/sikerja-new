@@ -137,7 +137,7 @@ class PermohonanObserver
         ]);
 
         // Notifikasi pemohon (email)
-        $targetRecipient = $pemohonUser ?: ($targetPhone ?: $pemohonProfile);
+        $targetRecipient = $pemohonUser ?: ($permohonan->email ?: $pemohonProfile);
         if ($targetRecipient) {
             $this->waService->sendMessage($targetRecipient, $payload['wa']);
         }
