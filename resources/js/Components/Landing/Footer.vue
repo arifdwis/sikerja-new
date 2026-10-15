@@ -77,9 +77,9 @@ const currentYear = new Date().getFullYear()
                     &copy; {{ currentYear }} SIKERJA - Pemerintah Kota Samarinda. All rights reserved.
                 </p>
                 <div class="flex gap-6 text-xs">
-                    <a href="#" class="hover:text-teal-400 transition-colors">Kebijakan Privasi</a>
+                    <Link href="/kebijakan-privasi" class="hover:text-teal-400 transition-colors">Kebijakan Privasi</Link>
                     <span class="text-gray-700">•</span>
-                    <a href="#" class="hover:text-teal-400 transition-colors">Syarat & Ketentuan</a>
+                    <Link href="/syarat-ketentuan" class="hover:text-teal-400 transition-colors">Syarat & Ketentuan</Link>
                 </div>
             </div>
         </div>

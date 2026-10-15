@@ -5,44 +5,98 @@
     import InputError from '@/Components/InputError.vue';
     import { Head, Link, useForm } from '@inertiajs/vue3';
     import { useToast } from 'vue-toastification';
-    import { auth } from '@/utils/firebase';
-    import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
     import { router } from '@inertiajs/vue3';
 
     const toast = useToast();
 
     const isGoogleLoading = ref(false);
 
+    // Load Google Identity Services script dynamically
+    const loadGoogleScript = () => {
+        return new Promise((resolve, reject) => {
+            if (window.google?.accounts?.oauth2) {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Gagal memuat Google Sign-In'));
+            document.head.appendChild(script);
+        });
+    };
+
+    const handleGoogleUser = (userInfo) => {
+        isGoogleLoading.value = true;
+        router.post(route('google.callback'), {
+            email: userInfo.email,
+            name: userInfo.name,
+            uid: userInfo.sub
+        }, {
+            onFinish: () => { isGoogleLoading.value = false; },
+            onError: (errors) => {
+                toast.error("Gagal login dengan Google.");
+                console.error(errors);
+                isGoogleLoading.value = false;
+            }
+        });
+    };
+
     const loginWithGoogle = async () => {
         if (isGoogleLoading.value) return;
         isGoogleLoading.value = true;
-        const provider = new GoogleAuthProvider();
+
         try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-            
-            // Send user info to backend
-            router.post(route('google.callback'), {
-                email: user.email,
-                name: user.displayName,
-                uid: user.uid
-            }, {
-                onFinish: () => { isGoogleLoading.value = false; },
-                onError: (errors) => {
-                    toast.error("Gagal login dengan Google.");
-                    console.error(errors);
+            await loadGoogleScript();
+
+            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: clientId,
+                scope: 'email profile',
+                callback: async (response) => {
+                    if (response.error) {
+                        toast.error("Login Google gagal.");
+                        isGoogleLoading.value = false;
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                            headers: { Authorization: `Bearer ${response.access_token}` }
+                        });
+                        const userInfo = await res.json();
+
+                        if (userInfo.email) {
+                            handleGoogleUser(userInfo);
+                        } else {
+                            toast.error("Gagal mendapatkan info akun Google.");
+                            isGoogleLoading.value = false;
+                        }
+                    } catch (err) {
+                        toast.error("Gagal mendapatkan info akun Google.");
+                        console.error(err);
+                        isGoogleLoading.value = false;
+                    }
+                },
+                error_callback: (error) => {
+                    if (error.type === 'popup_closed') {
+                        toast.info("Login dibatalkan.");
+                    } else if (error.type === 'popup_failed_to_open') {
+                        toast.error("Popup diblokir oleh browser. Izinkan popup untuk melanjutkan.");
+                    } else {
+                        toast.error("Terjadi kesalahan: " + error.type);
+                    }
                     isGoogleLoading.value = false;
                 }
             });
-        } catch (error) {
-            console.error("Firebase Auth Error:", error);
-            if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
-                 toast.info("Login dibatalkan.");
-            } else if (error.code === 'auth/popup-blocked') {
-                 toast.error("Popup login diblokir oleh browser. Izinkan popup untuk melanjutkan.");
-            } else {
-                 toast.error("Terjadi kesalahan: " + error.message);
-            }
+
+            client.requestAccessToken({ prompt: 'select_account' });
+        } catch (err) {
+            toast.error("Gagal memuat Google Sign-In. Periksa koneksi internet Anda.");
+            console.error(err);
             isGoogleLoading.value = false;
         }
     };
@@ -84,11 +138,6 @@
             }
         });
     };
-
-    onMounted(() => {
-        localStorage.clear();
-        sessionStorage.clear();
-    });
 </script>
 <template>
     <AuthLayout>

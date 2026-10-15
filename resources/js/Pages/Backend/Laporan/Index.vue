@@ -17,6 +17,7 @@ import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
 import axios from 'axios';
 import StatsCards from './Components/StatsCards.vue';
 import DetailModal from '../Permohonan/Components/DetailModal.vue';
+import ManualDetailModal from '../KerjasamaManual/Components/DetailModal.vue';
 
 const props = defineProps({
     laporan: Object, 
@@ -35,7 +36,7 @@ const applyFilters = () => {
         data: { search: filterQuery.value },
         preserveState: true,
         preserveScroll: true,
-        only: ['laporan']
+        only: ['laporan', 'summary']
     });
 };
 
@@ -50,21 +51,43 @@ watch(filterQuery, (val) => {
 const viewMode = ref(localStorage.getItem('laporanViewMode') || 'grid');
 watch(viewMode, (newVal) => localStorage.setItem('laporanViewMode', newVal));
 
-// Detail Logic
+// Detail Logic: Permohonan Sistem
 const detailDialog = ref(false);
 const detailData = ref(null);
 const loadingDetail = ref(false);
 
-const openDetailModal = async (uuid) => {
-    detailDialog.value = true;
-    loadingDetail.value = true;
-    try {
-        const response = await axios.get(route('permohonan.show', uuid));
-        detailData.value = response.data;
-    } catch (error) {
-        console.error("Failed to fetch details", error);
-    } finally {
-        loadingDetail.value = false;
+// Detail Logic: Kerjasama Manual
+const manualDetailDialog = ref(false);
+const manualDetailData = ref(null);
+const loadingManualDetail = ref(false);
+
+const openDetailModal = async (target) => {
+    const item = typeof target === 'string' ? { uuid: target, source: 'sistem' } : target;
+
+    if (item.source === 'manual') {
+        manualDetailDialog.value = true;
+        loadingManualDetail.value = true;
+        try {
+            const response = await axios.get(route('kerjasama-manual.show', item.uuid), {
+                headers: { Accept: 'application/json' },
+            });
+            manualDetailData.value = response.data;
+        } catch (error) {
+            console.error("Failed to fetch manual details", error);
+        } finally {
+            loadingManualDetail.value = false;
+        }
+    } else {
+        detailDialog.value = true;
+        loadingDetail.value = true;
+        try {
+            const response = await axios.get(route('permohonan.show', item.uuid));
+            detailData.value = response.data;
+        } catch (error) {
+            console.error("Failed to fetch details", error);
+        } finally {
+            loadingDetail.value = false;
+        }
     }
 };
 
@@ -158,8 +181,16 @@ const getSeverity = (alertLevel) => {
                                 <template #empty>Tidak ada data.</template>
                                 <Column field="judul" header="Judul Kerjasama" sortable>
                                     <template #body="{ data }">
-                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ data.kategori }}</div>
+                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data)">{{ data.judul }}</div>
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                                            <span>{{ data.kategori }}</span>
+                                            <span v-if="data.source === 'manual'" class="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-900/30 dark:text-amber-300">
+                                                PKS Manual
+                                            </span>
+                                            <span v-if="data.nomor_pks" class="font-mono text-[11px] text-gray-400">
+                                                • {{ data.nomor_pks }}
+                                            </span>
+                                        </div>
                                     </template>
                                 </Column>
                                 <Column field="instansi" header="Instansi" sortable></Column>
@@ -189,7 +220,7 @@ const getSeverity = (alertLevel) => {
                                 </Column>
                                 <Column header="Aksi" style="width: 100px">
                                     <template #body="slotProps">
-                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(slotProps.data.uuid)" />
+                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(slotProps.data)" />
                                     </template>
                                 </Column>
                             </DataTable>
@@ -208,9 +239,17 @@ const getSeverity = (alertLevel) => {
                             <DataTable :value="laporan.berlangsung" paginator :rows="10" stripedRows tableStyle="min-width: 50rem" class="mt-4">
                                 <template #empty>Tidak ada data kerjasama berlangsung.</template>
                                 <Column field="judul" header="Judul Kerjasama" sortable>
-                                        <template #body="{ data }">
-                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ data.kategori }}</div>
+                                    <template #body="{ data }">
+                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data)">{{ data.judul }}</div>
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                                            <span>{{ data.kategori }}</span>
+                                            <span v-if="data.source === 'manual'" class="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-900/30 dark:text-amber-300">
+                                                PKS Manual
+                                            </span>
+                                            <span v-if="data.nomor_pks" class="font-mono text-[11px] text-gray-400">
+                                                • {{ data.nomor_pks }}
+                                            </span>
+                                        </div>
                                     </template>
                                 </Column>
                                 <Column field="instansi" header="Instansi" sortable></Column>
@@ -237,7 +276,7 @@ const getSeverity = (alertLevel) => {
                                 </Column>
                                     <Column header="Aksi" style="width: 100px">
                                     <template #body="slotProps">
-                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(slotProps.data.uuid)" />
+                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(slotProps.data)" />
                                     </template>
                                 </Column>
                             </DataTable>
@@ -266,8 +305,17 @@ const getSeverity = (alertLevel) => {
                             <DataTable :value="laporan.berakhir" paginator :rows="10" stripedRows tableStyle="min-width: 50rem" class="mt-4">
                                 <template #empty>Tidak ada data.</template>
                                 <Column field="judul" header="Judul Kerjasama" sortable>
-                                        <template #body="{ data }">
-                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data.uuid)">{{ data.judul }}</div>
+                                    <template #body="{ data }">
+                                        <div class="cursor-pointer text-sm font-semibold text-slate-900 hover:text-slate-600 dark:text-white" @click="openDetailModal(data)">{{ data.judul }}</div>
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                                            <span>{{ data.kategori }}</span>
+                                            <span v-if="data.source === 'manual'" class="inline-flex items-center rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-900/30 dark:text-amber-300">
+                                                PKS Manual
+                                            </span>
+                                            <span v-if="data.nomor_pks" class="font-mono text-[11px] text-gray-400">
+                                                • {{ data.nomor_pks }}
+                                            </span>
+                                        </div>
                                     </template>
                                 </Column>
                                 <Column field="instansi" header="Instansi" sortable></Column>
@@ -284,7 +332,7 @@ const getSeverity = (alertLevel) => {
                                 </Column>
                                     <Column header="Aksi" style="width: 100px">
                                     <template #body="slotProps">
-                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(slotProps.data.uuid)" />
+                                        <Button icon="pi pi-eye" severity="secondary" rounded outlined @click="openDetailModal(slotProps.data)" />
                                     </template>
                                 </Column>
                             </DataTable>
@@ -294,12 +342,20 @@ const getSeverity = (alertLevel) => {
             </div>
         </section>
 
-        <!-- Detail Modal -->
+        <!-- Detail Modal Permohonan (Sistem) -->
         <DetailModal 
             v-model:visible="detailDialog" 
             :loading="loadingDetail" 
             :data="detailData" 
             :isAdmin="false"
+        />
+
+        <!-- Detail Modal Kerjasama Manual -->
+        <ManualDetailModal
+            v-model:visible="manualDetailDialog"
+            :loading="loadingManualDetail"
+            :data="manualDetailData"
+            :read-only="true"
         />
     </AuthenticatedLayout>
 </template>

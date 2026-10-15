@@ -34,7 +34,7 @@ class PenjadwalanController extends Controller implements HasMiddleware
     {
         return [
             new Middleware('can:penjadwalan.index', only: ['index']),
-            new Middleware('can:penjadwalan.create', only: ['store']),
+            //new Middleware('can:penjadwalan.create', only: ['store']),
             new Middleware('can:penjadwalan.edit', only: ['edit', 'update', 'review']),
             new Middleware('can:penjadwalan.delete', only: ['destroy']),
         ];
@@ -252,8 +252,9 @@ class PenjadwalanController extends Controller implements HasMiddleware
                 . " (Metode: {$tipeLabel})";
 
             $payload = \App\Services\NotificationTemplate::jadwalDisetujui($name, $permohonan, $tanggalJadwalLengkap);
-            if ($phone) {
-                $wa->sendMessage($phone, $payload['wa']);
+            $targetRecipient = $user ?: ($permohonan->pemohon1 ?: $phone);
+            if ($targetRecipient) {
+                $wa->sendMessage($targetRecipient, $payload['wa']);
             }
         } catch (\Exception $e) {
             \Log::error('Failed WA notif jadwal: ' . $e->getMessage());

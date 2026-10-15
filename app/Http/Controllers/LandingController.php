@@ -277,4 +277,21 @@ class LandingController extends Controller
             'fileLinks' => $fileLinks,
         ]);
     }
+
+    /**
+     * Halaman Kebijakan Privasi publik (diperlukan untuk Google OAuth Consent & UU PDP).
+     */
+    public function privacy()
+    {
+        return Inertia::render('Frontend/Landing/PrivacyPolicy');
+    }
+
+    /**
+     * Halaman Syarat & Ketentuan publik.
+     */
+    public function terms()
+    {
+        return Inertia::render('Frontend/Landing/TermsOfService');
+    }
 }
+

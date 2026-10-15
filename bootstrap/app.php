@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureEmailIsFilled::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'api/chatbot',
+            'api/chatbot/*',
+            'oauth/sso/*',
+        ]);
+
         // Alias for route middleware
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,

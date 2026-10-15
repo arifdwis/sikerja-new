@@ -103,9 +103,10 @@ const searchSso = async (event) => {
 
 const onSsoSelect = (event) => {
     const item = event.value;
-    let name = item.text || item.name;
+    if (!item) return;
+    let name = item.name || item.text || '';
     let email = item.email || '';
-    let uid = item.uid || item.id;
+    let uid = item.uid || item.id || '';
 
     if (typeof item.id === 'string' && item.id.includes('|||')) {
         const parts = item.id.split('|||');
@@ -189,17 +190,18 @@ const roleOptions = computed(() => props.roles.map(role => ({
                         v-model="selectedSsoUser" 
                         :suggestions="ssoUsers" 
                         @complete="searchSso" 
+                        @option-select="onSsoSelect"
                         @item-select="onSsoSelect" 
-                        field="text" 
+                        optionLabel="text" 
                         placeholder="Ketik Nama / NIP / Email..." 
                         class="w-full"
                         inputClass="w-full"
                         :disabled="isSsoLocked"
                     >
-                        <template #item="slotProps">
+                        <template #option="slotProps">
                             <div class="flex flex-col">
-                                <span class="font-semibold">{{ slotProps.item.text || slotProps.item.name }}</span>
-                                <span v-if="slotProps.item.email" class="text-xs text-gray-500">{{ slotProps.item.email }}</span>
+                                <span class="font-semibold">{{ (slotProps.option && (slotProps.option.name || slotProps.option.text)) || (slotProps.item && (slotProps.item.name || slotProps.item.text)) }}</span>
+                                <span v-if="(slotProps.option && slotProps.option.email) || (slotProps.item && slotProps.item.email)" class="text-xs text-gray-500">{{ slotProps.option?.email || slotProps.item?.email }}</span>
                             </div>
                         </template>
                     </AutoComplete>
@@ -215,8 +217,8 @@ const roleOptions = computed(() => props.roles.map(role => ({
                 </div>
                 
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                    <InputText v-model="form.email" :disabled="isSsoLocked" class="w-full" placeholder="Email Address" type="email" />
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Email / NIP / Username SSO</label>
+                    <InputText v-model="form.email" :disabled="isSsoLocked" class="w-full" placeholder="Email / NIP" />
                      <small v-if="form.errors.email" class="text-red-500">{{ form.errors.email }}</small>
                 </div>
 

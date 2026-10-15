@@ -153,8 +153,8 @@ class CheckKerjasamaExpiry extends Command
 
             $payloadPemohon = \App\Services\NotificationTemplate::reminderMonevPemohon($namaPemohon, $p, $sisaHari);
             $this->createNotif($p->id_pemohon_0, $p->id, $payloadPemohon['system']['title'], $payloadPemohon['system']['message']);
-            if ($pemohonUser?->phone) {
-                try { $whatsapp->sendMessage($pemohonUser->phone, $payloadPemohon['wa']); } catch (\Throwable $e) { Log::error('Reminder WA pemohon: ' . $e->getMessage()); }
+            if ($pemohonUser) {
+                try { $whatsapp->sendMessage($pemohonUser, $payloadPemohon['wa']); } catch (\Throwable $e) { Log::error('Reminder WA pemohon: ' . $e->getMessage()); }
             }
         }
 
@@ -176,8 +176,8 @@ class CheckKerjasamaExpiry extends Command
                         : "Kerja sama yang melibatkan instansi Bpk/Ibu akan berakhir pada {$tglFormat} ({$window['label']} lagi). Mohon Bpk/Ibu mendampingi proses Monev kerja sama tersebut."
                 );
                 $this->createNotif($u->id, $p->id, $title, $shortMsg);
-                if ($u->phone) {
-                    try { $whatsapp->sendMessage($u->phone, $waOpd); } catch (\Throwable $e) { Log::error('Reminder WA OPD: ' . $e->getMessage()); }
+                if ($u) {
+                    try { $whatsapp->sendMessage($u, $waOpd); } catch (\Throwable $e) { Log::error('Reminder WA OPD: ' . $e->getMessage()); }
                 }
             }
         }
@@ -227,8 +227,8 @@ class CheckKerjasamaExpiry extends Command
                 $namaOpd = $u->opd?->nama ?? $u->name;
                 $waOpd = \App\Services\NotificationTemplate::formalToOpd($title, $namaOpd, $proxyPermohonan, $message);
                 $this->createNotif($u->id, null, $title, $message);
-                if ($u->phone) {
-                    try { $whatsapp->sendMessage($u->phone, $waOpd); } catch (\Throwable $e) { Log::error('Reminder WA OPD manual: ' . $e->getMessage()); }
+                if ($u) {
+                    try { $whatsapp->sendMessage($u, $waOpd); } catch (\Throwable $e) { Log::error('Reminder WA OPD manual: ' . $e->getMessage()); }
                 }
             }
         }

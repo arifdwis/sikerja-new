@@ -74,35 +74,59 @@ class WhatsappService
 
         if ($target instanceof User) {
             $email = $target->target_notification_email;
+        } elseif ($target instanceof Pemohon && $target->id_operator) {
+            $user = User::find($target->id_operator);
+            $email = $user?->target_notification_email;
+        } elseif (is_numeric($target) && (int)$target > 0 && strlen((string)$target) < 9) {
+            // User ID
+            $user = User::find((int) $target);
+            $email = $user?->target_notification_email;
         } elseif (is_string($target) && filter_var($target, FILTER_VALIDATE_EMAIL)) {
             $email = $target;
-        } elseif (is_string($target)) {
-            $cleanPhone = preg_replace('/[^0-9]/', '', $target);
+        } elseif (is_string($target) || is_numeric($target)) {
+            $targetStr = (string) $target;
+            $digits = preg_replace('/[^0-9]/', '', $targetStr);
+
+            $variations = array_filter(array_unique([
+                $targetStr,
+                $digits,
+            ]));
+
+            if (strlen($digits) >= 8) {
+                $base = $digits;
+                if (str_starts_with($digits, '62')) {
+                    $base = substr($digits, 2);
+                } elseif (str_starts_with($digits, '0')) {
+                    $base = substr($digits, 1);
+                }
+
+                $variations = array_values(array_unique(array_merge($variations, [
+                    $base,
+                    '0' . $base,
+                    '62' . $base,
+                    '+62' . $base,
+                ])));
+            }
 
             // 1. Search user by email or phone
-            $user = User::where('email', $target)
-                ->orWhere('notification_email', $target)
-                ->orWhere('phone', $target)
-                ->orWhere('phone', '0' . substr($cleanPhone, 2))
-                ->orWhere('phone', $cleanPhone)
+            $user = User::where('email', $targetStr)
+                ->orWhere('notification_email', $targetStr)
+                ->orWhereIn('phone', $variations)
                 ->first();
 
             if (!$user) {
                 // 2. Search pemohon by phone
-                $pemohon = Pemohon::where('phone', $target)
-                    ->orWhere('phone', '0' . substr($cleanPhone, 2))
-                    ->orWhere('phone', $cleanPhone)
-                    ->first();
+                $pemohon = Pemohon::whereIn('phone', $variations)->first();
 
-                if ($pemohon) {
+                if ($pemohon && $pemohon->id_operator) {
                     $user = User::find($pemohon->id_operator);
                 }
             }
 
             if ($user) {
                 $email = $user->target_notification_email;
-            } elseif (filter_var($target, FILTER_VALIDATE_EMAIL)) {
-                $email = $target;
+            } elseif (filter_var($targetStr, FILTER_VALIDATE_EMAIL)) {
+                $email = $targetStr;
             }
         }
 

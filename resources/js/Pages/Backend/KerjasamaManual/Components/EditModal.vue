@@ -92,7 +92,10 @@ const submit = () => {
         return;
     }
 
-    form.post(route('kerjasama-manual.update', props.data.uuid), {
+    form.transform((data) => ({
+        ...data,
+        _method: 'PUT',
+    })).post(route('kerjasama-manual.update', props.data.uuid), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {

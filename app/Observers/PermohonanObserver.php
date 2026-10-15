@@ -136,10 +136,10 @@ class PermohonanObserver
             'is_read'  => false,
         ]);
 
-        // WA pemohon
-        $targetPhone = $pemohonUser?->phone ?: $pemohonProfile?->phone;
-        if ($targetPhone) {
-            $this->waService->sendMessage($targetPhone, $payload['wa']);
+        // Notifikasi pemohon (email)
+        $targetRecipient = $pemohonUser ?: ($targetPhone ?: $pemohonProfile);
+        if ($targetRecipient) {
+            $this->waService->sendMessage($targetRecipient, $payload['wa']);
         }
 
         // Internal grup admin (rekap update status)
@@ -185,9 +185,7 @@ class PermohonanObserver
                 'is_read'  => false,
             ]);
 
-            if (!empty($u->phone)) {
-                $this->waService->sendMessage($u->phone, $message);
-            }
+            $this->waService->sendMessage($u, $message);
         }
     }
 
@@ -260,8 +258,9 @@ class PermohonanObserver
                 'is_read'       => false,
             ]);
 
-            if ($pemohonUser?->phone) {
-                $this->waService->sendMessage($pemohonUser->phone, $payload['wa']);
+            $targetRecipient = $pemohonUser ?: ($pemohonUser?->phone ?: $permohonan->pemohon);
+            if ($targetRecipient) {
+                $this->waService->sendMessage($targetRecipient, $payload['wa']);
             }
         } catch (\Exception $e) {
             Log::error('handleJangkaWaktuChange notif/WA: ' . $e->getMessage());

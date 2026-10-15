@@ -103,9 +103,8 @@ const submit = () => {
               
               <fwb-input 
                 v-model="form.email" 
-                placeholder="Email Address" 
-                label="Email" 
-                type="email"
+                placeholder="Email / NIP" 
+                label="Email / NIP / Username SSO" 
                 required 
                 :validation-status="validationStatus.email" 
               />

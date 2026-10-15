@@ -57,6 +57,11 @@ class KerjasamaManual extends Model
         return $this->belongsToMany(Opd::class, 'kerjasama_manual_opd', 'id_kerjasama_manual', 'id_opd');
     }
 
+    public function monevs()
+    {
+        return $this->hasMany(Monev::class, 'id_kerjasama_manual');
+    }
+
     public function getFilePksUrlAttribute(): ?string
     {
         return $this->file_pks ? asset('storage/' . $this->file_pks) : null;

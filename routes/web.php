@@ -32,6 +32,11 @@ Route::controller(\App\Http\Controllers\LandingController::class)->group(functio
     Route::get('/faq', 'faq')->name('landing.faq');
     // Infografis publik (Req 15)
     Route::get('/infografis', 'infografis')->name('landing.infografis');
+    // Kebijakan Privasi & Syarat Layanan (Google OAuth & Public)
+    Route::get('/kebijakan-privasi', 'privacy')->name('landing.privacy');
+    Route::get('/privacy-policy', 'privacy')->name('landing.privacy.alias');
+    Route::get('/syarat-ketentuan', 'terms')->name('landing.terms');
+    Route::get('/terms-of-service', 'terms')->name('landing.terms.alias');
     // Generic page route
     Route::get('/page/{slug}', 'page')->name('landing.page');
 });

@@ -111,7 +111,7 @@ class UserController extends Controller implements HasMiddleware
     {
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|max:255|unique:users,email',
             'role_id' => 'required|exists:roles,id',
             // id_opd wajib jika role adalah tkksd_lokus
             'id_opd' => 'nullable|exists:opd,id',
@@ -167,9 +167,35 @@ class UserController extends Controller implements HasMiddleware
             ]);
 
             if ($response->successful()) {
-                // Return raw response. Frontend harus adaptasi dengan struktur data ini.
-                // Legacy select2 mengharapkan array objects [{id:..., text:...}]
-                return response()->json($response->json());
+                $rawList = $response->json();
+                if (is_array($rawList)) {
+                    $formatted = array_map(function ($item) {
+                        $id = $item['id'] ?? '';
+                        $text = $item['text'] ?? '';
+                        $uid = $id;
+                        $email = '';
+                        $name = $text;
+
+                        if (str_contains($id, '|||')) {
+                            $parts = explode('|||', $id);
+                            $uid = $parts[0] ?? '';
+                            $email = $parts[1] ?? '';
+                            $name = $parts[2] ?? $text;
+                        }
+
+                        return [
+                            'id' => $id,
+                            'uid' => $uid,
+                            'name' => trim($name),
+                            'email' => trim($email),
+                            'text' => $text,
+                        ];
+                    }, $rawList);
+
+                    return response()->json($formatted);
+                }
+
+                return response()->json($rawList);
             }
         } catch (\Exception $e) {
             // Log::error('SSO Search Error: ' . $e->getMessage());
@@ -202,7 +228,7 @@ class UserController extends Controller implements HasMiddleware
 
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'email' => ['required', 'string', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role_id' => 'required|exists:roles,id',
             'id_opd' => 'nullable|exists:opd,id',
         ];

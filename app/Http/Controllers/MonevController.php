@@ -9,9 +9,11 @@ use App\Models\MonevTkksdDetail;
 use App\Models\Notifikasi;
 use App\Models\Permohonan;
 use App\Models\Pemohon;
+use App\Models\KerjasamaManual;
 use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
@@ -68,40 +70,58 @@ class MonevController extends Controller implements HasMiddleware
                 ->whereHas('monevs')
                 ->orderByDesc('created_at');
 
-            if ($request->has('search')) {
+            $manualQuery = KerjasamaManual::with([
+                    'kategori',
+                    'opds',
+                    'monevs.submitter',
+                    'monevs.pemohon',
+                    'monevs.reviewer',
+                    'monevs.adminDetail',
+                    'monevs.pemohonDetail',
+                    'monevs.tkksdDetail',
+                ])
+                ->whereHas('monevs')
+                ->orderByDesc('created_at');
+
+            if ($request->has('search') && $request->search !== '') {
                 $search = $request->search;
                 $permQuery->where(function ($q) use ($search) {
                     $q->where('label', 'like', "%{$search}%")
                         ->orWhere('nama_instansi', 'like', "%{$search}%")
                         ->orWhereHas('monevs', fn($q2) => $q2->where('kode_monev', 'like', "%{$search}%"));
                 });
+                $manualQuery->where(function ($q) use ($search) {
+                    $q->where('label', 'like', "%{$search}%")
+                        ->orWhere('nama_instansi', 'like', "%{$search}%")
+                        ->orWhere('nomor_pks', 'like', "%{$search}%")
+                        ->orWhereHas('monevs', fn($q2) => $q2->where('kode_monev', 'like', "%{$search}%"));
+                });
             }
 
-            $paginated = $permQuery->paginate(10)->withQueryString();
-
             // Bentuk row data: 1 row = 1 kerjasama dengan koleksi monev[]
-            $datas = $paginated->through(function (Permohonan $p) {
+            $permRows = $permQuery->get()->map(function (Permohonan $p) {
                 $monevs = $p->monevs->sortBy('created_at')->values();
                 $rolesPresent = $monevs->pluck('submitter_role')->filter()->unique()->values();
                 $latest = $monevs->sortByDesc('created_at')->first();
 
                 return [
-                    // Identitas (untuk kolom Kerjasama)
                     'id' => $p->id,
                     'uuid' => $p->uuid,
+                    'is_manual' => false,
                     'permohonan' => [
                         'id' => $p->id,
                         'uuid' => $p->uuid,
                         'label' => $p->label,
                         'nama_instansi' => $p->nama_instansi,
+                        'nomor_pks' => $p->nomor_pks ?? $p->nomor_permohonan,
                         'kategori' => $p->kategori,
+                        'is_manual' => false,
                         'opds' => $p->opds->map(fn($o) => [
                             'id' => $o->id,
                             'nama' => $o->nama,
                             'singkatan' => $o->singkatan,
                         ])->values(),
                     ],
-                    // Monev list lengkap untuk modal Detail
                     'monevs' => $monevs->map(fn($m) => [
                         'id' => $m->id,
                         'uuid' => $m->uuid,
@@ -124,14 +144,12 @@ class MonevController extends Controller implements HasMiddleware
                         'relevansi_kebutuhan' => $m->relevansi_kebutuhan,
                         'saran_rekomendasi' => $m->saran_rekomendasi,
                         'file_bukti' => $m->file_bukti,
-                        // Field monev khusus pemohon
                         'pmh_realisasi_kegiatan' => $m->pmh_realisasi_kegiatan,
                         'pmh_kesesuaian_output' => $m->pmh_kesesuaian_output,
                         'pmh_pemanfaatan_hasil' => $m->pmh_pemanfaatan_hasil,
                         'pmh_kendala_lapangan' => $m->pmh_kendala_lapangan,
                         'pmh_keberlanjutan' => $m->pmh_keberlanjutan,
                         'pmh_file_laporan' => $m->pmh_file_laporan,
-                        // Field monev khusus TKKSD Lokus
                         'tkl_kepatuhan_pks' => $m->tkl_kepatuhan_pks,
                         'tkl_koordinasi_mitra' => $m->tkl_koordinasi_mitra,
                         'tkl_kesesuaian_anggaran' => $m->tkl_kesesuaian_anggaran,
@@ -139,16 +157,93 @@ class MonevController extends Controller implements HasMiddleware
                         'tkl_rekomendasi_lokus' => $m->tkl_rekomendasi_lokus,
                         'tkl_catatan' => $m->tkl_catatan,
                     ])->values(),
-                    // Ringkasan agregat untuk kolom-kolom listing
                     'monev_count' => $monevs->count(),
                     'submitter_roles' => $rolesPresent,
                     'latest_tanggal_evaluasi' => $latest?->tanggal_evaluasi?->toDateString(),
                     'latest_rekomendasi' => $latest?->rekomendasi_lanjutan ?: ($latest?->pmh_keberlanjutan ?: $latest?->tkl_rekomendasi_lokus),
-                    'kode_monev' => $monevs->first()?->kode_monev, // representatif untuk pencarian
+                    'kode_monev' => $monevs->first()?->kode_monev,
+                    'sort_date' => $latest?->created_at ?? $p->created_at,
                 ];
             });
 
-            $pendingPermohonans = Permohonan::with(['kategori', 'operator'])
+            $manualRows = $manualQuery->get()->map(function (KerjasamaManual $km) {
+                $monevs = $km->monevs->sortBy('created_at')->values();
+                $rolesPresent = $monevs->pluck('submitter_role')->filter()->unique()->values();
+                $latest = $monevs->sortByDesc('created_at')->first();
+
+                return [
+                    'id' => 'manual_' . $km->id,
+                    'uuid' => $km->uuid,
+                    'is_manual' => true,
+                    'permohonan' => [
+                        'id' => $km->id,
+                        'uuid' => $km->uuid,
+                        'label' => $km->label,
+                        'nama_instansi' => $km->nama_instansi,
+                        'nomor_pks' => $km->nomor_pks,
+                        'kategori' => $km->kategori,
+                        'is_manual' => true,
+                        'opds' => $km->opds->map(fn($o) => [
+                            'id' => $o->id,
+                            'nama' => $o->nama,
+                            'singkatan' => $o->singkatan,
+                        ])->values(),
+                    ],
+                    'monevs' => $monevs->map(fn($m) => [
+                        'id' => $m->id,
+                        'uuid' => $m->uuid,
+                        'kode_monev' => $m->kode_monev,
+                        'submitter_role' => $m->submitter_role,
+                        'submitter_name' => $m->submitter?->name ?? '-',
+                        'tanggal_evaluasi' => $m->tanggal_evaluasi,
+                        'rekomendasi_lanjutan' => $m->rekomendasi_lanjutan,
+                        'rating' => $m->rating,
+                        'kesesuaian_tujuan' => $m->kesesuaian_tujuan,
+                        'ketepatan_waktu' => $m->ketepatan_waktu,
+                        'kontribusi_mitra' => $m->kontribusi_mitra,
+                        'tingkat_koordinasi' => $m->tingkat_koordinasi,
+                        'capaian_indikator' => $m->capaian_indikator,
+                        'dampak_pelaksanaan' => $m->dampak_pelaksanaan,
+                        'inovasi_manfaat' => $m->inovasi_manfaat,
+                        'kelengkapan_dokumen' => $m->kelengkapan_dokumen,
+                        'pelaporan_berkala' => $m->pelaporan_berkala,
+                        'kendala_administrasi' => $m->kendala_administrasi,
+                        'relevansi_kebutuhan' => $m->relevansi_kebutuhan,
+                        'saran_rekomendasi' => $m->saran_rekomendasi,
+                        'file_bukti' => $m->file_bukti,
+                        'pmh_realisasi_kegiatan' => $m->pmh_realisasi_kegiatan,
+                        'pmh_kesesuaian_output' => $m->pmh_kesesuaian_output,
+                        'pmh_pemanfaatan_hasil' => $m->pmh_pemanfaatan_hasil,
+                        'pmh_kendala_lapangan' => $m->pmh_kendala_lapangan,
+                        'pmh_keberlanjutan' => $m->pmh_keberlanjutan,
+                        'pmh_file_laporan' => $m->pmh_file_laporan,
+                        'tkl_kepatuhan_pks' => $m->tkl_kepatuhan_pks,
+                        'tkl_koordinasi_mitra' => $m->tkl_koordinasi_mitra,
+                        'tkl_kesesuaian_anggaran' => $m->tkl_kesesuaian_anggaran,
+                        'tkl_temuan_pengawasan' => $m->tkl_temuan_pengawasan,
+                        'tkl_rekomendasi_lokus' => $m->tkl_rekomendasi_lokus,
+                        'tkl_catatan' => $m->tkl_catatan,
+                    ])->values(),
+                    'monev_count' => $monevs->count(),
+                    'submitter_roles' => $rolesPresent,
+                    'latest_tanggal_evaluasi' => $latest?->tanggal_evaluasi?->toDateString(),
+                    'latest_rekomendasi' => $latest?->rekomendasi_lanjutan ?: ($latest?->pmh_keberlanjutan ?: $latest?->tkl_rekomendasi_lokus),
+                    'kode_monev' => $monevs->first()?->kode_monev,
+                    'sort_date' => $latest?->created_at ?? $km->created_at,
+                ];
+            });
+
+            $allRows = $permRows->concat($manualRows)->sortByDesc('sort_date')->values();
+            $page = LengthAwarePaginator::resolveCurrentPage();
+            $perPage = 10;
+            $sliced = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
+            $datas = new LengthAwarePaginator($sliced, $allRows->count(), $perPage, $page, [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => $request->query(),
+            ]);
+
+            // Pending evaluasi: Permohonan + KerjasamaManual expired
+            $pendingReguler = Permohonan::with(['kategori', 'operator'])
                 ->where(function ($q) {
                     $q->where('status', Permohonan::STATUS_SELESAI)
                         ->orWhere(function ($q2) {
@@ -159,7 +254,38 @@ class MonevController extends Controller implements HasMiddleware
                 })
                 ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id))
                 ->latest()
-                ->get();
+                ->get()
+                ->map(fn($p) => [
+                    'id' => $p->id,
+                    'uuid' => $p->uuid,
+                    'label' => $p->label,
+                    'nama_instansi' => $p->nama_instansi,
+                    'nomor_pks' => $p->nomor_pks ?? $p->nomor_permohonan,
+                    'kategori' => $p->kategori,
+                    'tanggal_berakhir' => $p->tanggal_berakhir?->toDateString(),
+                    'is_manual' => false,
+                    'tipe' => 'reguler',
+                ]);
+
+            $pendingManual = KerjasamaManual::with(['kategori'])
+                ->whereNotNull('tanggal_berakhir')
+                ->where('tanggal_berakhir', '<=', now())
+                ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id))
+                ->latest()
+                ->get()
+                ->map(fn($km) => [
+                    'id' => $km->id,
+                    'uuid' => $km->uuid,
+                    'label' => $km->label,
+                    'nama_instansi' => $km->nama_instansi,
+                    'nomor_pks' => $km->nomor_pks,
+                    'kategori' => $km->kategori,
+                    'tanggal_berakhir' => $km->tanggal_berakhir?->toDateString(),
+                    'is_manual' => true,
+                    'tipe' => 'manual',
+                ]);
+
+            $pendingPermohonans = $pendingReguler->concat($pendingManual)->values();
 
             return Inertia::render("$this->view/Index", [
                 'datas' => $datas,
@@ -176,6 +302,7 @@ class MonevController extends Controller implements HasMiddleware
         // Non-admin: tampilan klasik 1 baris per Monev (milik user ini)
         $query = Monev::with([
                 'permohonan.kategori', 'permohonan.pemohon', 'permohonan.opds',
+                'kerjasamaManual.kategori', 'kerjasamaManual.opds',
                 'pemohon', 'reviewer', 'submitter',
                 'adminDetail', 'pemohonDetail', 'tkksdDetail',
             ])
@@ -204,18 +331,42 @@ class MonevController extends Controller implements HasMiddleware
             $query->where('status', $request->status);
         }
 
-        if ($request->has('search')) {
+        if ($request->has('search') && $request->search !== '') {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('kode_monev', 'like', "%{$search}%")
                     ->orWhereHas('permohonan', function ($q2) use ($search) {
                         $q2->where('label', 'like', "%{$search}%")
                             ->orWhere('nama_instansi', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('kerjasamaManual', function ($q2) use ($search) {
+                        $q2->where('label', 'like', "%{$search}%")
+                            ->orWhere('nama_instansi', 'like', "%{$search}%")
+                            ->orWhere('nomor_pks', 'like', "%{$search}%");
                     });
             });
         }
 
-        $datas = $query->paginate(10)->withQueryString();
+        $paginated = $query->paginate(10)->withQueryString();
+        $datas = $paginated->through(function ($m) {
+            if (!$m->permohonan && $m->kerjasamaManual) {
+                $km = $m->kerjasamaManual;
+                $virtual = new Permohonan([
+                    'id' => $km->id,
+                    'uuid' => $km->uuid,
+                    'label' => $km->label,
+                    'nama_instansi' => $km->nama_instansi,
+                    'nomor_permohonan' => $km->nomor_pks,
+                ]);
+                $virtual->is_manual = true;
+                $virtual->nomor_pks = $km->nomor_pks;
+                $virtual->setRelation('kategori', $km->kategori);
+                $virtual->setRelation('opds', $km->opds);
+                $m->setRelation('permohonan', $virtual);
+                $m->is_manual = true;
+            }
+            return $m;
+        });
 
         $pendingPermohonans = collect();
         $canCreateMonev = $user->can('monev.create');
@@ -230,21 +381,85 @@ class MonevController extends Controller implements HasMiddleware
                     });
             });
 
+        $manualPendingBase = KerjasamaManual::with(['kategori'])
+            ->whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '<=', now());
+
         if ($isTkksdLokus) {
             $opdId = $user->id_opd;
             if ($opdId) {
-                $pendingPermohonans = (clone $basePending)
+                $pendingReguler = (clone $basePending)
                     ->whereHas('opds', fn($q) => $q->where('opd.id', $opdId))
                     ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id))
                     ->latest()
-                    ->get();
+                    ->get()
+                    ->map(fn($p) => [
+                        'id' => $p->id,
+                        'uuid' => $p->uuid,
+                        'label' => $p->label,
+                        'nama_instansi' => $p->nama_instansi,
+                        'nomor_pks' => $p->nomor_pks ?? $p->nomor_permohonan,
+                        'kategori' => $p->kategori,
+                        'tanggal_berakhir' => $p->tanggal_berakhir?->toDateString(),
+                        'is_manual' => false,
+                        'tipe' => 'reguler',
+                    ]);
+
+                $pendingManual = (clone $manualPendingBase)
+                    ->whereHas('opds', fn($q) => $q->where('opd.id', $opdId))
+                    ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id))
+                    ->latest()
+                    ->get()
+                    ->map(fn($km) => [
+                        'id' => $km->id,
+                        'uuid' => $km->uuid,
+                        'label' => $km->label,
+                        'nama_instansi' => $km->nama_instansi,
+                        'nomor_pks' => $km->nomor_pks,
+                        'kategori' => $km->kategori,
+                        'tanggal_berakhir' => $km->tanggal_berakhir?->toDateString(),
+                        'is_manual' => true,
+                        'tipe' => 'manual',
+                    ]);
+
+                $pendingPermohonans = $pendingReguler->concat($pendingManual)->values();
             }
         } elseif ($canCreateMonev) {
-            $pendingPermohonans = (clone $basePending)
+            $pendingReguler = (clone $basePending)
                 ->where('id_pemohon_0', $user->id)
                 ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id))
                 ->latest()
-                ->get();
+                ->get()
+                ->map(fn($p) => [
+                    'id' => $p->id,
+                    'uuid' => $p->uuid,
+                    'label' => $p->label,
+                    'nama_instansi' => $p->nama_instansi,
+                    'nomor_pks' => $p->nomor_pks ?? $p->nomor_permohonan,
+                    'kategori' => $p->kategori,
+                    'tanggal_berakhir' => $p->tanggal_berakhir?->toDateString(),
+                    'is_manual' => false,
+                    'tipe' => 'reguler',
+                ]);
+
+            $pendingManual = (clone $manualPendingBase)
+                ->where('created_by', $user->id)
+                ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id))
+                ->latest()
+                ->get()
+                ->map(fn($km) => [
+                    'id' => $km->id,
+                    'uuid' => $km->uuid,
+                    'label' => $km->label,
+                    'nama_instansi' => $km->nama_instansi,
+                    'nomor_pks' => $km->nomor_pks,
+                    'kategori' => $km->kategori,
+                    'tanggal_berakhir' => $km->tanggal_berakhir?->toDateString(),
+                    'is_manual' => true,
+                    'tipe' => 'manual',
+                ]);
+
+            $pendingPermohonans = $pendingReguler->concat($pendingManual)->values();
         }
 
         return Inertia::render("$this->view/Index", [
@@ -275,18 +490,39 @@ class MonevController extends Controller implements HasMiddleware
                             ->where('tanggal_berakhir', '<=', now());
                     });
             })
-            ->whereDoesntHave('monev', fn($q) => $q->where('submitter_user_id', $user->id));
+            ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id));
+
+        $manualBase = KerjasamaManual::whereNotNull('tanggal_berakhir')
+            ->where('tanggal_berakhir', '<=', now())
+            ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id));
 
         if ($isAdmin) {
             // Admin: semua kerjasama
         } elseif ($isTkksdLokus) {
             $base->whereHas('opds', fn($q) => $q->where('opd.id', $user->id_opd));
+            $manualBase->whereHas('opds', fn($q) => $q->where('opd.id', $user->id_opd));
         } else {
             // Pemohon biasa
             $base->where('id_pemohon_0', $user->id);
+            $manualBase->where('created_by', $user->id);
         }
 
-        $permohonans = $base->get(['id', 'uuid', 'label', 'nama_instansi', 'nomor_permohonan', 'tanggal_berakhir']);
+        $permohonans = $base->get(['id', 'uuid', 'label', 'nama_instansi', 'nomor_permohonan', 'tanggal_berakhir'])
+            ->map(function ($p) {
+                $p->is_manual = false;
+                $p->select_id = (int) $p->id;
+                return $p;
+            });
+
+        $manualPermohonans = $manualBase->get(['id', 'uuid', 'label', 'nama_instansi', 'nomor_pks', 'tanggal_berakhir'])
+            ->map(function ($km) {
+                $km->is_manual = true;
+                $km->nomor_permohonan = $km->nomor_pks;
+                $km->select_id = 'manual_' . $km->id;
+                return $km;
+            });
+
+        $allPermohonans = $permohonans->concat($manualPermohonans)->values();
 
         $selectedPermohonan = null;
         if ($request->has('permohonan')) {
@@ -297,7 +533,22 @@ class MonevController extends Controller implements HasMiddleware
                     || ($isTkksdLokus && $user->id_opd && $sel->opds()->where('opd.id', $user->id_opd)->exists())
                     || (!$isAdmin && !$isTkksdLokus && $sel->id_pemohon_0 == $user->id);
                 if ($allowed) {
+                    $sel->is_manual = false;
+                    $sel->select_id = (int) $sel->id;
                     $selectedPermohonan = $sel;
+                }
+            } else {
+                $selManual = KerjasamaManual::where('uuid', $request->permohonan)->first();
+                if ($selManual) {
+                    $allowed = $isAdmin
+                        || ($isTkksdLokus && $user->id_opd && $selManual->opds()->where('opd.id', $user->id_opd)->exists())
+                        || (!$isAdmin && !$isTkksdLokus && $selManual->created_by == $user->id);
+                    if ($allowed) {
+                        $selManual->is_manual = true;
+                        $selManual->nomor_permohonan = $selManual->nomor_pks;
+                        $selManual->select_id = 'manual_' . $selManual->id;
+                        $selectedPermohonan = $selManual;
+                    }
                 }
             }
         }
@@ -310,7 +561,7 @@ class MonevController extends Controller implements HasMiddleware
 
         return Inertia::render($component, [
             'share' => array_merge($this->share, ['title' => 'Isi Form Monev']),
-            'permohonans' => $permohonans,
+            'permohonans' => $allPermohonans,
             'selectedPermohonan' => $selectedPermohonan,
             'pemohon' => $pemohon,
             'submitterRole' => $isAdmin ? 'admin' : ($isTkksdLokus ? 'tkksd_lokus' : 'pemohon'),
@@ -325,7 +576,8 @@ class MonevController extends Controller implements HasMiddleware
         $isTkksdLokus = $user->hasRole('tkksd_lokus') && !$isAdmin;
 
         $rules = [
-            'id_permohonan' => 'required|exists:permohonan,id',
+            'id_permohonan' => 'nullable',
+            'id_kerjasama_manual' => 'nullable|exists:kerjasama_manual,id',
             'tanggal_evaluasi' => 'required|date',
         ];
 
@@ -370,24 +622,62 @@ class MonevController extends Controller implements HasMiddleware
 
         $validated = $request->validate($rules);
 
-        // Cegah submitter yang sama monev permohonan yang sama lebih dari sekali
-        $alreadySubmitted = Monev::where('id_permohonan', $validated['id_permohonan'])
-            ->where('submitter_user_id', $user->id)
-            ->exists();
+        // Tentukan apakah monev untuk kerjasama manual atau reguler
+        $idKerjasamaManual = $request->id_kerjasama_manual;
+        $idPermohonan = $request->id_permohonan;
 
-        if ($alreadySubmitted) {
-            return redirect()->back()->with('error', 'Anda sudah pernah submit monev untuk kerjasama ini.');
+        if (is_string($idPermohonan) && str_starts_with($idPermohonan, 'manual_')) {
+            $idKerjasamaManual = (int) str_replace('manual_', '', $idPermohonan);
+            $idPermohonan = null;
+        } elseif ($request->boolean('is_manual') && !empty($idPermohonan) && empty($idKerjasamaManual)) {
+            $idKerjasamaManual = $idPermohonan;
+            $idPermohonan = null;
         }
 
-        // Cek otorisasi berdasarkan role
-        $permohonan = Permohonan::find($validated['id_permohonan']);
-        if ($isTkksdLokus) {
-            if (!$user->id_opd || !$permohonan->opds()->where('opd.id', $user->id_opd)->exists()) {
-                abort(403, 'Anda hanya bisa monev kerjasama yang melibatkan OPD Anda.');
+        if (empty($idPermohonan) && empty($idKerjasamaManual)) {
+            return redirect()->back()->withErrors(['id_permohonan' => 'Kerjasama wajib dipilih.']);
+        }
+
+        $isManual = !empty($idKerjasamaManual);
+
+        // Cegah submitter yang sama monev permohonan yang sama lebih dari sekali & validasi akses
+        if ($isManual) {
+            $alreadySubmitted = Monev::where('id_kerjasama_manual', $idKerjasamaManual)
+                ->where('submitter_user_id', $user->id)
+                ->exists();
+
+            if ($alreadySubmitted) {
+                return redirect()->back()->with('error', 'Anda sudah pernah submit monev untuk kerjasama ini.');
             }
-        } elseif (!$isAdmin) {
-            if ($permohonan->id_pemohon_0 != $user->id) {
-                abort(403, 'Anda hanya bisa monev kerjasama Anda sendiri.');
+
+            $kerjasamaManual = KerjasamaManual::findOrFail($idKerjasamaManual);
+            if ($isTkksdLokus) {
+                if (!$user->id_opd || !$kerjasamaManual->opds()->where('opd.id', $user->id_opd)->exists()) {
+                    abort(403, 'Anda hanya bisa monev kerjasama yang melibatkan OPD Anda.');
+                }
+            } elseif (!$isAdmin) {
+                if ($kerjasamaManual->created_by != $user->id) {
+                    abort(403, 'Anda hanya bisa monev kerjasama yang Anda buat.');
+                }
+            }
+        } else {
+            $alreadySubmitted = Monev::where('id_permohonan', $idPermohonan)
+                ->where('submitter_user_id', $user->id)
+                ->exists();
+
+            if ($alreadySubmitted) {
+                return redirect()->back()->with('error', 'Anda sudah pernah submit monev untuk kerjasama ini.');
+            }
+
+            $permohonan = Permohonan::findOrFail($idPermohonan);
+            if ($isTkksdLokus) {
+                if (!$user->id_opd || !$permohonan->opds()->where('opd.id', $user->id_opd)->exists()) {
+                    abort(403, 'Anda hanya bisa monev kerjasama yang melibatkan OPD Anda.');
+                }
+            } elseif (!$isAdmin) {
+                if ($permohonan->id_pemohon_0 != $user->id) {
+                    abort(403, 'Anda hanya bisa monev kerjasama Anda sendiri.');
+                }
             }
         }
 
@@ -416,9 +706,11 @@ class MonevController extends Controller implements HasMiddleware
 
         $monevPayload['id_pemohon'] = $pemohon?->id;
         $monevPayload['status'] = Monev::STATUS_SUBMITTED;
-        $monevPayload['tipe'] = $isAdmin ? 'manual' : 'reguler';
+        $monevPayload['tipe'] = $isManual ? 'manual' : ($isAdmin ? 'manual' : 'reguler');
         $monevPayload['submitter_role'] = $isAdmin ? 'admin' : ($isTkksdLokus ? 'tkksd_lokus' : 'pemohon');
         $monevPayload['submitter_user_id'] = $user->id;
+        $monevPayload['id_permohonan'] = $isManual ? null : $idPermohonan;
+        $monevPayload['id_kerjasama_manual'] = $isManual ? $idKerjasamaManual : null;
 
         $monev = \DB::transaction(function () use ($monevPayload, $detailPayload, $isAdmin, $isTkksdLokus) {
             $monev = Monev::create($monevPayload);
@@ -436,8 +728,6 @@ class MonevController extends Controller implements HasMiddleware
         });
 
         // Notifikasi: hanya kirim ke admin (yang akan summarize hasil ketiga submitter).
-        // Pemohon dan TKKSD Lokus monev mandiri-paralel, jadi tidak perlu saling notif.
-        // Notifikasi tidak boleh menggagalkan flow utama — bungkus try/catch.
         try {
             $this->notifyAdminMonevSubmitted($monev);
         } catch (\Throwable $e) {
@@ -456,9 +746,9 @@ class MonevController extends Controller implements HasMiddleware
      */
     private function notifyAdminMonevSubmitted(Monev $monev): void
     {
-        $monev->loadMissing(['permohonan', 'submitter']);
-        $permohonan = $monev->permohonan;
-        if (!$permohonan) return;
+        $monev->loadMissing(['permohonan', 'kerjasamaManual', 'submitter']);
+        $kerjasamaObj = $monev->permohonan ?: $monev->kerjasamaManual;
+        if (!$kerjasamaObj) return;
 
         $whatsapp = app(WhatsappService::class);
         $submitterName = $monev->submitter?->name ?? 'Sistem';
@@ -472,7 +762,7 @@ class MonevController extends Controller implements HasMiddleware
         $admins = \App\Models\User::adminNotificationRecipients()->get();
 
         $waMsg = \App\Services\NotificationTemplate::monevDariPemohonKeAdmin(
-            $permohonan,
+            $kerjasamaObj,
             $monev->kode_monev,
             $submitterRoleLabel,
             $submitterName
@@ -481,17 +771,17 @@ class MonevController extends Controller implements HasMiddleware
         foreach ($admins as $admin) {
             Notifikasi::create([
                 'id_user'       => $admin->id,
-                'id_permohonan' => $permohonan->id,
+                'id_permohonan' => $monev->id_permohonan,
                 'from_user_id'  => Auth::id(),
                 'type'          => 'monev_submitted',
                 'title'         => "Monev Diterima dari {$submitterRoleLabel}",
-                'message'       => "{$submitterRoleLabel} ({$submitterName}) mengirim Monev {$monev->kode_monev} untuk kerja sama \"{$permohonan->label}\". Mohon ditinjau pada dashboard.",
-                'data'          => json_encode(['monev_uuid' => $monev->uuid]),
+                'message'       => "{$submitterRoleLabel} ({$submitterName}) mengirim Monev {$monev->kode_monev} untuk kerja sama \"{$kerjasamaObj->label}\". Mohon ditinjau pada dashboard.",
+                'data'          => json_encode(['monev_uuid' => $monev->uuid, 'is_manual' => (bool)$monev->id_kerjasama_manual]),
                 'is_read'       => false,
             ]);
 
-            if ($admin->phone) {
-                try { $whatsapp->sendToAdmin($admin->phone, $waMsg); } catch (\Throwable $e) { \Log::error("Failed sending Monev notification to admin #{$admin->id}: " . $e->getMessage()); }
+            if ($admin) {
+                try { $whatsapp->sendMessage($admin, $waMsg); } catch (\Throwable $e) { \Log::error("Failed sending Monev notification to admin #{$admin->id}: " . $e->getMessage()); }
             }
         }
     }
@@ -511,6 +801,9 @@ class MonevController extends Controller implements HasMiddleware
 
         // Pastikan TKKSD Lokus terhubung ke OPD yang terlibat di kerjasama ini
         $opdIds = $monev->permohonan?->opds()->pluck('opd.id')->toArray() ?? [];
+        if (!$monev->permohonan && $monev->kerjasamaManual) {
+            $opdIds = $monev->kerjasamaManual->opds()->pluck('opd.id')->toArray();
+        }
         if (!in_array($user->id_opd, $opdIds)) {
             abort(403, 'Anda hanya dapat menyetujui monev untuk kerjasama yang melibatkan OPD Anda.');
         }
@@ -559,6 +852,7 @@ class MonevController extends Controller implements HasMiddleware
 
         $validated = $request->validate([
             'id_permohonan' => 'nullable|exists:permohonan,id',
+            'id_kerjasama_manual' => 'nullable|exists:kerjasama_manual,id',
             'tanggal_evaluasi' => 'required|date',
             'kesesuaian_tujuan' => 'required',
             'ketepatan_waktu' => 'required',
@@ -604,11 +898,29 @@ class MonevController extends Controller implements HasMiddleware
 
         $monev = Monev::with([
                 'permohonan.kategori', 'permohonan.pemohon', 'permohonan.opds',
+                'kerjasamaManual.kategori', 'kerjasamaManual.opds',
                 'pemohon', 'reviewer', 'submitter',
                 'adminDetail', 'pemohonDetail', 'tkksdDetail',
             ])
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        if (!$monev->permohonan && $monev->kerjasamaManual) {
+            $km = $monev->kerjasamaManual;
+            $virtual = new Permohonan([
+                'id' => $km->id,
+                'uuid' => $km->uuid,
+                'label' => $km->label,
+                'nama_instansi' => $km->nama_instansi,
+                'nomor_permohonan' => $km->nomor_pks,
+            ]);
+            $virtual->is_manual = true;
+            $virtual->nomor_pks = $km->nomor_pks;
+            $virtual->setRelation('kategori', $km->kategori);
+            $virtual->setRelation('opds', $km->opds);
+            $monev->setRelation('permohonan', $virtual);
+            $monev->is_manual = true;
+        }
 
         if (!$isAdmin) {
             $pemohon = Pemohon::where('id_operator', $user->id)->first();
@@ -621,7 +933,8 @@ class MonevController extends Controller implements HasMiddleware
             } else {
                 // Pemohon hanya boleh melihat monev miliknya sendiri.
                 $hasAccess = ($monev->submitter_user_id === $user->id) ||
-                    ($pemohon && $monev->id_pemohon === $pemohon->id && is_null($monev->submitter_user_id));
+                    ($pemohon && $monev->id_pemohon === $pemohon->id && is_null($monev->submitter_user_id)) ||
+                    ($monev->kerjasamaManual && $monev->kerjasamaManual->created_by === $user->id);
             }
 
             if (!$hasAccess) {
@@ -663,12 +976,19 @@ class MonevController extends Controller implements HasMiddleware
 
     public function notifyPemohon(string $uuid, WhatsappService $whatsapp)
     {
-        $monev = Monev::with(['permohonan.pemohon', 'permohonan.operator', 'adminDetail'])
+        $monev = Monev::with(['permohonan.pemohon', 'permohonan.operator', 'kerjasamaManual.creator', 'adminDetail'])
             ->where('uuid', $uuid)
             ->firstOrFail();
-        $permohonan = $monev->permohonan;
 
-        if (!$permohonan || !$permohonan->id_pemohon_0) {
+        $permohonan = $monev->permohonan;
+        $kerjasamaManual = $monev->kerjasamaManual;
+
+        if (!$permohonan && !$kerjasamaManual) {
+            return redirect()->back()->with('error', 'Data kerja sama untuk Monev ini tidak ditemukan.');
+        }
+
+        $targetUserId = $permohonan ? $permohonan->id_pemohon_0 : $kerjasamaManual?->created_by;
+        if (!$targetUserId) {
             return redirect()->back()->with('error', 'Pemohon untuk Monev ini tidak ditemukan.');
         }
 
@@ -679,45 +999,43 @@ class MonevController extends Controller implements HasMiddleware
             default => 'Rekomendasi tindak lanjut tersedia',
         };
 
-        $pemohonUser = $permohonan->operator;
-        $pemohonName = $permohonan->pemohon?->name ?: ($pemohonUser?->name ?: 'Pemohon');
+        $pemohonUser = $permohonan ? $permohonan->operator : $kerjasamaManual?->creator;
+        $pemohonName = $permohonan ? ($permohonan->pemohon?->name ?: ($pemohonUser?->name ?: 'Pemohon')) : ($pemohonUser?->name ?: 'Pemohon');
+        $kerjasamaObj = $permohonan ?: $kerjasamaManual;
 
-        $payload = \App\Services\NotificationTemplate::monevHasilKePemohon($pemohonName, $permohonan, $followUpStatus);
+        $payload = \App\Services\NotificationTemplate::monevHasilKePemohon($pemohonName, $kerjasamaObj, $followUpStatus);
 
         Notifikasi::create([
-            'id_user'       => $permohonan->id_pemohon_0,
-            'id_permohonan' => $permohonan->id,
+            'id_user'       => $targetUserId,
+            'id_permohonan' => $monev->id_permohonan,
             'from_user_id'  => Auth::id(),
             'type'          => 'monev',
             'title'         => $payload['system']['title'],
             'message'       => $payload['system']['message'],
             'data'          => [
                 'monev_uuid' => $monev->uuid,
-                'permohonan_uuid' => $permohonan->uuid,
+                'permohonan_uuid' => $kerjasamaObj->uuid,
                 'rekomendasi_lanjutan' => $monev->rekomendasi_lanjutan,
             ],
             'is_read'       => false,
         ]);
 
-        $targetPhone = $pemohonUser?->phone ?: $permohonan->pemohon?->phone;
-        if (!$targetPhone) {
-            return redirect()->back()->withErrors([
-                'notification' => 'Notifikasi aplikasi dibuat, tetapi nomor WhatsApp pemohon tidak ditemukan.',
-            ]);
+        $targetRecipient = $pemohonUser ?: ($permohonan?->pemohon ?: $targetPhone);
+        if (!$targetRecipient) {
+            return redirect()->back()->with('warning', 'Notifikasi aplikasi dibuat, namun email pemohon tidak ditemukan.');
         }
 
-        if (!$whatsapp->sendMessage($targetPhone, $payload['wa'])) {
-            return redirect()->back()->withErrors([
-                'notification' => 'Notifikasi aplikasi dibuat, tetapi pesan WhatsApp gagal dikirim. Periksa gateway WA dan nomor pemohon.',
-            ]);
+        $sent = $whatsapp->sendMessage($targetRecipient, $payload['wa']);
+        if (!$sent) {
+            return redirect()->back()->with('warning', 'Notifikasi aplikasi dibuat, namun email notifikasi gagal dikirim ke pemohon. Pastikan email pemohon terdaftar.');
         }
 
-        return redirect()->back()->with('success', 'Notifikasi hasil Monev dan pesan WhatsApp dikirim ke pemohon.');
+        return redirect()->back()->with('success', 'Notifikasi hasil Monev berhasil dikirim ke email pemohon.');
     }
 
     public function export(Request $request)
     {
-        $monevs = Monev::with(['permohonan.kategori', 'adminDetail', 'pemohonDetail', 'tkksdDetail'])
+        $monevs = Monev::with(['permohonan.kategori', 'kerjasamaManual.kategori', 'adminDetail', 'pemohonDetail', 'tkksdDetail'])
             ->latest()
             ->get();
 
@@ -755,11 +1073,12 @@ class MonevController extends Controller implements HasMiddleware
             ]);
 
             foreach ($monevs as $monev) {
+                $kerjasama = $monev->permohonan ?: $monev->kerjasamaManual;
                 fputcsv($file, [
                     $monev->kode_monev,
-                    $monev->permohonan?->label ?? '-',
-                    $monev->permohonan?->nama_instansi ?? '-',
-                    $monev->permohonan?->kategori?->label ?? '-',
+                    $kerjasama?->label ?? '-',
+                    $kerjasama?->nama_instansi ?? '-',
+                    $kerjasama?->kategori?->label ?? '-',
                     $monev->tanggal_evaluasi?->format('d/m/Y'),
                     $monev->kesesuaian_tujuan,
                     $monev->ketepatan_waktu,

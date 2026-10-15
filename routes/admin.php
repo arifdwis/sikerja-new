@@ -52,6 +52,7 @@ Route::get('pengaturan', function () {
 })->name('pengaturan');
 
 Route::prefix('settings')->name('settings.')->group(function () {
+    Route::get('users/search-sso', [App\Http\Controllers\UserController::class, 'searchSso'])->name('users.search-sso');
     Route::resource('users', App\Http\Controllers\UserController::class);
     Route::resource('roles', App\Http\Controllers\RoleController::class);
 

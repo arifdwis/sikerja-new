@@ -86,7 +86,7 @@ class ChatbotController extends Controller
 
         try {
             $groqUrl = rtrim(config('services.groq.url', 'https://api.groq.com/openai/v1'), '/');
-            $groqModel = config('services.groq.model', 'llama-3.3-70b-versatile');
+            $groqModel = config('services.groq.model', 'openai/gpt-oss-120b');
             $groqApiKey = config('services.groq.api_key');
 
             if (empty($groqApiKey)) {
@@ -162,10 +162,15 @@ class ChatbotController extends Controller
      */
     private function buildKnowledgeBase(): array
     {
-        $ttl = (int) config('services.groq.knowledge_cache_ttl', 600);
-        return Cache::remember('chatbot:knowledge_base', $ttl, function () {
+        try {
+            $ttl = (int) config('services.groq.knowledge_cache_ttl', 600);
+            return Cache::remember('chatbot:knowledge_base', $ttl, function () {
+                return $this->buildKnowledgeBaseRaw();
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Knowledge base cache fallback: ' . $e->getMessage());
             return $this->buildKnowledgeBaseRaw();
-        });
+        }
     }
 
     private function buildKnowledgeBaseRaw(): array

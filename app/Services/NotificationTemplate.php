@@ -86,7 +86,7 @@ class NotificationTemplate
      */
     public static function internalGroup(
         string $tahapan,
-        Permohonan $permohonan,
+        $permohonan,
         string $penjelasan,
         ?string $oleh = null,
         ?string $catatan = null
@@ -96,7 +96,7 @@ class NotificationTemplate
         $lines[] = "*SIKERJA — Pemerintah Kota Samarinda*";
         $lines[] = "";
         $lines[] = "Perihal : *" . ($permohonan->label ?? '-') . "*";
-        $lines[] = "Nomor   : " . ($permohonan->nomor_permohonan ?? '-');
+        $lines[] = "Nomor   : " . ($permohonan->nomor_permohonan ?? $permohonan->nomor_pks ?? '-');
         $lines[] = "Mitra   : " . ($permohonan->nama_instansi ?? '-');
         if ($oleh) {
             $lines[] = "Oleh    : {$oleh}";
@@ -295,7 +295,7 @@ class NotificationTemplate
     // MONEV
     // ----------------------------------------------------------------------
 
-    public static function monevDariPemohonKeAdmin(Permohonan $p, string $kodeMonev, string $submitterRoleLabel, string $submitterName): string
+    public static function monevDariPemohonKeAdmin($p, string $kodeMonev, string $submitterRoleLabel, string $submitterName): string
     {
         $msg = "Telah diterima form Monitoring & Evaluasi *{$kodeMonev}* dari *{$submitterRoleLabel}* ({$submitterName}). Mohon admin meninjau hasil monev pada dashboard untuk konsolidasi laporan.";
         return self::internalGroup('Monev Diterima', $p, $msg, $submitterName);

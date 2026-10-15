@@ -108,6 +108,8 @@ const createDialog = ref(false);
 const selectedPermohonan = ref(null);
 const createForm = useForm({
     id_permohonan: null,
+    id_kerjasama_manual: null,
+    is_manual: false,
     tanggal_evaluasi: new Date(),
     kesesuaian_tujuan: null,
     ketepatan_waktu: null,
@@ -142,14 +144,23 @@ const openCreateModal = (permohonan) => {
     selectedPermohonan.value = permohonan;
     createForm.reset();
     createForm.clearErrors();
-    createForm.id_permohonan = permohonan.id;
+    if (permohonan.is_manual || permohonan.tipe === 'manual') {
+        createForm.id_permohonan = null;
+        createForm.id_kerjasama_manual = permohonan.id;
+        createForm.is_manual = true;
+    } else {
+        createForm.id_permohonan = permohonan.id;
+        createForm.id_kerjasama_manual = null;
+        createForm.is_manual = false;
+    }
     createForm.tanggal_evaluasi = new Date();
     createDialog.value = true;
 };
 
 const submitCreateForm = () => {
+    const hasFile = (createForm.file_bukti instanceof File) || (createForm.pmh_file_laporan instanceof File);
     createForm.post(route('monev.store'), {
-        forceFormData: true,
+        forceFormData: hasFile,
         preserveScroll: true,
         onSuccess: () => {
             createDialog.value = false;
@@ -395,8 +406,14 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 <template #empty>Tidak ada kerjasama yang perlu evaluasi.</template>
                                 <Column field="label" header="Judul Kerjasama" sortable>
                                     <template #body="{ data }">
-                                        <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ data.label }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ data.kategori?.label || 'Umum' }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ data.label }}</span>
+                                            <Tag v-if="data.is_manual" value="PKS Manual" severity="info" class="text-[10px] font-medium" />
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                                            <span>{{ data.kategori?.label || 'Umum' }}</span>
+                                            <span v-if="data.nomor_pks" class="text-slate-400">• {{ data.nomor_pks }}</span>
+                                        </div>
                                     </template>
                                 </Column>
                                 <Column field="nama_instansi" header="Instansi" sortable></Column>
@@ -441,8 +458,14 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 <template #empty>Belum ada riwayat Monev.</template>
                                 <Column field="permohonan.label" header="Kerjasama" sortable>
                                     <template #body="{ data }">
-                                        <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ data.permohonan?.label || '-' }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ data.permohonan?.nama_instansi }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ data.permohonan?.label || '-' }}</span>
+                                            <Tag v-if="data.is_manual || data.permohonan?.is_manual" value="PKS Manual" severity="info" class="text-[10px] font-medium" />
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            {{ data.permohonan?.nama_instansi }}
+                                            <span v-if="data.permohonan?.nomor_pks" class="text-slate-400">• {{ data.permohonan?.nomor_pks }}</span>
+                                        </div>
                                     </template>
                                 </Column>
                                 <Column header="Sumber Monev">
@@ -486,8 +509,14 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 </Column>
                                 <Column field="permohonan.label" header="Kerjasama" sortable>
                                     <template #body="{ data }">
-                                        <div class="text-sm font-semibold text-slate-900 dark:text-white">{{ data.permohonan?.label || '-' }}</div>
-                                        <div class="text-xs text-gray-500 mt-1">{{ data.permohonan?.nama_instansi }}</div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ data.permohonan?.label || '-' }}</span>
+                                            <Tag v-if="data.is_manual || data.permohonan?.is_manual" value="PKS Manual" severity="info" class="text-[10px] font-medium" />
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            {{ data.permohonan?.nama_instansi }}
+                                            <span v-if="data.permohonan?.nomor_pks" class="text-slate-400">• {{ data.permohonan?.nomor_pks }}</span>
+                                        </div>
                                     </template>
                                 </Column>
                                 <Column header="Tgl Evaluasi">
@@ -529,9 +558,15 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
             <form @submit.prevent="submitCreateForm" class="space-y-4">
                 <div class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr)_260px]">
                     <div>
-                        <p class="text-xs font-semibold uppercase text-slate-500">Kerjasama</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-xs font-semibold uppercase text-slate-500">Kerjasama</p>
+                            <Tag v-if="selectedPermohonan?.is_manual" value="PKS Manual" severity="info" class="text-[10px]" />
+                        </div>
                         <p class="mt-1 text-sm font-semibold text-slate-900">{{ selectedPermohonan?.label || '-' }}</p>
-                        <p class="text-xs text-slate-500">{{ selectedPermohonan?.nama_instansi || '-' }}</p>
+                        <p class="text-xs text-slate-500">
+                            {{ selectedPermohonan?.nama_instansi || '-' }}
+                            <span v-if="selectedPermohonan?.nomor_pks"> • {{ selectedPermohonan?.nomor_pks }}</span>
+                        </p>
                     </div>
                     <div>
                         <label class="mb-2 block text-sm font-medium text-slate-700">Tanggal Evaluasi <span class="text-red-500">*</span></label>
@@ -663,10 +698,14 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                             <div class="min-w-0">
                             <div class="mb-2 flex flex-wrap items-center gap-2">
                                 <span class="rounded bg-slate-100 px-2.5 py-1 font-mono text-xs text-slate-600">{{ selectedMonev.kode_monev }}</span>
+                                <Tag v-if="selectedMonev.is_manual || selectedMonev.permohonan?.is_manual" value="PKS Manual" severity="info" class="text-xs font-medium" />
                                 <span class="rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Selesai</span>
                             </div>
                             <h3 class="text-xl font-semibold text-slate-900">{{ selectedMonev.permohonan?.label }}</h3>
-                            <p class="text-slate-500 text-sm">{{ selectedMonev.permohonan?.nama_instansi }}</p>
+                            <p class="text-slate-500 text-sm">
+                                {{ selectedMonev.permohonan?.nama_instansi }}
+                                <span v-if="selectedMonev.permohonan?.nomor_pks"> • {{ selectedMonev.permohonan.nomor_pks }}</span>
+                            </p>
                             </div>
                         </div>
                         <button @click="detailDialog = false" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800">
@@ -770,8 +809,14 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                 <!-- Kerjasama header -->
                 <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-start md:justify-between">
                     <div class="flex-1">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kerjasama</p>
+                        <div class="flex items-center gap-2">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Kerjasama</p>
+                            <Tag v-if="selectedGrouped.is_manual || selectedGrouped.permohonan?.is_manual" value="PKS Manual" severity="info" class="text-xs font-medium" />
+                        </div>
                         <h3 class="mt-1 text-xl font-semibold text-slate-900">{{ selectedGrouped.permohonan?.label }}</h3>
+                        <p v-if="selectedGrouped.permohonan?.nomor_pks" class="text-xs text-slate-500 mt-0.5">
+                            Nomor PKS: {{ selectedGrouped.permohonan.nomor_pks }}
+                        </p>
 
                         <!-- Pihak yang berkerjasama: OPD Pemkot ↔ Mitra -->
                         <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">

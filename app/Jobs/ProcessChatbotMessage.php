@@ -30,7 +30,7 @@ class ProcessChatbotMessage implements ShouldQueue
     {
         $responseTtl = (int) config('services.groq.response_cache_ttl', 900);
         $groqUrl = rtrim(config('services.groq.url', 'https://api.groq.com/openai/v1'), '/');
-        $groqModel = config('services.groq.model', 'llama-3.3-70b-versatile');
+        $groqModel = config('services.groq.model', 'openai/gpt-oss-120b');
         $groqApiKey = config('services.groq.api_key');
         $timeout = (int) config('services.groq.timeout', 120);
 

@@ -182,8 +182,8 @@ class PksController extends Controller
 
         try {
             $wa = app(WhatsappService::class);
-            if ($user?->phone) {
-                $wa->sendMessage($user->phone, $payload['wa']);
+            if ($user || $permohonan->pemohon1) {
+                $wa->sendMessage($user ?: $permohonan->pemohon1, $payload['wa']);
             }
         } catch (\Exception $e) {
             Log::error('Failed WA notif PKS ready: ' . $e->getMessage());
@@ -210,8 +210,8 @@ class PksController extends Controller
 
         try {
             $wa = app(WhatsappService::class);
-            if ($user?->phone) {
-                $wa->sendMessage($user->phone, $payload['wa']);
+            if ($user || $permohonan->pemohon1) {
+                $wa->sendMessage($user ?: $permohonan->pemohon1, $payload['wa']);
             }
         } catch (\Exception $e) {
             Log::error('Failed WA notif pelaksanaan: ' . $e->getMessage());

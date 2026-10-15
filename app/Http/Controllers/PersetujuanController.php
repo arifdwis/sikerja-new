@@ -166,9 +166,9 @@ class PersetujuanController extends Controller implements HasMiddleware
 
         try {
             $wa = app(WhatsappService::class);
-            $phone = $user?->phone ?: $pemohonProfile?->phone;
-            if ($phone) {
-                $wa->sendMessage($phone, $payload['wa']);
+            $targetRecipient = $user ?: ($pemohonProfile ?: $phone);
+            if ($targetRecipient) {
+                $wa->sendMessage($targetRecipient, $payload['wa']);
             }
         } catch (\Throwable $e) {
             \Log::error('Notif jadwal rejected: ' . $e->getMessage());
@@ -200,9 +200,9 @@ class PersetujuanController extends Controller implements HasMiddleware
 
         try {
             $wa = app(WhatsappService::class);
-            $phone = $user?->phone ?: $pemohonProfile?->phone;
-            if ($phone) {
-                $wa->sendMessage($phone, $payload['wa']);
+            $targetRecipient = $user ?: ($pemohonProfile ?: $phone);
+            if ($targetRecipient) {
+                $wa->sendMessage($targetRecipient, $payload['wa']);
             }
         } catch (\Throwable $e) {
             \Log::error('Notif jadwal approved: ' . $e->getMessage());

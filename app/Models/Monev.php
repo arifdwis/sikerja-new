@@ -21,6 +21,7 @@ class Monev extends Model
     protected $fillable = [
         'uuid',
         'id_permohonan',
+        'id_kerjasama_manual',
         'id_pemohon',
         'kode_monev',
         'tanggal_evaluasi',
@@ -121,6 +122,11 @@ class Monev extends Model
     public function permohonan(): BelongsTo
     {
         return $this->belongsTo(Permohonan::class, 'id_permohonan');
+    }
+
+    public function kerjasamaManual(): BelongsTo
+    {
+        return $this->belongsTo(KerjasamaManual::class, 'id_kerjasama_manual');
     }
 
     public function pemohon(): BelongsTo

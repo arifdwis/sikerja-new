@@ -205,8 +205,9 @@ class PenandatangananController extends Controller
 
         try {
             $wa = app(WhatsappService::class);
-            if ($pemohonUser?->phone) {
-                $wa->sendMessage($pemohonUser->phone, $payload['wa']);
+            $targetRecipient = $pemohonUser ?: ($permohonan->pemohon1 ?: $pemohonUser?->phone);
+            if ($targetRecipient) {
+                $wa->sendMessage($targetRecipient, $payload['wa']);
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('WA notif TTD validate error: ' . $e->getMessage());

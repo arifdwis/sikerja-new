@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Kategori;
 use App\Models\Pemohon;
 use App\Models\User;
+use App\Models\KerjasamaManual;
 
 class LaporanController extends Controller
 {
@@ -19,21 +20,30 @@ class LaporanController extends Controller
     {
         $user = $request->user();
 
-        // Filter Data Pre-fetch
-        $availableYears = Permohonan::selectRaw('YEAR(created_at) as year')
-            ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year')
+        // Filter Data Pre-fetch: Gabungkan tahun dari Permohonan dan KerjasamaManual
+        $tahunListSistem = Permohonan::whereNotNull('tanggal_mulai')
+            ->selectRaw('DISTINCT YEAR(tanggal_mulai) as year')
+            ->pluck('year');
+        $tahunListManual = KerjasamaManual::whereNotNull('tanggal_mulai')
+            ->selectRaw('DISTINCT YEAR(tanggal_mulai) as year')
+            ->pluck('year');
+
+        $availableYears = $tahunListSistem->concat($tahunListManual)
+            ->filter()
+            ->unique()
+            ->sortDesc()
+            ->values()
             ->toArray();
 
         // Ensure current year is in list if empty
         if (empty($availableYears)) {
-            $availableYears = [date('Y')];
+            $availableYears = [(int) date('Y')];
         }
 
         $kategoris = Kategori::select('id', 'label')->orderBy('label')->get();
 
-        $query = Permohonan::select([
+        // Query Permohonan Selesai
+        $queryPermohonan = Permohonan::select([
             'id',
             'uuid',
             'label',
@@ -45,49 +55,75 @@ class LaporanController extends Controller
             ->with(['kategori:id,label'])
             ->whereNotNull('tanggal_mulai')
             ->whereNotNull('tanggal_berakhir')
-            ->where('status', Permohonan::STATUS_SELESAI); // Only monitor finished agreements? Or all active? Usually 'Selesai' means Signed/Active.
+            ->where('status', Permohonan::STATUS_SELESAI);
+
+        // Query Kerjasama Manual
+        $queryManual = KerjasamaManual::select([
+            'id',
+            'uuid',
+            'nomor_pks',
+            'label',
+            'nama_instansi',
+            'id_kategori',
+            'tanggal_mulai',
+            'tanggal_berakhir',
+        ])
+            ->with(['kategori:id,label', 'opds:id,nama,singkatan'])
+            ->whereNotNull('tanggal_mulai')
+            ->whereNotNull('tanggal_berakhir');
 
         // If pemohon, strict ownership
         if ($user->hasRole('pemohon')) {
-            $query->where('id_pemohon_0', $user->id);
+            $queryPermohonan->where('id_pemohon_0', $user->id);
+
+            if ($user->id_opd) {
+                $queryManual->where(function ($q) use ($user) {
+                    $q->whereHas('opds', fn($opdQuery) => $opdQuery->where('opd.id', $user->id_opd))
+                      ->orWhere('created_by', $user->id);
+                });
+            } else {
+                $queryManual->where('created_by', $user->id);
+            }
         }
 
         // Apply filters
-        if ($request->has('search') && $request->search) {
+        if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $queryPermohonan->where(function ($q) use ($search) {
                 $q->where('label', 'like', "%{$search}%")
                     ->orWhere('nama_instansi', 'like', "%{$search}%");
             });
+
+            $queryManual->where(function ($q) use ($search) {
+                $q->where('label', 'like', "%{$search}%")
+                    ->orWhere('nama_instansi', 'like', "%{$search}%")
+                    ->orWhere('nomor_pks', 'like', "%{$search}%");
+            });
         }
 
-        if ($request->has('tahun') && $request->tahun) {
-            // Filter based on active period during that year? Or just created?
-            // Usually Laporan monitors active agreements. 
-            // Logic: Agreement is active IF (start <= Year-12-31 AND end >= Year-01-01)
-            // But simpler for now: created_at year if user wants simple filter, OR active during that year.
-            // Let's go with 'Active in Year' logic if possible, OR just created_at.
-            // Given the context of "Monitoring", likely strictly active.
-            // But usually dashboards filter by "Year" implies "Data for that year".
-            // Let's stick to created_at or start_date year for consistency with dashboard.
-            $query->whereYear('tanggal_mulai', $request->tahun);
+        if ($request->filled('tahun')) {
+            $queryPermohonan->whereYear('tanggal_mulai', $request->tahun);
+            $queryManual->whereYear('tanggal_mulai', $request->tahun);
         }
 
-        if ($request->has('kategori_id') && $request->kategori_id) {
-            $query->where('id_kategori', $request->kategori_id);
+        if ($request->filled('kategori_id')) {
+            $queryPermohonan->where('id_kategori', $request->kategori_id);
+            $queryManual->where('id_kategori', $request->kategori_id);
         }
 
-        if ($request->has('bulan') && $request->bulan) {
-            $query->whereMonth('tanggal_mulai', $request->bulan);
+        if ($request->filled('bulan')) {
+            $queryPermohonan->whereMonth('tanggal_mulai', $request->bulan);
+            $queryManual->whereMonth('tanggal_mulai', $request->bulan);
         }
 
-        $data = $query->get()->map(function ($item) {
-            $start = Carbon::parse($item->tanggal_mulai);
-            $end = Carbon::parse($item->tanggal_berakhir);
-            $now = Carbon::now();
+        $now = Carbon::now()->startOfDay();
 
-            $daysRemaining = $now->diffInDays($end, false);
-            $totalDuration = $start->diffInDays($end);
+        $mapRow = function ($item, string $source) use ($now) {
+            $start = Carbon::parse($item->tanggal_mulai)->startOfDay();
+            $end = Carbon::parse($item->tanggal_berakhir)->startOfDay();
+
+            $daysRemaining = (int) $now->diffInDays($end, false);
+            $totalDuration = (int) $start->diffInDays($end);
 
             // Determine status based on time
             $statusMonev = 'Berlangsung';
@@ -101,27 +137,40 @@ class LaporanController extends Controller
                 $alertLevel = 'warning'; // Yellow/Orange
             }
 
+            $elapsedDays = (int) $start->diffInDays($now, false);
+            $progress = 0;
+            if ($totalDuration > 0) {
+                $progress = min(100, max(0, ($elapsedDays / $totalDuration) * 100));
+            }
+
             return [
                 'id' => $item->id,
                 'uuid' => $item->uuid,
+                'source' => $source,
+                'nomor_pks' => $item->nomor_pks ?? null,
                 'judul' => $item->label,
                 'instansi' => $item->nama_instansi,
                 'kategori' => $item->kategori->label ?? '-',
                 'mulai' => $start->format('d M Y'),
                 'berakhir' => $end->format('d M Y'),
-                'sisa_hari' => (int) $daysRemaining,
+                'sisa_hari' => $daysRemaining,
                 'total_durasi' => $totalDuration,
                 'status_monev' => $statusMonev,
                 'alert_level' => $alertLevel,
-                'progress' => $totalDuration > 0 ? min(100, max(0, ($start->diffInDays($now) / $totalDuration) * 100)) : 0
+                'progress' => $progress,
             ];
-        });
+        };
+
+        $dataSistem = $queryPermohonan->get()->map(fn($item) => $mapRow($item, 'sistem'));
+        $dataManual = $queryManual->get()->map(fn($item) => $mapRow($item, 'manual'));
+
+        $data = $dataSistem->concat($dataManual);
 
         // Group by Status for Tabs
         $grouped = [
-            'berlangsung' => $data->where('status_monev', 'Berlangsung')->values(),
-            'segera_berakhir' => $data->where('status_monev', 'Segera Berakhir')->values(),
-            'berakhir' => $data->where('status_monev', 'Berakhir')->values(),
+            'berlangsung' => $data->where('status_monev', 'Berlangsung')->sortBy('sisa_hari')->values(),
+            'segera_berakhir' => $data->where('status_monev', 'Segera Berakhir')->sortBy('sisa_hari')->values(),
+            'berakhir' => $data->where('status_monev', 'Berakhir')->sortByDesc('sisa_hari')->values(),
         ];
 
         return Inertia::render('Backend/Laporan/Index', [
@@ -426,7 +475,41 @@ class LaporanController extends Controller
     {
         $item = Permohonan::with(['kategori', 'pemohon', 'operator', 'kota', 'provinsi'])
             ->where('uuid', $uuid)
-            ->firstOrFail();
+            ->first();
+
+        if (!$item) {
+            $km = KerjasamaManual::with(['kategori', 'opds', 'creator'])
+                ->where('uuid', $uuid)
+                ->firstOrFail();
+
+            $opdNames = $km->opds->map(fn($o) => $o->singkatan ?: $o->nama)->implode(', ');
+            $item = (object) [
+                'id' => $km->id,
+                'uuid' => $km->uuid,
+                'nomor_permohonan' => $km->nomor_pks ?: 'PKS-MANUAL',
+                'label' => $km->label,
+                'nama_instansi' => $km->nama_instansi,
+                'alamat' => '-',
+                'latar_belakang' => '-',
+                'maksud_tujuan' => '-',
+                'ruang_lingkup' => $km->ruang_lingkup ?: '-',
+                'manfaat' => '-',
+                'jangka_waktu' => $km->jangka_waktu ?: '-',
+                'tanggal_mulai' => $km->tanggal_mulai,
+                'tanggal_berakhir' => $km->tanggal_berakhir,
+                'created_at' => $km->created_at,
+                'status_label' => (object) [
+                    'label' => 'Selesai (PKS Manual)'
+                ],
+                'kategori' => $km->kategori,
+                'operator' => (object) [
+                    'name' => $opdNames ?: ($km->creator?->name ?? 'Pemerintah Kota Samarinda')
+                ],
+                'pemohon' => (object) [
+                    'name' => $km->nama_instansi
+                ],
+            ];
+        }
 
         return Inertia::render('Backend/Laporan/CetakDetail', [
             'data' => $item
@@ -435,10 +518,53 @@ class LaporanController extends Controller
 
     public function cetakSemua()
     {
-        $items = Permohonan::with(['kategori', 'pemohon', 'operator', 'kota', 'provinsi'])
+        $itemsPermohonan = Permohonan::with(['kategori', 'pemohon', 'operator', 'kota', 'provinsi'])
             ->where('status', Permohonan::STATUS_SELESAI)
-            ->orderByDesc('created_at')
-            ->get();
+            ->whereNotNull('tanggal_mulai')
+            ->whereNotNull('tanggal_berakhir')
+            ->get()
+            ->map(function ($p) {
+                return (object) [
+                    'id' => $p->id,
+                    'uuid' => $p->uuid,
+                    'label' => $p->label,
+                    'kategori' => $p->kategori,
+                    'pemohon' => $p->pemohon,
+                    'nama_instansi' => $p->nama_instansi,
+                    'alamat' => $p->alamat,
+                    'tanggal_mulai' => $p->tanggal_mulai,
+                    'tanggal_berakhir' => $p->tanggal_berakhir,
+                    'created_at' => $p->created_at,
+                    'source' => 'sistem',
+                ];
+            });
+
+        $itemsManual = KerjasamaManual::with(['kategori', 'opds', 'creator'])
+            ->whereNotNull('tanggal_mulai')
+            ->whereNotNull('tanggal_berakhir')
+            ->get()
+            ->map(function ($km) {
+                $opdNames = $km->opds->map(fn($o) => $o->singkatan ?: $o->nama)->implode(', ');
+                return (object) [
+                    'id' => 'm_' . $km->id,
+                    'uuid' => $km->uuid,
+                    'label' => $km->label . ($km->nomor_pks ? ' (' . $km->nomor_pks . ')' : ''),
+                    'kategori' => $km->kategori,
+                    'pemohon' => (object) [
+                        'name' => $opdNames ?: ($km->creator?->name ?? 'Kerjasama Manual')
+                    ],
+                    'nama_instansi' => $km->nama_instansi,
+                    'alamat' => $km->ruang_lingkup ? 'Ruang lingkup: ' . \Illuminate\Support\Str::limit($km->ruang_lingkup, 100) : '-',
+                    'tanggal_mulai' => $km->tanggal_mulai,
+                    'tanggal_berakhir' => $km->tanggal_berakhir,
+                    'created_at' => $km->created_at,
+                    'source' => 'manual',
+                ];
+            });
+
+        $items = $itemsPermohonan->concat($itemsManual)
+            ->sortByDesc('created_at')
+            ->values();
 
         return Inertia::render('Backend/Laporan/CetakSemua', [
             'data' => $items

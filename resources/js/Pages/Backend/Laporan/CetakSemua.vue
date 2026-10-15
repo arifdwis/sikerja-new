@@ -106,7 +106,7 @@ const calculateDuration = (start, end) => {
                     </td>   
                 </tr>
                 <tr v-if="data.length === 0">
-                    <td colspan="8" class="text-center py-4 italic">Tidak ada data kerjasama selesai.</td>
+                    <td colspan="7" class="text-center py-4 italic">Tidak ada data kerjasama.</td>
                 </tr>
             </tbody>
         </table>

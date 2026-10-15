@@ -7,6 +7,10 @@ defineProps({
     visible: Boolean,
     loading: Boolean,
     data: Object,
+    readOnly: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 defineEmits(['update:visible', 'delete', 'edit']);
@@ -67,7 +71,7 @@ const formatDate = (date) => {
                         <h2 class="mt-3 text-xl font-semibold leading-tight text-slate-900 dark:text-white">{{ data.label }}</h2>
                         <p class="mt-1 text-sm text-slate-500 dark:text-gray-300">{{ data.nama_instansi }}</p>
                     </div>
-                    <div class="flex shrink-0 gap-2">
+                    <div v-if="!readOnly" class="flex shrink-0 gap-2">
                         <button @click="$emit('edit', data)" class="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-gray-600 dark:text-gray-100 dark:hover:bg-gray-700">
                             <Icon icon="solar:pen-bold" class="h-4 w-4" />
                             Edit

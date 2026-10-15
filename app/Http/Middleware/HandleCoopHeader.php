@@ -19,8 +19,8 @@ class HandleCoopHeader
         $response = $next($request);
 
         // Fix for Google Login Popup blocked by Cross-Origin-Opener-Policy
-        // 'same-origin-allow-popups' allows the popup to communicate with the opener.
-        $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+        // 'unsafe-none' allows cross-origin communication between this page and the Firebase auth popup.
+        $response->headers->set('Cross-Origin-Opener-Policy', 'unsafe-none');
 
         return $response;
     }

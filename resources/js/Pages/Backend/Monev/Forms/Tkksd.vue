@@ -20,7 +20,7 @@ const props = defineProps({
 const toast = useToast();
 
 const form = useForm({
-    id_permohonan: props.selectedPermohonan?.id || null,
+    id_permohonan: props.selectedPermohonan?.select_id || props.selectedPermohonan?.id || null,
     tanggal_evaluasi: new Date(),
     tkl_kepatuhan_pks: null,
     tkl_koordinasi_mitra: null,
@@ -83,11 +83,23 @@ const submit = () => {
                                     v-model="form.id_permohonan"
                                     :options="permohonans"
                                     optionLabel="label"
-                                    optionValue="id"
+                                    :optionValue="(opt) => opt.select_id ?? opt.id"
                                     placeholder="Pilih kerjasama"
                                     class="w-full"
                                     :class="{ 'p-invalid': form.errors.id_permohonan }"
-                                />
+                                >
+                                    <template #option="slotProps">
+                                        <div class="flex items-center justify-between gap-2 w-full">
+                                            <div class="min-w-0">
+                                                <div class="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{{ slotProps.option.label }}</div>
+                                                <div class="text-xs text-gray-500 truncate">{{ slotProps.option.nama_instansi }}</div>
+                                            </div>
+                                            <span v-if="slotProps.option.is_manual" class="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
+                                                PKS Manual
+                                            </span>
+                                        </div>
+                                    </template>
+                                </Dropdown>
                                 <small v-if="form.errors.id_permohonan" class="text-red-500">{{ form.errors.id_permohonan }}</small>
                             </div>
                             <div class="space-y-2">
