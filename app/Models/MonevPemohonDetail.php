@@ -17,6 +17,9 @@ class MonevPemohonDetail extends Model
         'pmh_kendala_lapangan',
         'pmh_keberlanjutan',
         'pmh_file_laporan',
+        'file_berita_acara',
+        'file_dokumentasi',
+        'progress_persen',
     ];
 
     public function monev(): BelongsTo

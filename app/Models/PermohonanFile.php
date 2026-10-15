@@ -16,6 +16,7 @@ class PermohonanFile extends Model
         'uuid',
         'id_permohonan',
         'label',
+        'kategori_dokumen',
         'file',
         'file_path',
         'file_name',
