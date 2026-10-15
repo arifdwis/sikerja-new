@@ -268,7 +268,7 @@ const submitTolak = () => {
                             : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 border border-gray-200 dark:border-gray-700'"
                     >
                         <Icon icon="solar:shield-user-bold" class="w-4 h-4" />
-                        <span>2. Disposisi Kabag (Ibu Idfi Septiani)</span>
+                        <span>2. Disposisi Kabag Kerja Sama</span>
                         <span class="px-1.5 py-0.5 rounded-md text-[10px]" :class="currentTab === 'menunggu_kabag' ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'">
                             {{ counts?.menunggu_kabag ?? 0 }}
                         </span>
@@ -400,7 +400,7 @@ const submitTolak = () => {
                     <div>
                         <p class="font-bold">Verifikasi Kelengkapan Berkas</p>
                         <p class="text-xs mt-1">
-                            Pastikan Surat Permohonan, Proposal/KAK, dan Draft MoU telah sesuai ketentuan Perda No. 7/2020. Berkas akan diteruskan ke <strong>Kepala Bagian Kerja Sama (Ibu Idfi Septiani)</strong>.
+                            Pastikan Surat Permohonan, Proposal/KAK, dan Draft MoU telah sesuai ketentuan Perda No. 7/2020. Berkas akan diteruskan ke <strong>Kepala Bagian Kerja Sama</strong>.
                         </p>
                     </div>
                 </div>
