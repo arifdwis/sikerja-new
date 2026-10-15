@@ -14,30 +14,55 @@ const props = defineProps({
     pemohon: Object,    // Logged in pemohon profile
     corporate: Object,  // Logged in corporate profile
     pemohonanList: Array, // For PPKSD-2 auto-fill
+    kbInduk: Object,     // PKS Turunan dari KB
     share: Object,
 });
 
+const isPksTurunan = computed(() => !!props.kbInduk);
+
 const form = useForm({
-    id_kategori: '',
-    label: '',
-    nama_instansi: props.corporate?.nama_instansi || props.pemohon?.nama_instansi || '',
-    id_provinsi: props.corporate?.kota_ref?.province_id || props.pemohon?.kota_ref?.province_id || '',
-    id_kota: props.corporate?.kota_id || props.pemohon?.kota_id || '',
-    kode_pos: '',
-    alamat: props.corporate?.alamat_instansi || props.pemohon?.alamat_instansi || '',
-    email: props.corporate?.email_instansi || props.pemohon?.email_instansi || '',
-    telepon: props.corporate?.telepon_instansi || props.pemohon?.telepon_instansi || '',
-    website: props.corporate?.website || props.pemohon?.website || '',
+    tipe_dokumen: props.kbInduk ? 'PKS' : 'KB',
+    id_kb_induk: props.kbInduk ? props.kbInduk.id : null,
+    is_draft: false,
+
+    id_kategori: props.kbInduk?.id_kategori || '',
+    label: props.kbInduk ? `PKS Pelaksanaan: ${props.kbInduk.label}` : '',
+    nama_instansi: props.kbInduk?.nama_instansi || props.corporate?.nama_instansi || props.pemohon?.nama_instansi || '',
+    
+    // Data Pimpinan Tertinggi
+    nama_pimpinan: props.kbInduk?.nama_pimpinan || '',
+    jabatan_pimpinan: props.kbInduk?.jabatan_pimpinan || '',
+    nip_pimpinan: props.kbInduk?.nip_pimpinan || '',
+
+    // Data PIC 1
+    pic1_nama: props.kbInduk?.pic1_nama || '',
+    pic1_jabatan: props.kbInduk?.pic1_jabatan || '',
+    pic1_phone: props.kbInduk?.pic1_phone || '',
+    pic1_email: props.kbInduk?.pic1_email || '',
+
+    // Data PIC 2
+    pic2_nama: props.kbInduk?.pic2_nama || '',
+    pic2_jabatan: props.kbInduk?.pic2_jabatan || '',
+    pic2_phone: props.kbInduk?.pic2_phone || '',
+    pic2_email: props.kbInduk?.pic2_email || '',
+
+    id_provinsi: props.kbInduk?.id_provinsi || props.corporate?.kota_ref?.province_id || props.pemohon?.kota_ref?.province_id || '',
+    id_kota: props.kbInduk?.id_kota || props.corporate?.kota_id || props.pemohon?.kota_id || '',
+    kode_pos: props.kbInduk?.kode_pos || '',
+    alamat: props.kbInduk?.alamat || props.corporate?.alamat_instansi || props.pemohon?.alamat_instansi || '',
+    email: props.kbInduk?.email || props.corporate?.email_instansi || props.pemohon?.email_instansi || '',
+    telepon: props.kbInduk?.telepon || props.corporate?.telepon_instansi || props.pemohon?.telepon_instansi || '',
+    website: props.kbInduk?.website || props.corporate?.website || props.pemohon?.website || '',
     
     // Legacy fields (optional)
     id_pemohon_1: '', 
 
     latar_belakang: '',
     maksud_tujuan: '',
-    lokasi_kerjasama: '',
+    lokasi_kerjasama: props.kbInduk?.lokasi_kerjasama || '',
     ruang_lingkup: '',
     // OPD multiple - Req 12. Jika user SSO punya OPD, auto-isi
-    opd_ids: props.userOpd ? [props.userOpd.id] : [],
+    opd_ids: props.kbInduk?.opds ? props.kbInduk.opds.map(o => o.id) : (props.userOpd ? [props.userOpd.id] : []),
     jangka_waktu: '',
     tanggal_mulai: '',
     tanggal_berakhir: '',
@@ -100,18 +125,18 @@ const toast = useToast();
 
 // ... existing code ...
 
-const submit = () => {
-    if (form.tanggal_mulai && form.tanggal_berakhir && form.tanggal_berakhir < form.tanggal_mulai) {
+const submit = (asDraft = false) => {
+    form.is_draft = asDraft;
+
+    if (!asDraft && form.tanggal_mulai && form.tanggal_berakhir && form.tanggal_berakhir < form.tanggal_mulai) {
         toast.error('Tanggal berakhir tidak boleh lebih awal dari tanggal mulai.');
         return;
     }
 
     form.post(route('permohonan.store'), {
         onError: (errors) => {
-             // Show first error or generic message
              const firstError = Object.values(errors)[0];
              toast.error(firstError || "Mohon lengkapi semua field yang wajib diisi (bertanda *).");
-             // Optional: Scroll to top or first error
              window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     });
@@ -119,7 +144,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Buat Permohonan" />
+    <Head :title="isPksTurunan ? 'Buat PKS Turunan' : 'Buat Permohonan'" />
     <AuthenticatedLayout>
         <div class="py-6">
             <div class="w-full px-4 sm:px-6 lg:px-8 space-y-4">
@@ -127,21 +152,41 @@ const submit = () => {
                 <Breadcrumb :crumbs="[
                     { label: 'Dashboard', route: 'dashboard' },
                     { label: 'Daftar Permohonan', route: 'permohonan.index' },
-                    { label: 'Buat Baru', route: null }
+                    { label: isPksTurunan ? 'Buat PKS Turunan' : 'Buat Baru', route: null }
                 ]" />
 
+                <!-- PKS Turunan Notice Banner -->
+                <div v-if="isPksTurunan" class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-md flex items-start gap-4">
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                        <Icon icon="solar:link-circle-bold" class="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                        <span class="inline-block px-2.5 py-0.5 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider mb-1">
+                            Perjanjian Kerja Sama (PKS) Turunan
+                        </span>
+                        <h3 class="text-xl font-bold">Turunan dari KB: {{ kbInduk?.label }}</h3>
+                        <p class="text-xs text-blue-100 mt-1">
+                            Nomor KB Induk: <strong class="text-white">{{ kbInduk?.nomor_permohonan || kbInduk?.kode || '-' }}</strong> · 
+                            Instansi: <strong class="text-white">{{ kbInduk?.nama_instansi }}</strong>
+                        </p>
+                    </div>
+                </div>
+
                 <!-- Header -->
-                <div class="mb-4">
+                <div v-else class="mb-4">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Buat Permohonan Baru</h2>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">Isi formulir untuk mengajukan permohonan kerjasama.</p>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">Isi formulir untuk mengajukan permohonan kerjasama (Kesepakatan Bersama / MoU).</p>
                 </div>
 
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 overflow-hidden">
-                    <form @submit.prevent="submit" class="space-y-6">
+                    <form @submit.prevent="submit(false)" class="space-y-6">
                         
-                        <!-- Identitas -->
+                        <!-- Identitas & Instansi -->
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b pb-2">Identitas & Instansi</h3>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b pb-2 flex items-center gap-2">
+                                <Icon icon="solar:buildings-bold" class="w-5 h-5 text-blue-600" />
+                                Identitas Lembaga & Instansi
+                            </h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Judul Kerjasama <span class="text-red-500">*</span></label>
@@ -159,7 +204,7 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Instansi <span class="text-red-500">*</span></label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Instansi / Mitra <span class="text-red-500">*</span></label>
                                     <input v-model="form.nama_instansi" type="text" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
                                     <p v-if="form.errors.nama_instansi" class="text-red-500 text-sm mt-1">{{ form.errors.nama_instansi }}</p>
                                 </div>
@@ -196,6 +241,94 @@ const submit = () => {
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
                                     <input v-model="form.website" type="url" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Pimpinan & PIC 2 Orang (Proses Bisnis Perda 7/2020) -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b pb-2 flex items-center gap-2">
+                                <Icon icon="solar:user-id-bold" class="w-5 h-5 text-blue-600" />
+                                Data Pimpinan & Narahubung (PIC)
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3">
+                                    <p class="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase flex items-center gap-2">
+                                        <Icon icon="solar:crown-star-bold" class="w-4 h-4 text-amber-500" />
+                                        Pimpinan Tertinggi Instansi / Lembaga
+                                    </p>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nama Pimpinan</label>
+                                            <input v-model="form.nama_pimpinan" type="text" placeholder="Nama Lengkap & Gelar" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Jabatan</label>
+                                            <input v-model="form.jabatan_pimpinan" type="text" placeholder="Rektor / Direktur / Ketua" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">NIP (Opsional)</label>
+                                            <input v-model="form.nip_pimpinan" type="text" placeholder="NIP jika ASN" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <!-- PIC 1 -->
+                                    <div class="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800/40 space-y-3">
+                                        <p class="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase flex items-center gap-2">
+                                            <Icon icon="solar:user-bold" class="w-4 h-4 text-blue-600" />
+                                            PIC 1 (Penanggung Jawab Utama)
+                                        </p>
+                                        <div class="space-y-2">
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nama PIC 1</label>
+                                                <input v-model="form.pic1_nama" type="text" placeholder="Nama Lengkap" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Jabatan</label>
+                                                <input v-model="form.pic1_jabatan" type="text" placeholder="Jabatan PIC" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">No. WhatsApp</label>
+                                                    <input v-model="form.pic1_phone" type="text" placeholder="08..." class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
+                                                    <input v-model="form.pic1_email" type="email" placeholder="email@instansi.id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PIC 2 -->
+                                    <div class="p-4 bg-purple-50/50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800/40 space-y-3">
+                                        <p class="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase flex items-center gap-2">
+                                            <Icon icon="solar:user-bold" class="w-4 h-4 text-purple-600" />
+                                            PIC 2 (Pendamping / Teknis)
+                                        </p>
+                                        <div class="space-y-2">
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nama PIC 2</label>
+                                                <input v-model="form.pic2_nama" type="text" placeholder="Nama Lengkap" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Jabatan</label>
+                                                <input v-model="form.pic2_jabatan" type="text" placeholder="Jabatan PIC" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">No. WhatsApp</label>
+                                                    <input v-model="form.pic2_phone" type="text" placeholder="08..." class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
+                                                    <input v-model="form.pic2_email" type="email" placeholder="email@instansi.id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -292,20 +425,33 @@ const submit = () => {
                             </div>
                         </div>
 
-                        <div class="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
+                        <div class="flex items-center justify-end gap-3 pt-4 border-t dark:border-gray-700">
                              <Link 
                                 :href="route('permohonan.index')" 
-                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition"
+                                class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition dark:bg-gray-700 dark:text-gray-300"
                             >
                                 Batal
                             </Link>
+
                             <button 
-                                type="submit" 
+                                type="button" 
+                                @click="submit(true)"
                                 :disabled="form.processing"
-                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center"
+                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition flex items-center gap-2 border border-slate-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
                             >
-                                <Icon v-if="form.processing" icon="solar:refresh-circle-line-duotone" class="w-5 h-5 mr-2 animate-spin" />
-                                Simpan / Ajukan
+                                <Icon icon="solar:diskette-bold" class="w-4 h-4 text-slate-500" />
+                                Simpan Draft
+                            </button>
+
+                            <button 
+                                type="button" 
+                                @click="submit(false)"
+                                :disabled="form.processing"
+                                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition flex items-center gap-2 shadow-sm"
+                            >
+                                <Icon v-if="form.processing" icon="solar:refresh-circle-line-duotone" class="w-4 h-4 animate-spin" />
+                                <Icon v-else icon="solar:send-square-bold" class="w-4 h-4" />
+                                Kirim Permohonan Resmi
                             </button>
                         </div>
                     </form>

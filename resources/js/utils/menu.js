@@ -38,7 +38,7 @@ export const menuItems = {
             icon: 'solar:home-2-bold',
         },
         {
-            title: 'Kelola Permohonan',
+            title: 'Alur Kerja Sama',
             icon: 'solar:folder-open-bold',
             children: [
                 {
@@ -47,26 +47,36 @@ export const menuItems = {
                     icon: 'solar:document-text-linear',
                 },
                 {
-                    title: 'Validasi',
+                    title: '1. Verifikasi & Telaah',
                     route: '/validasi',
                     icon: 'solar:check-circle-linear',
                 },
                 {
-                    title: 'Pembahasan',
+                    title: '2. Pembahasan TKKSD',
                     route: '/pembahasan',
                     icon: 'solar:chat-round-dots-linear',
                 },
                 {
-                    title: 'Persetujuan',
+                    title: '3. Penjadwalan & Persetujuan',
                     route: '/persetujuan',
                     icon: 'solar:verified-check-linear',
                 },
+                {
+                    title: '4. Penandatanganan',
+                    route: '/penandatanganan',
+                    icon: 'solar:pen-new-square-bold-duotone',
+                },
+                {
+                    title: '5. Pelaksanaan Kerja Sama',
+                    route: '/pelaksanaan',
+                    icon: 'solar:running-2-bold-duotone',
+                },
+                {
+                    title: '6. Monitoring & Evaluasi',
+                    route: '/monev',
+                    icon: 'solar:clipboard-check-linear',
+                },
             ],
-        },
-        {
-            title: 'Penjadwalan',
-            route: '/penjadwalan',
-            icon: 'solar:calendar-bold',
         },
         {
             title: 'Laporan',
@@ -83,7 +93,7 @@ export const menuItems = {
             icon: 'solar:home-2-bold',
         },
         {
-            title: 'Kelola Permohonan',
+            title: 'Alur Kerja Sama',
             icon: 'solar:folder-open-bold',
             children: [
                 {
@@ -92,26 +102,36 @@ export const menuItems = {
                     icon: 'solar:document-text-linear',
                 },
                 {
-                    title: 'Validasi',
+                    title: '1. Verifikasi & Telaah',
                     route: '/validasi',
                     icon: 'solar:check-circle-linear',
                 },
                 {
-                    title: 'Pembahasan',
+                    title: '2. Pembahasan TKKSD',
                     route: '/pembahasan',
                     icon: 'solar:chat-round-dots-linear',
                 },
                 {
-                    title: 'Persetujuan',
+                    title: '3. Penjadwalan & Persetujuan',
                     route: '/persetujuan',
                     icon: 'solar:verified-check-linear',
                 },
+                {
+                    title: '4. Penandatanganan',
+                    route: '/penandatanganan',
+                    icon: 'solar:pen-new-square-bold-duotone',
+                },
+                {
+                    title: '5. Pelaksanaan Kerja Sama',
+                    route: '/pelaksanaan',
+                    icon: 'solar:running-2-bold-duotone',
+                },
+                {
+                    title: '6. Monitoring & Evaluasi',
+                    route: '/monev',
+                    icon: 'solar:clipboard-check-linear',
+                },
             ],
-        },
-        {
-            title: 'Penjadwalan',
-            route: '/penjadwalan',
-            icon: 'solar:calendar-bold',
         },
         {
             title: 'Laporan',
@@ -175,6 +195,7 @@ export function getMenuByRole(role) {
     switch (role) {
         case 'administrator':
         case 'superadmin':
+        case 'kabag_kerjasama':
             return menuItems.administrator;
         case 'tkksd':
             return menuItems.tkksd;

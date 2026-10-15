@@ -372,14 +372,12 @@ class MonevController extends Controller implements HasMiddleware
         $canCreateMonev = $user->can('monev.create');
 
         $basePending = Permohonan::with(['kategori', 'operator'])
-            ->where(function ($q) {
-                $q->where('status', Permohonan::STATUS_SELESAI)
-                    ->orWhere(function ($q2) {
-                        $q2->where('status', Permohonan::STATUS_PELAKSANAAN)
-                            ->whereNotNull('tanggal_berakhir')
-                            ->where('tanggal_berakhir', '<=', now());
-                    });
-            });
+            ->whereIn('status', [
+                Permohonan::STATUS_PELAKSANAAN,
+                Permohonan::STATUS_SELESAI,
+                Permohonan::STATUS_EVALUASI,
+                Permohonan::STATUS_PERPANJANGAN,
+            ]);
 
         $manualPendingBase = KerjasamaManual::with(['kategori'])
             ->whereNotNull('tanggal_berakhir')
@@ -482,14 +480,12 @@ class MonevController extends Controller implements HasMiddleware
         $isTkksdLokus = $user->hasRole('tkksd_lokus') && !$isAdmin;
 
         // Daftar permohonan yang user ini boleh monev — beda per role.
-        $base = Permohonan::where(function ($q) {
-                $q->where('status', Permohonan::STATUS_SELESAI)
-                    ->orWhere(function ($q2) {
-                        $q2->where('status', Permohonan::STATUS_PELAKSANAAN)
-                            ->whereNotNull('tanggal_berakhir')
-                            ->where('tanggal_berakhir', '<=', now());
-                    });
-            })
+        $base = Permohonan::whereIn('status', [
+                Permohonan::STATUS_PELAKSANAAN,
+                Permohonan::STATUS_SELESAI,
+                Permohonan::STATUS_EVALUASI,
+                Permohonan::STATUS_PERPANJANGAN,
+            ])
             ->whereDoesntHave('monevs', fn($q) => $q->where('submitter_user_id', $user->id));
 
         $manualBase = KerjasamaManual::whereNotNull('tanggal_berakhir')
@@ -611,12 +607,15 @@ class MonevController extends Controller implements HasMiddleware
             ]);
         } else {
             $rules = array_merge($rules, [
+                'pmh_progress_persen' => 'nullable|numeric|min:0|max:100',
                 'pmh_realisasi_kegiatan' => 'required|in:Terlaksana penuh,Sebagian,Tidak',
                 'pmh_kesesuaian_output' => 'required|in:Ya,Sebagian,Tidak',
                 'pmh_pemanfaatan_hasil' => 'nullable|string',
                 'pmh_kendala_lapangan' => 'nullable|string',
                 'pmh_keberlanjutan' => 'required|in:Perlu dilanjutkan,Cukup,Hentikan',
-                'pmh_file_laporan' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+                'pmh_file_laporan' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'pmh_file_berita_acara' => 'nullable|file|mimes:pdf|max:10240',
+                'pmh_file_dokumentasi' => 'nullable|file|mimes:pdf,jpg,jpeg,png,zip|max:20480',
             ]);
         }
 
@@ -688,11 +687,25 @@ class MonevController extends Controller implements HasMiddleware
             $validated['file_bukti'] = $path;
         }
 
-        if (!$isAdmin && !$isTkksdLokus && $request->hasFile('pmh_file_laporan')) {
-            $file = $request->file('pmh_file_laporan');
-            $filename = 'monev_pmh_' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('monev', $filename, 'public');
-            $validated['pmh_file_laporan'] = $path;
+        if (!$isAdmin && !$isTkksdLokus) {
+            if ($request->hasFile('pmh_file_laporan')) {
+                $file = $request->file('pmh_file_laporan');
+                $filename = 'monev_pmh_' . time() . '.' . $file->getClientOriginalExtension();
+                $validated['pmh_file_laporan'] = $file->storeAs('monev', $filename, 'public');
+            }
+            if ($request->hasFile('pmh_file_berita_acara')) {
+                $file = $request->file('pmh_file_berita_acara');
+                $filename = 'monev_ba_' . time() . '.' . $file->getClientOriginalExtension();
+                $validated['file_berita_acara'] = $file->storeAs('monev', $filename, 'public');
+            }
+            if ($request->hasFile('pmh_file_dokumentasi')) {
+                $file = $request->file('pmh_file_dokumentasi');
+                $filename = 'monev_dok_' . time() . '.' . $file->getClientOriginalExtension();
+                $validated['file_dokumentasi'] = $file->storeAs('monev', $filename, 'public');
+            }
+            if (isset($validated['pmh_progress_persen'])) {
+                $validated['progress_persen'] = $validated['pmh_progress_persen'];
+            }
         }
 
         // Pisahkan field detail (per role) dari payload monev inti.

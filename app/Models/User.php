@@ -149,6 +149,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is Kepala Bagian Kerja Sama
+     */
+    public function isKabagKerjasama(): bool
+    {
+        return $this->hasRole('kabag_kerjasama');
+    }
+
+    /**
      * Check if user is Pemohon
      */
     public function isPemohon(): bool
@@ -214,7 +222,7 @@ class User extends Authenticatable
 
         return $query->where(function ($q) use ($whitelist) {
             $q->whereHas('roles', function ($roleQuery) {
-                $roleQuery->whereIn('slug', ['administrator', 'superadmin', 'tkksd']);
+                $roleQuery->whereIn('slug', ['administrator', 'superadmin', 'tkksd', 'kabag_kerjasama']);
             });
 
             if (!empty($whitelist)) {

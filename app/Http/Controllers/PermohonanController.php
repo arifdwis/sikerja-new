@@ -263,7 +263,7 @@ class PermohonanController extends Controller implements HasMiddleware
     /**
      * Show the form for creating a new permohonan.
      */
-    public function create()
+    public function create(Request $request)
     {
         $user = Auth::user();
         if ($this->isPrivilegedAdmin($user)) {
@@ -290,6 +290,14 @@ class PermohonanController extends Controller implements HasMiddleware
         // Auto-fill OPD jika user terhubung ke OPD via SSO (id_opd di users)
         $userOpd = $user->id_opd ? \App\Models\Opd::find($user->id_opd) : null;
 
+        // PKS Turunan dari Kesepakatan Bersama (KB)
+        $kbInduk = null;
+        if ($request->has('kb_uuid')) {
+            $kbInduk = Permohonan::where('uuid', $request->kb_uuid)
+                ->with(['kategori', 'provinsi', 'kota', 'opds'])
+                ->first();
+        }
+
         return Inertia::render("$this->view/Create", [
             'kategoris' => $kategoris,
             'provinsis' => $provinsis,
@@ -298,6 +306,7 @@ class PermohonanController extends Controller implements HasMiddleware
             'pemohon' => $pemohon,
             'corporate' => $corporate,
             'pemohonanList' => $pemohonanList,
+            'kbInduk' => $kbInduk,
             'share' => $this->share,
         ]);
     }
@@ -312,9 +321,14 @@ class PermohonanController extends Controller implements HasMiddleware
         }
 
         $validated = $request->validate([
+            'tipe_dokumen' => 'nullable|in:KB,PKS',
+            'id_kb_induk' => 'nullable|exists:permohonan,id',
             'id_kategori' => 'required|exists:kategori,id',
             'label' => 'required|string|max:255',
             'nama_instansi' => 'required|string|max:255',
+            'nama_pimpinan' => 'nullable|string|max:255',
+            'jabatan_pimpinan' => 'nullable|string|max:255',
+            'nip_pimpinan' => 'nullable|string|max:100',
             'id_provinsi' => 'nullable|exists:master_provinces,id',
             'id_kota' => 'nullable|exists:master_cities,id',
             'kode_pos' => 'nullable|string|max:10',
@@ -322,6 +336,15 @@ class PermohonanController extends Controller implements HasMiddleware
             'email' => 'nullable|email|max:255',
             'telepon' => 'nullable|string|max:30',
             'website' => 'nullable|string|max:255',
+            'pic1_nama' => 'nullable|string|max:255',
+            'pic1_jabatan' => 'nullable|string|max:255',
+            'pic1_phone' => 'nullable|string|max:50',
+            'pic1_email' => 'nullable|email|max:255',
+            'pic2_nama' => 'nullable|string|max:255',
+            'pic2_jabatan' => 'nullable|string|max:255',
+            'pic2_phone' => 'nullable|string|max:50',
+            'pic2_email' => 'nullable|email|max:255',
+            'is_draft' => 'nullable|boolean',
             'id_pemohon_1' => 'nullable|exists:pemohon,id',
             'latar_belakang' => 'required|string',
             'maksud_tujuan' => 'required|string',
@@ -352,10 +375,13 @@ class PermohonanController extends Controller implements HasMiddleware
             $validated['tanggal_berakhir'] ?? null
         ) ?: ($validated['jangka_waktu'] ?? null);
 
-        $validated['kode'] = 'PKS-' . strtoupper(Str::random(8));
+        $isDraft = (bool) ($validated['is_draft'] ?? false);
+        $validated['is_draft'] = $isDraft;
+        $validated['tipe_dokumen'] = 'KB';
+        $validated['kode'] = 'KB-' . strtoupper(Str::random(8));
         $validated['nomor_permohonan'] = 'REQ/' . date('Y') . '/' . str_pad(Permohonan::whereYear('created_at', date('Y'))->count() + 1, 4, '0', STR_PAD_LEFT);
         $validated['id_pemohon_0'] = Auth::id();
-        $validated['status'] = Permohonan::STATUS_PERMOHONAN;
+        $validated['status'] = $isDraft ? Permohonan::STATUS_DRAFT : Permohonan::STATUS_PERMOHONAN;
 
         $permohonan = $this->data::create($validated);
 
@@ -367,11 +393,13 @@ class PermohonanController extends Controller implements HasMiddleware
         PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
             'id_operator' => Auth::id(),
-            'deskripsi' => 'Permohonan kerjasama dibuat.',
+            'deskripsi' => $isDraft ? 'Draft permohonan kerjasama disimpan.' : 'Permohonan kerjasama resmi diajukan.',
         ]);
 
+        $successMsg = $isDraft ? 'Draft permohonan berhasil disimpan.' : 'Permohonan berhasil dibuat dan diajukan.';
+
         return redirect()->route("$this->prefix.index", ['detail' => $permohonan->uuid])
-            ->with('success', 'Permohonan berhasil dibuat.');
+            ->with('success', $successMsg);
     }
 
     /**
@@ -477,25 +505,43 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        // Izinkan edit jika status: Permohonan Baru (0) atau Ditolak (9 - revisi)
-        $editableStatuses = [Permohonan::STATUS_PERMOHONAN, Permohonan::STATUS_DITOLAK];
+        // Izinkan edit jika status: Draft (-1), Permohonan Baru (0), Revisi (11), atau Ditolak (9)
+        $editableStatuses = [
+            Permohonan::STATUS_DRAFT,
+            Permohonan::STATUS_PERMOHONAN,
+            Permohonan::STATUS_REVISI,
+            Permohonan::STATUS_DITOLAK
+        ];
         if (!in_array($permohonan->status, $editableStatuses)) {
             return redirect()->route("$this->prefix.show", $permohonan->uuid)
                 ->with('error', 'Permohonan tidak dapat diedit karena sudah diproses.');
         }
 
-        $wasRejected = $permohonan->status == Permohonan::STATUS_DITOLAK;
+        $wasRejected = in_array($permohonan->status, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_REVISI]);
 
         $validated = $request->validate([
             'id_kategori' => 'required|exists:kategori,id',
             'label' => 'required|string|max:255',
             'nama_instansi' => 'required|string|max:255',
+            'nama_pimpinan' => 'nullable|string|max:255',
+            'jabatan_pimpinan' => 'nullable|string|max:255',
+            'nip_pimpinan' => 'nullable|string|max:100',
             'id_provinsi' => 'nullable|exists:master_provinces,id',
             'id_kota' => 'nullable|exists:master_cities,id',
+            'kode_pos' => 'nullable|string|max:10',
             'alamat' => 'nullable|string',
             'email' => 'nullable|email|max:255',
-            'telepon' => 'nullable|string|max:20',
+            'telepon' => 'nullable|string|max:30',
             'website' => 'nullable|url|max:255',
+            'pic1_nama' => 'nullable|string|max:255',
+            'pic1_jabatan' => 'nullable|string|max:255',
+            'pic1_phone' => 'nullable|string|max:50',
+            'pic1_email' => 'nullable|email|max:255',
+            'pic2_nama' => 'nullable|string|max:255',
+            'pic2_jabatan' => 'nullable|string|max:255',
+            'pic2_phone' => 'nullable|string|max:50',
+            'pic2_email' => 'nullable|email|max:255',
+            'is_draft' => 'nullable|boolean',
             'id_pemohon_1' => 'nullable|exists:pemohon,id',
             'latar_belakang' => 'required|string',
             'maksud_tujuan' => 'required|string',
@@ -520,9 +566,13 @@ class PermohonanController extends Controller implements HasMiddleware
             $validated['tanggal_berakhir'] ?? null
         ) ?: ($validated['jangka_waktu'] ?? null);
 
-        // Jika permohonan sebelumnya ditolak, reset status ke Permohonan Baru (0)
-        // dan hapus alasan tolak
-        if ($wasRejected) {
+        // Jika user submit dari draft ke pengajuan resmi
+        $isDraft = (bool) ($validated['is_draft'] ?? false);
+        if ($permohonan->status == Permohonan::STATUS_DRAFT) {
+            $validated['status'] = $isDraft ? Permohonan::STATUS_DRAFT : Permohonan::STATUS_PERMOHONAN;
+            $validated['is_draft'] = $isDraft;
+        } elseif ($wasRejected) {
+            // Jika permohonan sebelumnya ditolak/revisi, reset status ke Permohonan Baru (0)
             $validated['status'] = Permohonan::STATUS_PERMOHONAN;
             $validated['alasan_tolak'] = null;
         }
@@ -535,8 +585,8 @@ class PermohonanController extends Controller implements HasMiddleware
         }
 
         $deskripsi = $wasRejected
-            ? 'Permohonan direvisi dan diajukan kembali setelah ditolak.'
-            : 'Permohonan diperbarui.';
+            ? 'Permohonan direvisi dan diajukan kembali.'
+            : ($permohonan->status == Permohonan::STATUS_DRAFT ? 'Draft permohonan diperbarui.' : 'Permohonan resmi diajukan.');
 
         PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
@@ -546,7 +596,7 @@ class PermohonanController extends Controller implements HasMiddleware
 
         $message = $wasRejected
             ? 'Revisi permohonan berhasil diajukan kembali.'
-            : 'Permohonan berhasil diperbarui.';
+            : ($permohonan->status == Permohonan::STATUS_DRAFT ? 'Draft permohonan berhasil diperbarui.' : 'Permohonan resmi berhasil dikirim.');
 
         return redirect()->route("$this->prefix.show", $permohonan->uuid)
             ->with('success', $message);
@@ -693,26 +743,34 @@ class PermohonanController extends Controller implements HasMiddleware
 
         $validated = $request->validate([
             // Req 3: Format dokumen ditetapkan
-            'surat_permohonan' => 'required|file|mimes:pdf|max:10240',
-            'proposal_kak'     => 'required|file|mimes:pdf|max:10240',
-            'draft_mou'        => 'nullable|file|mimes:doc,docx|max:10240',
+            'surat_permohonan'  => 'required|file|mimes:pdf|max:10240',
+            'proposal_kak'      => 'required|file|mimes:pdf|max:10240',
+            'draft_mou'         => 'nullable|file|mimes:doc,docx|max:10240',
+            'dokumen_legalitas' => 'nullable|file|mimes:pdf,zip|max:15360',
+            'dokumen_pendukung' => 'nullable|file|mimes:pdf,zip|max:15360',
         ], [
             'surat_permohonan.required' => 'Surat Permohonan wajib diupload.',
             'proposal_kak.required' => 'Proposal/KAK wajib diupload.',
             'surat_permohonan.mimes' => 'Surat Permohonan harus berformat PDF.',
             'proposal_kak.mimes' => 'KAK harus berformat PDF.',
             'draft_mou.mimes' => 'Draft MoU harus berformat DOC atau DOCX.',
+            'dokumen_legalitas.mimes' => 'Dokumen Legalitas harus berformat PDF atau ZIP.',
+            'dokumen_pendukung.mimes' => 'Dokumen Pendukung harus berformat PDF atau ZIP.',
             'surat_permohonan.max' => 'Ukuran file maksimal 10MB.',
             'proposal_kak.max' => 'Ukuran file maksimal 10MB.',
             'draft_mou.max' => 'Ukuran file maksimal 10MB.',
+            'dokumen_legalitas.max' => 'Ukuran file maksimal 15MB.',
+            'dokumen_pendukung.max' => 'Ukuran file maksimal 15MB.',
         ]);
 
         \Log::info('Validation passed, processing files');
 
         $fileTypes = [
-            'surat_permohonan' => 'Surat Permohonan Kerjasama',
-            'proposal_kak' => 'Proposal / Kerangka Acuan Kerja',
-            'draft_mou' => 'Draft MoU / Perjanjian Kerjasama',
+            'surat_permohonan'  => 'Surat Permohonan Kerjasama',
+            'proposal_kak'      => 'Proposal / Kerangka Acuan Kerja',
+            'draft_mou'         => 'Draft Kesepakatan Bersama (MoU)',
+            'dokumen_legalitas' => 'Dokumen Legalitas Organisasi',
+            'dokumen_pendukung' => 'Dokumen Pendukung Lainnya',
         ];
 
         foreach ($fileTypes as $field => $label) {
@@ -724,13 +782,14 @@ class PermohonanController extends Controller implements HasMiddleware
                 \Log::info("File saved: $field", ['path' => $path]);
 
                 PermohonanFile::create([
-                    'id_permohonan' => $permohonan->id,
-                    'label' => $label,
-                    'file' => 'storage/' . $path,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'deskripsi' => 'Dokumen ' . $label . ' untuk permohonan ' . $permohonan->kode,
-                    'status' => PermohonanFile::STATUS_DIPROSES,
+                    'id_permohonan'    => $permohonan->id,
+                    'label'            => $label,
+                    'kategori_dokumen' => $field,
+                    'file'             => 'storage/' . $path,
+                    'file_path'        => $path,
+                    'file_name'        => $file->getClientOriginalName(),
+                    'deskripsi'        => 'Dokumen ' . $label . ' untuk permohonan ' . $permohonan->kode,
+                    'status'           => PermohonanFile::STATUS_DIPROSES,
                 ]);
             }
         }

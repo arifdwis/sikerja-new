@@ -90,7 +90,7 @@ class HandleInertiaRequests extends Middleware
             ->get();
 
         // Special overrides for TKKSD to simplify experience
-        if (in_array('tkksd', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles)) {
+        if (in_array('tkksd', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles) && !in_array('kabag_kerjasama', $roles)) {
             return [
                 [
                     'id' => 'dashboard-tkksd',
@@ -124,7 +124,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         // TKKSD Lokus Kerjasama — akses Dashboard, Kerjasama (Aktif/Selesai), dan Monev
-        if (in_array('tkksd_lokus', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles)) {
+        if (in_array('tkksd_lokus', $roles) && !in_array('administrator', $roles) && !in_array('superadmin', $roles) && !in_array('kabag_kerjasama', $roles)) {
             return [
                 [
                     'id' => 'dashboard-tkksd-lokus',

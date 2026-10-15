@@ -20,18 +20,22 @@ const form = useForm({
     surat_permohonan: null,
     proposal_kak: null,
     draft_mou: null,
+    dokumen_legalitas: null,
+    dokumen_pendukung: null,
 });
 
 // File refs for display
 const suratPermohonanFile = ref(null);
 const proposalKakFile = ref(null);
 const draftMouFile = ref(null);
+const dokumenLegalitasFile = ref(null);
+const dokumenPendukungFile = ref(null);
 
 const handleFileSelect = (event, field) => {
     const file = event.files ? event.files[0] : (event.target?.files ? event.target.files[0] : null);
     if (!file) return;
 
-    // Validasi format ditetapkan (Req 3): PDF untuk Surat & KAK, DOC/DOCX untuk MoU
+    // Validasi format ditetapkan
     const fileType = fileTypes.find(ft => ft.key === field);
     if (fileType) {
         const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
@@ -55,6 +59,8 @@ const handleFileSelect = (event, field) => {
     if (field === 'surat_permohonan') suratPermohonanFile.value = file;
     if (field === 'proposal_kak') proposalKakFile.value = file;
     if (field === 'draft_mou') draftMouFile.value = file;
+    if (field === 'dokumen_legalitas') dokumenLegalitasFile.value = file;
+    if (field === 'dokumen_pendukung') dokumenPendukungFile.value = file;
 };
 
 const removeFile = (field) => {
@@ -62,6 +68,8 @@ const removeFile = (field) => {
     if (field === 'surat_permohonan') suratPermohonanFile.value = null;
     if (field === 'proposal_kak') proposalKakFile.value = null;
     if (field === 'draft_mou') draftMouFile.value = null;
+    if (field === 'dokumen_legalitas') dokumenLegalitasFile.value = null;
+    if (field === 'dokumen_pendukung') dokumenPendukungFile.value = null;
 };
 
 const formatFileSize = (bytes) => {
@@ -102,7 +110,7 @@ const fileTypes = [
     {
         key: 'proposal_kak',
         label: 'Proposal / Kerangka Acuan Kerja (KAK)',
-        description: 'Dokumen proposal atau KAK yang menjelaskan detail kerjasama',
+        description: 'Dokumen proposal atau KAK yang menjelaskan latar belakang, maksud, tujuan, ruang lingkup, dan pembiayaan',
         format: 'PDF',
         accept: '.pdf',
         mimes: ['application/pdf'],
@@ -112,8 +120,8 @@ const fileTypes = [
     },
     {
         key: 'draft_mou',
-        label: 'Draft MoU / Perjanjian Kerjasama',
-        description: 'Draft kesepakatan kerjasama yang akan ditinjau bersama',
+        label: 'Draft Kesepakatan Bersama (MoU) / PKS',
+        description: 'Draft kesepakatan kerjasama yang akan ditinjau bersama oleh TKKSD',
         format: 'DOC / DOCX',
         accept: '.doc,.docx',
         mimes: ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -121,12 +129,36 @@ const fileTypes = [
         color: 'emerald',
         required: true,
     },
+    {
+        key: 'dokumen_legalitas',
+        label: 'Dokumen Legalitas Pemohon',
+        description: 'Profil lembaga, Akta/SK Pendirian, NPWP, Surat Kuasa / Izin Operasional (jika ada)',
+        format: 'PDF / ZIP',
+        accept: '.pdf,.zip,.rar',
+        mimes: ['application/pdf', 'application/zip', 'application/x-zip-compressed'],
+        icon: 'solar:shield-check-bold',
+        color: 'purple',
+        required: false,
+    },
+    {
+        key: 'dokumen_pendukung',
+        label: 'Dokumen Pendukung Lainnya',
+        description: 'Data teknis, portofolio kerja sama sebelumnya, atau lampiran pelengkap lainnya',
+        format: 'PDF',
+        accept: '.pdf',
+        mimes: ['application/pdf'],
+        icon: 'solar:folder-with-files-bold',
+        color: 'indigo',
+        required: false,
+    },
 ];
 
 const getFileRef = (key) => {
     if (key === 'surat_permohonan') return suratPermohonanFile.value;
     if (key === 'proposal_kak') return proposalKakFile.value;
     if (key === 'draft_mou') return draftMouFile.value;
+    if (key === 'dokumen_legalitas') return dokumenLegalitasFile.value;
+    if (key === 'dokumen_pendukung') return dokumenPendukungFile.value;
     return null;
 };
 </script>
@@ -170,9 +202,9 @@ const getFileRef = (key) => {
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 flex gap-3">
             <Icon icon="solar:checklist-minimalistic-bold" class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div class="text-sm">
-                <p class="font-medium text-blue-800 dark:text-blue-200">Semua dokumen wajib diupload</p>
+                <p class="font-medium text-blue-800 dark:text-blue-200">Kelengkapan Dokumen Kerjasama</p>
                 <p class="text-blue-700 dark:text-blue-300 mt-1">
-                    Anda harus mengupload <strong>ketiga dokumen</strong> di bawah ini sebelum dapat melanjutkan ke tahap pembahasan. Tombol "Upload &amp; Lanjutkan" akan aktif setelah semua berkas terisi.
+                    Anda wajib mengupload <strong>3 dokumen utama</strong> (Surat Permohonan, Proposal/KAK, dan Draft Kesepakatan Bersama). Dokumen Legalitas dan Pendukung dapat diunggah untuk mempercepat proses telaah oleh TKKSD.
                 </p>
             </div>
         </div>

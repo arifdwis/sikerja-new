@@ -23,12 +23,15 @@ const toast = useToast();
 const form = useForm({
     id_permohonan: props.selectedPermohonan?.select_id || props.selectedPermohonan?.id || null,
     tanggal_evaluasi: new Date(),
+    pmh_progress_persen: 0,
     pmh_realisasi_kegiatan: null,
     pmh_kesesuaian_output: null,
     pmh_pemanfaatan_hasil: '',
     pmh_kendala_lapangan: '',
     pmh_keberlanjutan: null,
     pmh_file_laporan: null,
+    pmh_file_berita_acara: null,
+    pmh_file_dokumentasi: null,
 });
 
 const options = {
@@ -41,10 +44,16 @@ const handleFileSelect = (event) => {
     form.pmh_file_laporan = event.files?.[0] || null;
 };
 
+const handleBaSelect = (event) => {
+    form.pmh_file_berita_acara = event.files?.[0] || null;
+};
+
+const handleDokSelect = (event) => {
+    form.pmh_file_dokumentasi = event.files?.[0] || null;
+};
+
 const submit = () => {
     if (form.processing) return;
-    // forceFormData hanya kalau ada file. Kalau dipakai saat field file null,
-    // Inertia kirim "null" sebagai string dan rule `nullable|file` reject.
     const opts = {
         onSuccess: () => {
             toast.success('Form Monev berhasil dikirim.');
@@ -54,7 +63,11 @@ const submit = () => {
             toast.error('Gagal menyimpan. Periksa kembali isian form.');
         },
     };
-    if (form.pmh_file_laporan instanceof File) {
+    if (
+        form.pmh_file_laporan instanceof File || 
+        form.pmh_file_berita_acara instanceof File || 
+        form.pmh_file_dokumentasi instanceof File
+    ) {
         opts.forceFormData = true;
     }
     form.post(route('monev.store'), opts);
@@ -134,15 +147,39 @@ const submit = () => {
                             </div>
                         </div>
 
+                        <!-- Progress Capaian Persen (Proses Bisnis Perda 7/2020) -->
+                        <div class="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-800 dark:bg-blue-900/10">
+                            <div class="flex items-center justify-between gap-4 mb-2">
+                                <label class="text-sm font-semibold text-blue-950 dark:text-blue-100 flex items-center gap-2">
+                                    <Icon icon="solar:chart-bold" class="w-4 h-4 text-blue-600" />
+                                    Progress Capaian Realisasi Kerja Sama (%)
+                                </label>
+                                <span class="text-base font-bold text-blue-600">{{ form.pmh_progress_persen }}%</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                step="5" 
+                                v-model.number="form.pmh_progress_persen" 
+                                class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer dark:bg-blue-900" 
+                            />
+                            <div class="flex justify-between text-[11px] text-gray-500 mt-1">
+                                <span>0% (Awal)</span>
+                                <span>50% (Berjalan)</span>
+                                <span>100% (Tuntas)</span>
+                            </div>
+                        </div>
+
                         <div class="rounded-xl border border-slate-200 p-4">
                             <label class="mb-2 block text-sm font-medium text-slate-700">Bagaimana hasil kerjasama dimanfaatkan?</label>
-                            <Textarea v-model="form.pmh_pemanfaatan_hasil" rows="4" class="w-full" placeholder="Jelaskan pemanfaatan hasil..." />
+                            <Textarea v-model="form.pmh_pemanfaatan_hasil" rows="3" class="w-full" placeholder="Jelaskan pemanfaatan hasil..." />
                             <small v-if="form.errors.pmh_pemanfaatan_hasil" class="text-red-500">{{ form.errors.pmh_pemanfaatan_hasil }}</small>
                         </div>
 
                         <div class="rounded-xl border border-slate-200 p-4">
                             <label class="mb-2 block text-sm font-medium text-slate-700">Kendala selama pelaksanaan</label>
-                            <Textarea v-model="form.pmh_kendala_lapangan" rows="4" class="w-full" placeholder="Jelaskan kendala lapangan..." />
+                            <Textarea v-model="form.pmh_kendala_lapangan" rows="3" class="w-full" placeholder="Jelaskan kendala lapangan..." />
                             <small v-if="form.errors.pmh_kendala_lapangan" class="text-red-500">{{ form.errors.pmh_kendala_lapangan }}</small>
                         </div>
 
@@ -154,11 +191,31 @@ const submit = () => {
                             </div>
                         </div>
 
-                        <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Laporan Pelaksanaan (opsional)</label>
-                            <FileUpload mode="basic" accept=".pdf,.jpg,.jpeg,.png" :maxFileSize="5000000" @select="handleFileSelect" chooseLabel="Pilih File" class="w-full" />
-                            <small class="text-gray-500">Format: PDF, JPG, PNG. Maks 5MB.</small>
-                            <small v-if="form.errors.pmh_file_laporan" class="text-red-500">{{ form.errors.pmh_file_laporan }}</small>
+                        <!-- Upload Berkas Monev (Laporan, Berita Acara, Dokumentasi) -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Laporan -->
+                            <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Laporan Pelaksanaan</label>
+                                <FileUpload mode="basic" accept=".pdf,.jpg,.jpeg,.png" :maxFileSize="10000000" @select="handleFileSelect" chooseLabel="Pilih File" class="w-full" />
+                                <small class="text-[11px] text-gray-500">PDF, Maks 10MB.</small>
+                                <small v-if="form.errors.pmh_file_laporan" class="text-red-500 block">{{ form.errors.pmh_file_laporan }}</small>
+                            </div>
+
+                            <!-- Berita Acara -->
+                            <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Berita Acara Monev</label>
+                                <FileUpload mode="basic" accept=".pdf" :maxFileSize="10000000" @select="handleBaSelect" chooseLabel="Pilih Berita Acara" class="w-full" />
+                                <small class="text-[11px] text-gray-500">PDF, Maks 10MB.</small>
+                                <small v-if="form.errors.pmh_file_berita_acara" class="text-red-500 block">{{ form.errors.pmh_file_berita_acara }}</small>
+                            </div>
+
+                            <!-- Dokumentasi -->
+                            <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">Foto & Dokumentasi</label>
+                                <FileUpload mode="basic" accept=".pdf,.jpg,.jpeg,.png,.zip" :maxFileSize="20000000" @select="handleDokSelect" chooseLabel="Pilih Dokumentasi" class="w-full" />
+                                <small class="text-[11px] text-gray-500">JPG/PNG/ZIP, Maks 20MB.</small>
+                                <small v-if="form.errors.pmh_file_dokumentasi" class="text-red-500 block">{{ form.errors.pmh_file_dokumentasi }}</small>
+                            </div>
                         </div>
                     </div>
 

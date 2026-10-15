@@ -63,6 +63,18 @@ const form = useForm({
     email: props.mode === 'edit' ? getInitialValue('email') : (props.corporate?.email || ''),
     telepon: props.mode === 'edit' ? getInitialValue('telepon') : (props.corporate?.phone || ''),
     website: props.mode === 'edit' ? getInitialValue('website') : (props.corporate?.website || ''),
+    nama_pimpinan: getInitialValue('nama_pimpinan'),
+    jabatan_pimpinan: getInitialValue('jabatan_pimpinan'),
+    nip_pimpinan: getInitialValue('nip_pimpinan'),
+    pic1_nama: getInitialValue('pic1_nama'),
+    pic1_jabatan: getInitialValue('pic1_jabatan'),
+    pic1_phone: getInitialValue('pic1_phone'),
+    pic1_email: getInitialValue('pic1_email'),
+    pic2_nama: getInitialValue('pic2_nama'),
+    pic2_jabatan: getInitialValue('pic2_jabatan'),
+    pic2_phone: getInitialValue('pic2_phone'),
+    pic2_email: getInitialValue('pic2_email'),
+    is_draft: false,
     id_pemohon_1: props.mode === 'edit' ? getInitialValue('id_pemohon_1') : '', 
     latar_belakang: getInitialValue('latar_belakang'),
     maksud_tujuan: getInitialValue('maksud_tujuan'),
@@ -104,8 +116,11 @@ watch(() => form.id_provinsi, async (provinsiId, oldProvinsiId) => {
     }
 }, { immediate: true });
 
-const submit = () => {
+const submit = (asDraft = false) => {
+    form.is_draft = asDraft;
+
     if (
+        !asDraft &&
         form.tanggal_mulai &&
         form.tanggal_berakhir &&
         form.tanggal_berakhir < form.tanggal_mulai
@@ -120,7 +135,10 @@ const submit = () => {
 
     form[method](route(routeName, routeId), {
         onSuccess: () => {
-            toast.success(props.mode === 'edit' ? 'Permohonan berhasil diperbarui' : 'Permohonan berhasil dibuat');
+            const successMsg = asDraft 
+                ? 'Draft permohonan berhasil disimpan' 
+                : (props.mode === 'edit' ? 'Permohonan berhasil diperbarui' : 'Permohonan resmi berhasil dikirim');
+            toast.success(successMsg);
             emit('success');
             if (props.mode !== 'edit') form.reset();
         },
@@ -203,11 +221,29 @@ const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id,
                     Selanjutnya <Icon icon="solar:arrow-right-linear" class="w-5 h-5 ml-2" />
                 </button>
                 
-                <button v-else type="submit" @click="submit" :disabled="form.processing" class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition inline-flex items-center gap-2 disabled:opacity-50">
-                    <Icon v-if="form.processing" icon="lucide:loader-circle" class="h-5 w-5 animate-spin" />
-                    <Icon v-else icon="lucide:send" class="h-5 w-5 shrink-0" />
-                    {{ mode === 'edit' ? 'Simpan Perubahan' : 'Submit Data' }}
-                </button>
+                <template v-else>
+                    <button 
+                        v-if="mode !== 'edit'"
+                        type="button" 
+                        @click="submit(true)" 
+                        :disabled="form.processing" 
+                        class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 rounded-lg font-medium transition inline-flex items-center gap-2 disabled:opacity-50"
+                    >
+                        <Icon icon="solar:diskette-bold" class="w-5 h-5 text-slate-500" />
+                        Simpan Draft
+                    </button>
+                    
+                    <button 
+                        type="button" 
+                        @click="submit(false)" 
+                        :disabled="form.processing" 
+                        class="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition inline-flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                    >
+                        <Icon v-if="form.processing" icon="lucide:loader-circle" class="h-5 w-5 animate-spin" />
+                        <Icon v-else icon="lucide:send" class="h-5 w-5 shrink-0" />
+                        {{ mode === 'edit' ? 'Simpan Perubahan' : 'Kirim Permohonan Resmi' }}
+                    </button>
+                </template>
              </div>
         </div>
     </div>
