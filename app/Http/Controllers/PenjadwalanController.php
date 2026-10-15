@@ -182,7 +182,6 @@ class PenjadwalanController extends Controller implements HasMiddleware
             // Approved → Status JADWAL_DISETUJUI (3) — Pemohon harus upload PKS
             $permohonan->update([
                 'status' => Permohonan::STATUS_JADWAL_DISETUJUI,
-                'status_selesai' => 'PROSES',
             ]);
             $title = 'Jadwal Penandatanganan Disetujui';
             // Req 8: Notifikasi baru

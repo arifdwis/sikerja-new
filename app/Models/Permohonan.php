@@ -41,7 +41,6 @@ class Permohonan extends Model
         'id_kb_induk',
         'is_draft',
         'status',
-        'status_selesai',
         'alasan_tolak',
         'label',
         'latar_belakang',
