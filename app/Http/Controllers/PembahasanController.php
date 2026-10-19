@@ -50,6 +50,19 @@ class PembahasanController extends Controller implements HasMiddleware
             ->where('status', Permohonan::STATUS_PEMBAHASAN) // Status 1: Dalam Pembahasan
             ->latest();
 
+        $type = $request->get('type');
+        $share = $this->share;
+
+        if ($type === 'pks') {
+            $query->where('tipe_dokumen', 'PKS');
+            $share['title'] = '5. Pembahasan Draf PKS (Perjanjian Kerja Sama)';
+        } elseif ($type === 'kb') {
+            $query->where(function ($q) {
+                $q->whereNull('tipe_dokumen')->orWhere('tipe_dokumen', '!=', 'PKS');
+            });
+            $share['title'] = '3. Pembahasan Draf KB (Kesepakatan Bersama)';
+        }
+
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -63,8 +76,9 @@ class PembahasanController extends Controller implements HasMiddleware
 
         return Inertia::render("$this->view/Index", [
             'datas' => $datas,
-            'share' => $this->share,
-            'filters' => $request->only(['search']),
+            'share' => $share,
+            'filters' => $request->only(['search', 'type']),
+            'currentType' => $type,
             'isRiwayat' => false
         ]);
     }

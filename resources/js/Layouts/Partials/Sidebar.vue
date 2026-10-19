@@ -21,9 +21,18 @@ const openDropdowns = ref({});
 const isActive = (routeName) => {
     if (!routeName) return false;
     if (routeName.startsWith('/')) {
-         const normalizedRoute = routeName.replace(/\/$/, '');
-         const normalizedCurrentUrl = currentUrl.value.split('?')[0].replace(/\/$/, '');
-         return normalizedCurrentUrl === normalizedRoute || normalizedCurrentUrl.startsWith(normalizedRoute + '/');
+         const [routePath, routeQuery] = routeName.split('?');
+         const [currentPath, currentQuery] = currentUrl.value.split('?');
+         const pathMatches = currentPath.replace(/\/$/, '') === routePath.replace(/\/$/, '');
+         if (!pathMatches) return false;
+         if (routeQuery) {
+             const routeParams = new URLSearchParams(routeQuery);
+             const currentParams = new URLSearchParams(currentQuery || '');
+             for (const [key, val] of routeParams.entries()) {
+                 if (currentParams.get(key) !== val) return false;
+             }
+         }
+         return true;
     }
     try {
         return route().current(routeName + '*');

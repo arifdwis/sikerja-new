@@ -121,12 +121,14 @@ onUnmounted(() => {
 })
 
 const steps = [
-    { label: "Inisiasi", by: "Perangkat Daerah / Mitra", desc: "Usulan kerjasama diajukan beserta ruang lingkup dan target keluaran.", icon: "solar:upload-bold" },
-    { label: "Validasi", by: "Bagian Kerjasama", desc: "Kelengkapan administrasi, legalitas, dan kesesuaian dokumen diverifikasi.", icon: "solar:checklist-minimalistic-bold" },
-    { label: "Konsolidasi", by: "Tim Teknis", desc: "Sinkronisasi kebutuhan lintas OPD untuk memastikan dampak program terukur.", icon: "solar:users-group-rounded-bold" },
-    { label: "Penjadwalan", by: "Sekretariat", desc: "Agenda pembahasan dan penandatanganan disusun secara terkoordinasi.", icon: "solar:calendar-date-bold" },
-    { label: "Pengesahan", by: "Pimpinan Daerah", desc: "Naskah final disetujui sebagai dasar pelaksanaan dan pengendalian.", icon: "solar:pen-bold" },
-    { label: "Implementasi & Monev", by: "OPD Pengampu", desc: "Pelaksanaan berjalan dengan monitoring berkala dan pelaporan berbasis data.", icon: "solar:graph-up-bold" }
+    { label: "1. Pengajuan Usulan", by: "Pemohon / Perangkat Daerah", desc: "Usulan kerja sama diajukan dengan mengisi profil instansi, data pimpinan & 2 PIC, serta berkas permohonan, proposal, dan legalitas.", icon: "solar:document-add-bold" },
+    { label: "2. Verifikasi & Telaah", by: "Bagian Kerja Sama", desc: "Pemeriksaan kelengkapan berkas administrasi oleh staf admin dan verifikasi/validasi oleh Kabag Kerja Sama.", icon: "solar:checklist-minimalistic-bold" },
+    { label: "3. Pembahasan Draf KB", by: "TKKSD & Bagian Kerja Sama", desc: "Sinkronisasi kebutuhan dan kajian substansi draf Kesepakatan Bersama bersama TKKSD dan mitra.", icon: "solar:users-group-rounded-bold" },
+    { label: "4. Penandatanganan KB", by: "Walikota Samarinda & Mitra", desc: "Penyesuaian jadwal dan penandatanganan naskah Kesepakatan Bersama (MoU) sebagai payung hukum induk.", icon: "solar:pen-bold" },
+    { label: "5. Pembahasan Draf PKS", by: "OPD Pengampu & Mitra", desc: "Penyusunan dan pembahasan teknis rancangan Perjanjian Kerja Sama turunan oleh OPD pengampu urusan.", icon: "solar:documents-minimalistic-bold" },
+    { label: "6. Penandatanganan PKS", by: "Kepala OPD Pengampu & Mitra", desc: "Penandatanganan dokumen teknis kerja sama operasional oleh Kepala Perangkat Daerah dan mitra.", icon: "solar:diploma-verified-bold" },
+    { label: "7. Pelaksanaan Kerja Sama", by: "OPD Pengampu & Mitra", desc: "Realisasi kegiatan program di lapangan serta penyampaian laporan kegiatan berkala per semester.", icon: "solar:running-2-bold" },
+    { label: "8. Evaluasi & Monev", by: "TKKSD & Bagian Kerja Sama", desc: "Pengendalian masa aktif, evaluasi berkala capaian manfaat, serta rekomendasi perpanjangan/pengakhiran.", icon: "solar:clipboard-check-bold" }
 ]
 
 </script>
@@ -487,20 +489,22 @@ const steps = [
                 </div>
 
                 <div class="hidden lg:block reveal">
-                    <div class="relative">
-                        <div class="absolute left-0 right-0 top-10 h-[3px] bg-slate-200 dark:bg-slate-800"></div>
-                        <div class="absolute left-0 top-10 h-[3px] bg-gradient-to-r from-amber-400 to-amber-500 w-full opacity-80"></div>
-                        <div class="grid grid-cols-6 gap-5">
-                            <div v-for="(s, i) in steps" :key="`desktop-${i}`" class="relative pt-16 group">
-                                <div class="absolute top-6 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-slate-950 border-4 border-amber-400 shadow shadow-amber-500/20 group-hover:scale-110 transition-transform duration-300 z-10"></div>
-                                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm h-full hover:shadow-xl hover:border-amber-400/30 transition-all duration-300 hover:-translate-y-1">
-                                    <div class="flex items-center gap-2 mb-3 text-slate-500 dark:text-slate-400">
-                                        <Icon :icon="s.icon" class="w-5 h-5 text-amber-500" />
-                                        <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Tahap {{ i + 1 }}</span>
+                    <div class="grid grid-cols-4 gap-6">
+                        <div v-for="(s, i) in steps" :key="`desktop-${i}`" class="relative group">
+                            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm h-full hover:shadow-xl hover:border-amber-400/40 transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between mb-3 text-slate-500 dark:text-slate-400">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 rounded-xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center text-amber-500 dark:text-amber-400">
+                                                <Icon :icon="s.icon" class="w-4 h-4" />
+                                            </div>
+                                            <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">Tahap {{ i + 1 }}</span>
+                                        </div>
+                                        <span class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-black flex items-center justify-center text-slate-600 dark:text-slate-300">{{ i + 1 }}</span>
                                     </div>
-                                    <h3 class="font-bold text-base text-slate-900 dark:text-white mb-1">{{ s.label }}</h3>
-                                    <p class="text-xs font-semibold text-teal-600 dark:text-teal-400 mb-2">{{ s.by }}</p>
-                                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{{ s.desc }}</p>
+                                    <h3 class="font-bold text-base text-slate-900 dark:text-white mb-1 leading-snug">{{ s.label }}</h3>
+                                    <p class="text-xs font-semibold text-teal-600 dark:text-teal-400 mb-2.5">{{ s.by }}</p>
+                                    <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed text-justify">{{ s.desc }}</p>
                                 </div>
                             </div>
                         </div>

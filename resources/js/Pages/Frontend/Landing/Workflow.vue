@@ -32,12 +32,54 @@ onUnmounted(() => {
 })
 
 const steps = [
-    { label: "Permohonan", by: "Pemohon", desc: "Pengajuan usulan kerjasama melalui sistem dengan melengkapi dokumen.", icon: "solar:upload-bold-duotone" },
-    { label: "Verifikasi", by: "Bagian Kerjasama", desc: "Pemeriksaan kelengkapan dokumen administrasi usulan kerjasama.", icon: "solar:checklist-minimalistic-bold-duotone" },
-    { label: "Pembahasan", by: "TKKSD", desc: "Pembahasan teknis, penyusunan draft, dan reviu aspek legalitas.", icon: "solar:users-group-rounded-bold-duotone" },
-    { label: "Penjadwalan", by: "Bagian Kerjasama", desc: "Penjadwalan waktu dan tempat untuk penandatanganan kesepakatan.", icon: "solar:calendar-date-bold-duotone" },
-    { label: "Persetujuan", by: "Walikota", desc: "Persetujuan akhir dan penandatanganan naskah kerjasama.", icon: "solar:pen-bold-duotone" },
-    { label: "Pelaksanaan & Monev", by: "OPD Pengampu", desc: "Pelaksanaan butir kerjasama dan monitoring evaluasi berkala.", icon: "solar:graph-up-bold-duotone" }
+    { 
+        label: "1. Pengajuan Usulan", 
+        by: "Pemohon / Perangkat Daerah", 
+        desc: "Pengajuan usulan kerja sama melalui sistem SIKERJA dengan melengkapi profil instansi, pimpinan, 2 PIC, serta dokumen permohonan, proposal/KAK, draf kerja sama, dan legalitas.", 
+        icon: "solar:document-add-bold-duotone" 
+    },
+    { 
+        label: "2. Verifikasi & Telaah Administrasi", 
+        by: "Bagian Kerja Sama", 
+        desc: "Pemeriksaan kelengkapan berkas administrasi oleh Staf Admin serta validasi dan disposisi oleh Kepala Bagian Kerja Sama (Disetujui, Perlu Revisi, atau Ditolak).", 
+        icon: "solar:checklist-minimalistic-bold-duotone" 
+    },
+    { 
+        label: "3. Pembahasan Draf KB", 
+        by: "TKKSD & Bagian Kerja Sama", 
+        desc: "Forum kajian substansi dan penyelarasan draf Kesepakatan Bersama (KB) bersama Tim Koordinasi Kerja Sama Daerah (TKKSD) dan mitra hingga final.", 
+        icon: "solar:users-group-rounded-bold-duotone" 
+    },
+    { 
+        label: "4. Penjadwalan & Penandatanganan KB", 
+        by: "Walikota Samarinda & Mitra", 
+        desc: "Penyesuaian jadwal penandatanganan dengan agenda pimpinan/Walikota, penandatanganan Kesepakatan Bersama (MoU), dan pengunggahan naskah KB bertanda tangan sah.", 
+        icon: "solar:pen-bold-duotone" 
+    },
+    { 
+        label: "5. Pembahasan Draf PKS Turunan", 
+        by: "Perangkat Daerah (OPD) & Mitra", 
+        desc: "Penyusunan dan pembahasan draf teknis Perjanjian Kerja Sama (PKS) sebagai operasional pelaksanaan dari Kesepakatan Bersama yang telah aktif.", 
+        icon: "solar:documents-minimalistic-bold-duotone" 
+    },
+    { 
+        label: "6. Penandatanganan PKS", 
+        by: "Kepala OPD Pengampu & Mitra", 
+        desc: "Penandatanganan dokumen naskah PKS oleh Kepala Perangkat Daerah bersama mitra dan penerbitan nomor registrasi kerja sama resmi.", 
+        icon: "solar:diploma-verified-bold-duotone" 
+    },
+    { 
+        label: "7. Pelaksanaan Kerja Sama", 
+        by: "OPD Pengampu & Mitra", 
+        desc: "Realisasi butir-butir kerja sama di lapangan dan penyampaian laporan progres kegiatan, berita acara, serta dokumentasi secara berkala per semester.", 
+        icon: "solar:running-2-bold-duotone" 
+    },
+    { 
+        label: "8. Pengendalian, Evaluasi & Monev", 
+        by: "TKKSD & Bagian Kerja Sama", 
+        desc: "Pengawasan kepatuhan, pemantauan masa berlaku (H-90, H-60, H-30), evaluasi capaian manfaat kerja sama, serta rekomendasi perpanjangan atau pengakhiran.", 
+        icon: "solar:clipboard-check-bold-duotone" 
+    }
 ]
 </script>
 
