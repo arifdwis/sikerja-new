@@ -212,7 +212,7 @@ const formatMessage = (text) => {
                         :disabled="isLoading || !userInput.trim()"
                         class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl transition-colors shrink-0"
                     >
-                        <Icon icon="solar:plain-bold" class="w-5 h-5" />
+                        <Icon icon="solar:send-square-bold" class="w-5 h-5" />
                     </button>
                 </div>
                 <p class="text-[10px] text-gray-400 text-center mt-2">Didukung AI berbasis data SiKerja · Tulis pertanyaan spesifik untuk hasil paling akurat</p>

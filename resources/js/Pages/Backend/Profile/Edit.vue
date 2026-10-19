@@ -96,7 +96,7 @@ defineProps({
                 <!-- Warning untuk Pemohon yang biodatanya belum lengkap -->
                 <div v-if="isProfileIncomplete && !isEmailMissing" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                     <div class="flex items-start gap-3">
-                        <Icon icon="solar:warning-triangle-bold" class="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <Icon icon="solar:danger-triangle-bold" class="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
                         <div>
                             <h3 class="font-semibold text-amber-800 dark:text-amber-200">
                                 Lengkapi Data Anda Terlebih Dahulu

@@ -826,7 +826,7 @@ const completedCount = computed(() => props.datas?.data?.length || 0);
                                 <span v-if="opdNames" class="text-xs">({{ opdNames }})</span>
                                 <span v-else class="text-xs italic text-slate-400">OPD belum di-set</span>
                             </div>
-                            <Icon icon="solar:arrows-right-left-bold" class="w-4 h-4 text-slate-400" />
+                            <Icon icon="solar:transfer-horizontal-bold" class="w-4 h-4 text-slate-400" />
                             <div class="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-3 py-2 text-slate-700">
                                 <Icon icon="solar:case-round-bold" class="w-3.5 h-3.5" />
                                 <span class="font-medium">{{ selectedGrouped.permohonan?.nama_instansi || '-' }}</span>

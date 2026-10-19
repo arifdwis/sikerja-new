@@ -177,7 +177,7 @@ onUnmounted(() => {
         <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
             <div>
                 <h3 class="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                    <Icon icon="solar:chat-line-bold-duotone" class="w-5 h-5 text-blue-600" />
+                    <Icon icon="solar:chat-round-line-bold-duotone" class="w-5 h-5 text-blue-600" />
                     Ruang Diskusi & Negosiasi
                 </h3>
                 <p class="text-xs text-gray-500 mt-1">Diskusikan detail kerjasama dan unggah dokumen revisi di sini.</p>
@@ -283,7 +283,7 @@ onUnmounted(() => {
                     class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                     <Icon v-if="isSending" icon="svg-spinners:ring-resize" class="w-5 h-5" />
-                    <Icon v-else icon="solar:plain-bold" class="w-5 h-5" />
+                    <Icon v-else icon="solar:send-square-bold" class="w-5 h-5" />
                 </button>
             </div>
         </div>

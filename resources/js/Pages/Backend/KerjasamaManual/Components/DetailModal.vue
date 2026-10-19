@@ -126,7 +126,7 @@ const formatDate = (date) => {
                         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-gray-300">OPD Terlibat</h3>
                         <div v-if="data.opds?.length" class="mt-3 space-y-2">
                             <div v-for="opd in data.opds" :key="opd.id" class="flex items-start gap-2 rounded-lg bg-white p-2.5 text-sm text-slate-700 dark:bg-gray-800 dark:text-gray-200">
-                                <Icon icon="solar:building-bold" class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                <Icon icon="solar:buildings-bold" class="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
                                 <span>{{ opd.nama }}</span>
                             </div>
                         </div>

@@ -32,11 +32,11 @@ onUnmounted(() => {
 })
 
 const products = [
-    { name: "Kesepakatan Bersama (MoU)", desc: "Dokumen kesepakatan antara Pemerintah Daerah dengan Pihak Ketiga yang memuat rencana kerjasama.", icon: "solar:handshake-bold-duotone" },
+    { name: "Kesepakatan Bersama (MoU)", desc: "Dokumen kesepakatan antara Pemerintah Daerah dengan Pihak Ketiga yang memuat rencana kerjasama.", icon: "solar:hand-shake-bold-duotone" },
     { name: "Perjanjian Kerjasama (PKS)", desc: "Tindak lanjut teknis dari Kesepakatan Bersama yang mengatur hak dan kewajiban para pihak secara rinci.", icon: "solar:document-text-bold-duotone" },
     { name: "Kerjasama Daerah Dengan Daerah Lain (KSDD)", desc: "Kerjasama antar Pemerintah Daerah untuk penyelenggaraan urusan pemerintahan secara terpadu.", icon: "solar:city-bold-duotone" },
     { name: "Kerjasama Daerah Dengan Pihak Ketiga (KSDPK)", desc: "Kerjasama dengan badan hukum, organisasi, atau lembaga di dalam negeri secara produktif.", icon: "solar:buildings-bold-duotone" },
-    { name: "Kerjasama Pemerintah Dengan Badan Usaha (KPBU)", desc: "Kerjasama penyediaan infrastruktur untuk kepentingan publik yang berkelanjutan.", icon: "solar:construction-bold-duotone" },
+    { name: "Kerjasama Pemerintah Dengan Badan Usaha (KPBU)", desc: "Kerjasama penyediaan infrastruktur untuk kepentingan publik yang berkelanjutan.", icon: "solar:sledgehammer-bold-duotone" },
     { name: "Kerjasama Daerah Dengan Lembaga Luar Negeri", desc: "Kerjasama strategis skala internasional guna percepatan kemajuan teknologi dan SDM.", icon: "solar:globe-bold-duotone" }
 ]
 </script>

@@ -291,7 +291,7 @@ const horizontalAxisOptions = {
 
             <section class="rounded-3xl border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900/40 p-6 shadow-sm">
                 <h2 class="text-lg font-bold text-slate-950 dark:text-white mb-6 flex items-center gap-2 font-['Outfit']">
-                    <Icon icon="solar:building-bold-duotone" class="w-5 h-5 text-amber-500" />
+                    <Icon icon="solar:buildings-bold-duotone" class="w-5 h-5 text-amber-500" />
                     Perangkat Daerah Pelaksana Utama
                 </h2>
                 <div v-if="perOpd?.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

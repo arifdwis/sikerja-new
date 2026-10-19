@@ -70,7 +70,7 @@ const safeJawaban = computed(() => {
                     <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-400 to-amber-500 z-10"></div>
 
                     <!-- Subtle quotation double watermark -->
-                    <Icon icon="solar:double-quotes-l-bold" class="absolute -right-6 -bottom-10 w-44 h-44 text-slate-100/60 dark:text-slate-800/20 pointer-events-none z-0" />
+                    <Icon icon="solar:quote-bold" class="absolute -right-6 -bottom-10 w-44 h-44 text-slate-100/60 dark:text-slate-800/20 pointer-events-none z-0" />
 
                     <div class="relative z-10 space-y-4">
                         <div class="inline-flex px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/45 text-amber-700 dark:text-amber-300 text-xs font-bold uppercase tracking-wider mb-2">

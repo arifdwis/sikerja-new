@@ -9,7 +9,7 @@ const lamanMenu = computed(() => page.props.laman_menu || [])
 // Grouping Logic for Mega Menu
 const groupedLaman = computed(() => {
     const groups = {
-        regulasi: { title: 'Regulasi & Kebijakan', icon: 'solar:gavel-bold-duotone', color: 'text-teal-500', items: [] },
+        regulasi: { title: 'Regulasi & Kebijakan', icon: 'solar:scale-bold-duotone', color: 'text-teal-500', items: [] },
         format: { title: 'Format & Dokumen', icon: 'solar:document-add-bold-duotone', color: 'text-cyan-500', items: [] },
         panduan: { title: 'Panduan & Informasi', icon: 'solar:book-bookmark-bold-duotone', color: 'text-amber-500', items: [] }
     };

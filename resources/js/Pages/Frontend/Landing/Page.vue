@@ -210,7 +210,7 @@ onUnmounted(() => {
                                                 placeholder="Cari lampiran berkas..."
                                                 class="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-amber-400 focus:bg-white dark:focus:bg-slate-900 focus:border-amber-400 dark:focus:border-amber-400 outline-none transition-all placeholder-slate-450"
                                             />
-                                            <Icon icon="solar:magnifer-linear" class="absolute left-3 top-2 w-4 h-4 text-slate-400" />
+                                            <Icon icon="solar:magnifier-linear" class="absolute left-3 top-2 w-4 h-4 text-slate-400" />
                                         </div>
                                     </div>
 

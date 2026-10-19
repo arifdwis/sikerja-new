@@ -400,7 +400,7 @@ const submit = (asDraft = false) => {
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Jangka Waktu
                                         <span class="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
-                                            <Icon icon="solar:magic-stick-3-bold" class="inline w-3 h-3" />
+                                            <Icon icon="solar:magic-wand-bold" class="inline w-3 h-3" />
                                             Otomatis dari tanggal
                                         </span>
                                     </label>

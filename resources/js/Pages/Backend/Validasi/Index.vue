@@ -238,6 +238,7 @@ const submitTolak = () => {
                             ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' 
                             : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 border border-gray-200 dark:border-gray-700'"
                     >
+                        <Icon icon="solar:documents-bold" class="w-4 h-4" />
                         <span>Semua Permohonan</span>
                         <span class="px-1.5 py-0.5 rounded-md text-[10px]" :class="currentTab === 'all' ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'">
                             {{ counts?.all ?? 0 }}
@@ -252,7 +253,7 @@ const submitTolak = () => {
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 border border-gray-200 dark:border-gray-700'"
                     >
-                        <Icon icon="solar:document-check-bold" class="w-4 h-4" />
+                        <Icon icon="solar:file-check-bold" class="w-4 h-4" />
                         <span>1. Verifikasi Staf</span>
                         <span class="px-1.5 py-0.5 rounded-md text-[10px]" :class="currentTab === 'menunggu_staff' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'">
                             {{ counts?.menunggu_staff ?? 0 }}
@@ -396,7 +397,7 @@ const submitTolak = () => {
         <Dialog v-model:visible="verifikasiStaffDialog" modal header="Verifikasi Administrasi Berkas Staf" :style="{ width: '500px' }">
             <div class="space-y-4 p-2">
                 <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 flex gap-3 text-sm text-blue-800 dark:text-blue-200">
-                    <Icon icon="solar:document-check-bold" class="w-6 h-6 text-blue-600 shrink-0 mt-0.5" />
+                    <Icon icon="solar:file-check-bold" class="w-6 h-6 text-blue-600 shrink-0 mt-0.5" />
                     <div>
                         <p class="font-bold">Verifikasi Kelengkapan Berkas</p>
                         <p class="text-xs mt-1">

@@ -47,7 +47,7 @@ defineProps({
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4 text-sm">
                             <div class="flex items-center gap-3 bg-white/10 rounded-lg px-4 py-2.5 backdrop-blur-sm border border-white/5 hover:bg-white/20 transition-colors">
-                                <Icon icon="solar:briefcase-bold" class="w-5 h-5 text-blue-200" />
+                                <Icon icon="solar:case-bold" class="w-5 h-5 text-blue-200" />
                                 <div class="text-left">
                                     <p class="text-[10px] text-blue-200 uppercase tracking-wider font-semibold">Jabatan</p>
                                     <p class="font-medium truncate">{{ pemohon?.jabatan || '-' }}</p>

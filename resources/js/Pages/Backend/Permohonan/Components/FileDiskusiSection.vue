@@ -306,7 +306,7 @@ onUnmounted(() => {
             <!-- Pemohon Re-upload Section (when rejected) -->
             <div v-if="!isAdmin && file?.status === 2" class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
                 <p class="text-sm text-amber-800 dark:text-amber-300 mb-3 flex items-start gap-2">
-                    <Icon icon="solar:upload-twice-bold" class="w-5 h-5 mt-0.5 shrink-0" />
+                    <Icon icon="solar:cloud-upload-bold" class="w-5 h-5 mt-0.5 shrink-0" />
                     <span>Silakan upload berkas perbaikan untuk ditinjau ulang</span>
                 </p>
                 
@@ -427,7 +427,7 @@ onUnmounted(() => {
                     class="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                     <Icon v-if="isSending" icon="svg-spinners:ring-resize" class="w-5 h-5" />
-                    <Icon v-else icon="solar:plain-bold" class="w-5 h-5" />
+                    <Icon v-else icon="solar:send-square-bold" class="w-5 h-5" />
                 </button>
             </div>
         </div>
