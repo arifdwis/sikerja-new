@@ -24,7 +24,7 @@ const formatPhone = (phone) => {
             <div v-if="data.pemohon1" class="border border-gray-100 rounded-lg p-3 bg-gray-50/50">
                 <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Pihak Kesatu</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Pihak Kesatu (Pejabat 1)</p>
                         <p class="text-sm font-semibold text-gray-800 truncate">{{ data.pemohon1.name }}</p>
                     </div>
                     <a 
@@ -43,7 +43,7 @@ const formatPhone = (phone) => {
             <div v-if="data.pemohon2" class="border border-gray-100 rounded-lg p-3 bg-gray-50/50">
                 <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Pihak Kedua</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Pihak Kesatu (Pejabat 2)</p>
                         <p class="text-sm font-semibold text-gray-800 truncate">{{ data.pemohon2.name }}</p>
                     </div>
                     <a 

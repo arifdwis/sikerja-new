@@ -8,37 +8,40 @@ defineProps({
 
 <template>
     <div class="space-y-6">
-        <!-- OPD Terkait — Req 12 -->
-        <div v-if="data.opds && data.opds.length" class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <span class="p-1.5 rounded-lg bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-100">
+        <!-- Pihak Kedua: Pemerintah Kota Samarinda & OPD Terkait -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <span class="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                     <Icon icon="solar:buildings-bold" class="w-4 h-4" />
                 </span>
-                OPD Terkait
+                Pihak Kedua — Pemerintah Kota Samarinda
             </h3>
             <p class="text-xs text-gray-500 mb-3">
-                Organisasi Perangkat Daerah Pemkot Samarinda yang terlibat dalam kerjasama ini.
+                Organisasi Perangkat Daerah (OPD) Pemkot Samarinda yang menjadi pengampu / pihak kedua dalam kerja sama ini:
             </p>
-            <div class="flex flex-wrap gap-2">
+            <div v-if="data.opds && data.opds.length" class="flex flex-wrap gap-2">
                 <span
                     v-for="opd in data.opds"
                     :key="opd.id"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-700/40 dark:text-gray-200"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"
                 >
-                    <Icon icon="solar:buildings-2-bold" class="w-4 h-4" />
+                    <Icon icon="solar:buildings-2-bold" class="w-4 h-4 text-emerald-600" />
                     <span>{{ opd.nama }}</span>
                     <span v-if="opd.singkatan" class="text-xs opacity-75">({{ opd.singkatan }})</span>
                 </span>
+            </div>
+            <div v-else class="text-xs text-gray-400 italic">
+                Pemerintah Kota Samarinda (OPD teknis belum dipetakan)
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm h-full flex flex-col">
                 <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <span class="p-1.5 rounded-lg bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-100">
+                    <span class="p-1.5 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
                         <Icon icon="solar:user-circle-bold" class="w-4 h-4" />
                     </span>
-                    Pihak Kesatu
+                    Pihak Kesatu (Pejabat 1)
                 </h3>
                 
                 <div class="space-y-4 flex-1">
@@ -73,10 +76,10 @@ defineProps({
 
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm h-full flex flex-col">
                 <h3 class="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <span class="p-1.5 rounded-lg bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-100">
-                        <Icon icon="solar:buildings-2-bold" class="w-4 h-4" />
+                    <span class="p-1.5 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        <Icon icon="solar:user-circle-bold" class="w-4 h-4" />
                     </span>
-                    Pihak Kedua
+                    Pihak Kesatu (Pejabat 2)
                 </h3>
 
                 <div class="space-y-4 flex-1">
@@ -93,7 +96,7 @@ defineProps({
                     <div>
                         <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Unit Kerja / Instansi</p>
                         <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
-                            {{ data.pemohon2?.unit_kerja || 'Pemerintah Kota Samarinda' }}
+                            {{ data.pemohon2?.unit_kerja || data.nama_instansi || '-' }}
                         </p>
                     </div>
                     <div class="grid grid-cols-2 gap-4 mt-auto">

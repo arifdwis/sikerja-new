@@ -73,7 +73,7 @@ const corporate = computed(() => props.permohonan.corporate); // Assuming relati
         <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
                 <Icon icon="solar:user-bold" class="w-6 h-6 mr-2 text-slate-600" />
-                Pihak Pertama (PPKSD-1)
+                Pihak Kesatu - Pejabat 1 (PPKSD-1)
                 <span class="ml-2 text-xs font-normal text-gray-500 bg-white dark:bg-gray-900 px-2 py-1 rounded border dark:border-gray-600">Pemohon</span>
             </h3>
 
@@ -112,7 +112,7 @@ const corporate = computed(() => props.permohonan.corporate); // Assuming relati
         <div v-if="ppksd2" class="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
                 <Icon icon="solar:users-group-two-rounded-bold" class="w-6 h-6 mr-2 text-slate-600" />
-                Pihak Kedua (PPKSD-2)
+                Pihak Kesatu - Pejabat 2 (PPKSD-2)
             </h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">

@@ -190,16 +190,16 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- ==================== STEP 2: PIHAK KEDUA (PPKSD-2) ==================== -->
+                    <!-- ==================== STEP 2: PIHAK KESATU - PEJABAT 2 (PPKSD-2) ==================== -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
                         <div class="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
                             <span class="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center">2</span>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pihak Kedua (PPKSD-2)</h3>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pihak Kesatu - Pejabat 2 (PPKSD-2)</h3>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Pejabat Penandatangan Pihak Kedua
+                                Pejabat Penandatangan Kedua (Pihak Kesatu)
                             </label>
                             <select v-model="form.id_pemohon_1" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                                 <option value="">— Pilih Pejabat —</option>
@@ -208,7 +208,7 @@ const submit = () => {
                                 </option>
                             </select>
                             <p v-if="form.errors.id_pemohon_1" class="text-red-500 text-sm mt-1">{{ form.errors.id_pemohon_1 }}</p>
-                            <p class="text-xs text-gray-500 mt-1">Pilih pejabat dari daftar yang akan menandatangani sebagai pihak kedua.</p>
+                            <p class="text-xs text-gray-500 mt-1">Pilih pejabat tambahan dari mitra pengusul yang akan menandatangani sebagai penandatangan kedua.</p>
                         </div>
                     </div>
 

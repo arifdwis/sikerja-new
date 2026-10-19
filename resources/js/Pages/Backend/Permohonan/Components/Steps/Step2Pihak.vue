@@ -18,7 +18,7 @@ defineProps({
                     <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3">
                     <Icon icon="solar:user-id-bold" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                Pihak Pertama (PPKSD-1)
+                Pihak Kesatu - Pejabat 1 (PPKSD-1)
             </h3>
             
             <div class="relative group">
@@ -86,7 +86,7 @@ defineProps({
 
         <div class="flex items-center gap-4 my-10">
             <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
-            <span class="text-sm font-medium text-gray-400 uppercase tracking-widest">Bekerjasama Dengan</span>
+            <span class="text-sm font-medium text-gray-400 uppercase tracking-widest">Pejabat Tambahan Pihak Kesatu</span>
             <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1"></div>
         </div>
 
@@ -96,12 +96,12 @@ defineProps({
                 <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mr-3">
                     <Icon icon="solar:users-group-two-rounded-bold" class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                Pihak Kedua (PPKSD-2)
+                Pihak Kesatu - Pejabat 2 (PPKSD-2)
             </h3>
             
             <div class="bg-emerald-50/50 dark:bg-emerald-900/10 rounded-3xl p-8 border border-emerald-100 dark:border-emerald-800/20 hover:border-emerald-200 dark:hover:border-emerald-700/50 transition-colors">
                 <label class="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">
-                    Pilih Pejabat Penandatangan (PPKSD-2) <span class="text-red-500">*</span>
+                    Pilih Pejabat Penandatangan Kedua (PPKSD-2) <span class="text-red-500">*</span>
                 </label>
                 
                 <div class="relative">
