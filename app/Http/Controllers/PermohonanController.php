@@ -131,7 +131,7 @@ class PermohonanController extends Controller implements HasMiddleware
 
         // Filter by user role (Ownership Scope)
         // Pemohon hanya melihat data miliknya sendiri
-        if (Auth::user()->hasRole('pemohon')) {
+        if (Auth::user()->isPurePemohon()) {
             $query->where('id_pemohon_0', Auth::id());
         }
 
@@ -230,7 +230,7 @@ class PermohonanController extends Controller implements HasMiddleware
         $base = $this->data::query()->whereIn('status', $finalStatuses);
 
         // Ownership Check (Strictly for Pemohon)
-        if (Auth::user()->hasRole('pemohon')) {
+        if (Auth::user()->isPurePemohon()) {
             $base->where('id_pemohon_0', Auth::id());
         }
 
@@ -436,7 +436,7 @@ class PermohonanController extends Controller implements HasMiddleware
         ])->uuid($uuid)->firstOrFail();
 
         // Ownership check can be handled by Policy, or kept here if Policy not set up
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403, 'Unauthorized access to this permohonan');
         }
 
@@ -449,7 +449,7 @@ class PermohonanController extends Controller implements HasMiddleware
             }
         }
 
-        if (request()->wantsJson()) {
+        if (request()->wantsJson() || request()->expectsJson() || request()->ajax() || request()->header('X-Requested-With') === 'XMLHttpRequest') {
             return response()->json($permohonan);
         }
 
@@ -463,7 +463,7 @@ class PermohonanController extends Controller implements HasMiddleware
     {
         $permohonan = $this->data::uuid($uuid)->firstOrFail();
 
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
         }
 
@@ -501,7 +501,7 @@ class PermohonanController extends Controller implements HasMiddleware
     {
         $permohonan = $this->data::uuid($uuid)->firstOrFail();
 
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
         }
 
@@ -609,7 +609,7 @@ class PermohonanController extends Controller implements HasMiddleware
     {
         $permohonan = $this->data::uuid($uuid)->firstOrFail();
 
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
         }
 
@@ -718,7 +718,7 @@ class PermohonanController extends Controller implements HasMiddleware
 
         // Ownership check: Pemohon can only upload their own files
         // Admin/Operator can upload for any permohonan
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403, 'Anda tidak memiliki akses untuk upload file ini.');
         }
 
@@ -822,7 +822,7 @@ class PermohonanController extends Controller implements HasMiddleware
 
         // Ensure user has access
         $permohonan = $file->permohonan;
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
         }
 

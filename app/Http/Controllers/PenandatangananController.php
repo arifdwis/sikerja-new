@@ -21,7 +21,7 @@ class PenandatangananController extends Controller
     {
         $permohonan = Permohonan::uuid($uuid)->firstOrFail();
 
-        if (Auth::user()->hasRole('pemohon') && $permohonan->id_pemohon_0 != Auth::id()) {
+        if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
         }
 

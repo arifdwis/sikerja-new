@@ -165,6 +165,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is purely an external pemohon (not having any staff/admin/kabag/tkksd roles).
+     */
+    public function isPurePemohon(): bool
+    {
+        return $this->hasRole('pemohon') && !$this->hasRole(['administrator', 'superadmin', 'tkksd', 'tkksd_lokus', 'kabag_kerjasama']);
+    }
+
+    /**
      * Get primary role name
      */
     public function getRoleNameAttribute(): string

@@ -38,7 +38,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
 
         // Check access
         $user = Auth::user();
-        if ($user->hasRole('pemohon') && $permohonan->id_pemohon_0 != $user->id) {
+        if ($user->isPurePemohon() && $permohonan->id_pemohon_0 != $user->id) {
             abort(403);
         }
 
@@ -63,7 +63,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         $permohonan = Permohonan::where('uuid', $uuid)->firstOrFail();
         $user = Auth::user();
 
-        if ($user->hasRole('pemohon') && $permohonan->id_pemohon_0 != $user->id) {
+        if ($user->isPurePemohon() && $permohonan->id_pemohon_0 != $user->id) {
             abort(403);
         }
 
@@ -124,7 +124,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         $user = Auth::user();
 
         // Check access
-        if ($user->hasRole('pemohon') && $permohonan->id_pemohon_0 != $user->id) {
+        if ($user->isPurePemohon() && $permohonan->id_pemohon_0 != $user->id) {
             abort(403);
         }
 
@@ -150,7 +150,7 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         $permohonan = $file->permohonan;
         $user = Auth::user();
 
-        if ($user->hasRole('pemohon') && $permohonan->id_pemohon_0 != $user->id) {
+        if ($user->isPurePemohon() && $permohonan->id_pemohon_0 != $user->id) {
             abort(403);
         }
 

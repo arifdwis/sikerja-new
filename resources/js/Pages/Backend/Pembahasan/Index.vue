@@ -121,12 +121,15 @@ const openDetailModal = async (item) => {
     loadingDetail.value = true;
     selectedFile.value = null;
     try {
-        const response = await axios.get(route('permohonan.show', item.uuid));
+        const response = await axios.get(route('permohonan.show', item.uuid), {
+            headers: { 'Accept': 'application/json' }
+        });
         detailData.value = response.data;
         if (detailData.value.files?.length > 0) {
             selectedFile.value = detailData.value.files[0];
         }
     } catch (error) {
+        console.error("Error loading detail:", error);
         toast.error("Gagal memuat detail data");
     } finally {
         loadingDetail.value = false;
