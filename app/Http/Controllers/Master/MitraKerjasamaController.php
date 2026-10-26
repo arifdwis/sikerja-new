@@ -191,6 +191,11 @@ class MitraKerjasamaController extends Controller
     public function destroy($id)
     {
         $mitra = MitraKerjasama::findOrFail($id);
+        if ($mitra->logo) {
+            @unlink(public_path($mitra->logo));
+            @unlink(storage_path('app/public/' . $mitra->logo));
+            @unlink('/home/sikerjav2samarin/public_html/' . $mitra->logo);
+        }
         $mitra->delete();
 
         return redirect()->back()->with('success', 'Mitra kerja sama berhasil dihapus.');

@@ -177,6 +177,11 @@ class GaleriTkksdController extends Controller
     public function destroy($id)
     {
         $galeri = GaleriTkksd::findOrFail($id);
+        if ($galeri->foto) {
+            @unlink(public_path($galeri->foto));
+            @unlink(storage_path('app/public/' . $galeri->foto));
+            @unlink('/home/sikerjav2samarin/public_html/' . $galeri->foto);
+        }
         $galeri->delete();
 
         return redirect()->back()->with('success', 'Foto kegiatan TKKSD berhasil dihapus.');
