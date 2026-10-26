@@ -74,17 +74,30 @@ class GaleriTkksdController extends Controller
             $file = $request->file('foto');
             $filename = time() . '_' . Str::slug($request->judul) . '.' . $file->getClientOriginalExtension();
             
-            $destinationDir = public_path('uploads/galeri_tkksd');
-            if (!File::isDirectory($destinationDir)) {
-                File::makeDirectory($destinationDir, 0755, true, true);
-            }
-            $file->move($destinationDir, $filename);
-            $fotoPath = 'uploads/galeri_tkksd/' . $filename;
+            try {
+                // 1. Simpan ke public storage disk
+                $file->storeAs('uploads/galeri_tkksd', $filename, 'public');
+                $sourceFile = storage_path('app/public/uploads/galeri_tkksd/' . $filename);
 
-            $cpanelUpload = '/home/sikerjav2samarin/public_html/uploads/galeri_tkksd';
-            if (File::isDirectory($cpanelUpload)) {
-                File::copy($destinationDir . '/' . $filename, $cpanelUpload . '/' . $filename);
+                // 2. Mirror ke public_html dan public
+                $destPublic = public_path('uploads/galeri_tkksd');
+                if (!File::isDirectory($destPublic)) {
+                    @File::makeDirectory($destPublic, 0777, true, true);
+                }
+                $destCpanel = '/home/sikerjav2samarin/public_html/uploads/galeri_tkksd';
+                if (!File::isDirectory($destCpanel)) {
+                    @File::makeDirectory($destCpanel, 0777, true, true);
+                }
+
+                if (file_exists($sourceFile)) {
+                    @copy($sourceFile, $destPublic . '/' . $filename);
+                    @copy($sourceFile, $destCpanel . '/' . $filename);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Galeri foto upload warning: " . $e->getMessage());
             }
+
+            $fotoPath = 'uploads/galeri_tkksd/' . $filename;
         }
 
         GaleriTkksd::create([
@@ -113,7 +126,7 @@ class GaleriTkksdController extends Controller
             'lokasi' => 'nullable|string|max:255',
             'order' => 'nullable|integer',
             'is_active' => 'nullable|boolean',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
         $fotoPath = $galeri->foto;
@@ -121,17 +134,30 @@ class GaleriTkksdController extends Controller
             $file = $request->file('foto');
             $filename = time() . '_' . Str::slug($request->judul) . '.' . $file->getClientOriginalExtension();
             
-            $destinationDir = public_path('uploads/galeri_tkksd');
-            if (!File::isDirectory($destinationDir)) {
-                File::makeDirectory($destinationDir, 0755, true, true);
-            }
-            $file->move($destinationDir, $filename);
-            $fotoPath = 'uploads/galeri_tkksd/' . $filename;
+            try {
+                // 1. Simpan ke public storage disk
+                $file->storeAs('uploads/galeri_tkksd', $filename, 'public');
+                $sourceFile = storage_path('app/public/uploads/galeri_tkksd/' . $filename);
 
-            $cpanelUpload = '/home/sikerjav2samarin/public_html/uploads/galeri_tkksd';
-            if (File::isDirectory($cpanelUpload)) {
-                File::copy($destinationDir . '/' . $filename, $cpanelUpload . '/' . $filename);
+                // 2. Mirror ke public_html dan public
+                $destPublic = public_path('uploads/galeri_tkksd');
+                if (!File::isDirectory($destPublic)) {
+                    @File::makeDirectory($destPublic, 0777, true, true);
+                }
+                $destCpanel = '/home/sikerjav2samarin/public_html/uploads/galeri_tkksd';
+                if (!File::isDirectory($destCpanel)) {
+                    @File::makeDirectory($destCpanel, 0777, true, true);
+                }
+
+                if (file_exists($sourceFile)) {
+                    @copy($sourceFile, $destPublic . '/' . $filename);
+                    @copy($sourceFile, $destCpanel . '/' . $filename);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Galeri foto upload warning: " . $e->getMessage());
             }
+
+            $fotoPath = 'uploads/galeri_tkksd/' . $filename;
         }
 
         $galeri->update([

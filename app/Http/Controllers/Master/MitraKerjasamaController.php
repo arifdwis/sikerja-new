@@ -84,19 +84,30 @@ class MitraKerjasamaController extends Controller
             $file = $request->file('logo');
             $filename = time() . '_' . Str::slug($request->nama) . '.' . $file->getClientOriginalExtension();
             
-            // Save to public storage and copy to public_html if exists
-            $destinationDir = public_path('uploads/mitra');
-            if (!File::isDirectory($destinationDir)) {
-                File::makeDirectory($destinationDir, 0755, true, true);
-            }
-            $file->move($destinationDir, $filename);
-            $logoPath = 'uploads/mitra/' . $filename;
+            try {
+                // 1. Simpan ke public storage disk
+                $file->storeAs('uploads/mitra', $filename, 'public');
+                $sourceFile = storage_path('app/public/uploads/mitra/' . $filename);
 
-            // Optional mirror to /home/sikerjav2samarin/public_html/uploads/mitra/
-            $cpanelUpload = '/home/sikerjav2samarin/public_html/uploads/mitra';
-            if (File::isDirectory($cpanelUpload)) {
-                File::copy($destinationDir . '/' . $filename, $cpanelUpload . '/' . $filename);
+                // 2. Mirror ke public_html dan public
+                $destPublic = public_path('uploads/mitra');
+                if (!File::isDirectory($destPublic)) {
+                    @File::makeDirectory($destPublic, 0777, true, true);
+                }
+                $destCpanel = '/home/sikerjav2samarin/public_html/uploads/mitra';
+                if (!File::isDirectory($destCpanel)) {
+                    @File::makeDirectory($destCpanel, 0777, true, true);
+                }
+
+                if (file_exists($sourceFile)) {
+                    @copy($sourceFile, $destPublic . '/' . $filename);
+                    @copy($sourceFile, $destCpanel . '/' . $filename);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Mitra logo upload warning: " . $e->getMessage());
             }
+
+            $logoPath = 'uploads/mitra/' . $filename;
         }
 
         MitraKerjasama::create([
@@ -138,17 +149,30 @@ class MitraKerjasamaController extends Controller
             $file = $request->file('logo');
             $filename = time() . '_' . Str::slug($request->nama) . '.' . $file->getClientOriginalExtension();
             
-            $destinationDir = public_path('uploads/mitra');
-            if (!File::isDirectory($destinationDir)) {
-                File::makeDirectory($destinationDir, 0755, true, true);
-            }
-            $file->move($destinationDir, $filename);
-            $logoPath = 'uploads/mitra/' . $filename;
+            try {
+                // 1. Simpan ke public storage disk
+                $file->storeAs('uploads/mitra', $filename, 'public');
+                $sourceFile = storage_path('app/public/uploads/mitra/' . $filename);
 
-            $cpanelUpload = '/home/sikerjav2samarin/public_html/uploads/mitra';
-            if (File::isDirectory($cpanelUpload)) {
-                File::copy($destinationDir . '/' . $filename, $cpanelUpload . '/' . $filename);
+                // 2. Mirror ke public_html dan public
+                $destPublic = public_path('uploads/mitra');
+                if (!File::isDirectory($destPublic)) {
+                    @File::makeDirectory($destPublic, 0777, true, true);
+                }
+                $destCpanel = '/home/sikerjav2samarin/public_html/uploads/mitra';
+                if (!File::isDirectory($destCpanel)) {
+                    @File::makeDirectory($destCpanel, 0777, true, true);
+                }
+
+                if (file_exists($sourceFile)) {
+                    @copy($sourceFile, $destPublic . '/' . $filename);
+                    @copy($sourceFile, $destCpanel . '/' . $filename);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Mitra logo upload warning: " . $e->getMessage());
             }
+
+            $logoPath = 'uploads/mitra/' . $filename;
         }
 
         $mitra->update([
