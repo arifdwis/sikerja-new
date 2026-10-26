@@ -11,7 +11,33 @@ import ChatWidget from '@/Components/Landing/ChatWidget.vue'
 const props = defineProps({
     stats: { type: Object, default: () => ({ documents: 150, opds: 35, improvement: 85, uptime: '24/7' }) },
     sliders: { type: Array, default: () => [] },
-    faqs: { type: Array, default: () => [] }
+    faqs: { type: Array, default: () => [] },
+    kategoriMitras: { type: Array, default: () => [] }
+})
+
+const selectedKategoriId = ref('all')
+const allMitras = computed(() => {
+    if (!props.kategoriMitras) return []
+    let list = []
+    props.kategoriMitras.forEach(kat => {
+        if (kat.active_mitras || kat.mitras) {
+            const items = kat.active_mitras || kat.mitras || []
+            items.forEach(m => {
+                list.push({ ...m, kategori_nama: kat.nama })
+            })
+        }
+    })
+    return list
+})
+
+const filteredMitras = computed(() => {
+    if (selectedKategoriId.value === 'all') {
+        return allMitras.value
+    }
+    const kat = props.kategoriMitras.find(k => k.id === selectedKategoriId.value)
+    if (!kat) return []
+    const items = kat.active_mitras || kat.mitras || []
+    return items.map(m => ({ ...m, kategori_nama: kat.nama }))
 })
 
 const safeStats = computed(() => {
@@ -529,6 +555,128 @@ const steps = [
         </section>
 
 
+
+        <!-- Section: Pihak yang Bekerjasama dengan Pemkot Samarinda (Our Partners) -->
+        <section id="mitra" class="py-24 bg-white dark:bg-slate-950 relative overflow-hidden">
+            <!-- Background Decorative Glow -->
+            <div class="absolute -top-32 -right-32 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-6 relative z-10">
+                <!-- Section Header -->
+                <div class="text-center mb-14 reveal">
+                    <span class="inline-flex items-center gap-1.5 py-1 px-3.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-bold tracking-wider uppercase text-xs mb-3 border border-teal-200/50 dark:border-teal-800/50">
+                        <Icon icon="solar:handshake-bold-duotone" class="w-4 h-4 text-teal-500" />
+                        Jejaring Kolaborasi
+                    </span>
+                    <h2 class="font-['Outfit'] text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+                        Pihak yang Bekerjasama <br class="hidden sm:inline" />
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-teal-500 to-amber-500">
+                            dengan Pemkot Samarinda
+                        </span>
+                    </h2>
+                    <p class="text-slate-600 dark:text-slate-400 text-base sm:text-lg max-w-2xl mx-auto mt-4 leading-relaxed">
+                        Sinergi pentahelix Pemerintah Kota Samarinda bersama pemerintah daerah, perguruan tinggi, badan usaha, organisasi, dan mitra internasional.
+                    </p>
+                </div>
+
+                <!-- Category Tabs (Ref UCLG-ASPAC) -->
+                <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-12 reveal">
+                    <button 
+                        @click="selectedKategoriId = 'all'"
+                        :class="[
+                            'px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 border shadow-sm',
+                            selectedKategoriId === 'all'
+                                ? 'bg-teal-600 text-white border-teal-600 shadow-teal-500/20 shadow-md ring-2 ring-teal-500/30'
+                                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:text-teal-600 dark:hover:text-teal-400'
+                        ]"
+                    >
+                        <span>Semua Kemitraan</span>
+                        <span :class="['px-2 py-0.5 rounded-full text-[11px] font-black', selectedKategoriId === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300']">
+                            {{ allMitras.length }}
+                        </span>
+                    </button>
+
+                    <button 
+                        v-for="kat in kategoriMitras" 
+                        :key="`tab-kat-${kat.id}`"
+                        @click="selectedKategoriId = kat.id"
+                        :class="[
+                            'px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-300 flex items-center gap-2 border shadow-sm',
+                            selectedKategoriId === kat.id
+                                ? 'bg-teal-600 text-white border-teal-600 shadow-teal-500/20 shadow-md ring-2 ring-teal-500/30'
+                                : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-teal-500/50 hover:text-teal-600 dark:hover:text-teal-400'
+                        ]"
+                    >
+                        <span>{{ kat.nama }}</span>
+                        <span :class="['px-2 py-0.5 rounded-full text-[11px] font-black', selectedKategoriId === kat.id ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300']">
+                            {{ (kat.active_mitras || kat.mitras || []).length }}
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Partners Logo Grid (Inspired by UCLG-ASPAC) -->
+                <div v-if="filteredMitras.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 reveal">
+                    <div 
+                        v-for="mitra in filteredMitras" 
+                        :key="`mitra-${mitra.id}`"
+                        class="group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800/90 p-5 flex flex-col justify-between shadow-sm hover:shadow-xl hover:border-teal-500/50 dark:hover:border-teal-500/40 hover:-translate-y-1.5 transition-all duration-300"
+                    >
+                        <!-- Category Tiny Badge -->
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] font-extrabold tracking-wide uppercase px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50 line-clamp-1">
+                                {{ mitra.kategori_nama }}
+                            </span>
+                            <a 
+                                v-if="mitra.url_website" 
+                                :href="mitra.url_website" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                class="text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                                :title="`Kunjungi situs resmi ${mitra.nama}`"
+                            >
+                                <Icon icon="solar:arrow-right-up-bold-duotone" class="w-4 h-4" />
+                            </a>
+                        </div>
+
+                        <!-- Logo Frame -->
+                        <div class="h-28 flex items-center justify-center p-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 mb-3 border border-slate-100 dark:border-slate-800/60 overflow-hidden">
+                            <img 
+                                v-if="mitra.logo" 
+                                :src="'/' + mitra.logo.replace(/^\/+/, '')" 
+                                :alt="mitra.nama" 
+                                class="max-h-20 max-w-full object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300 group-hover:scale-105"
+                                loading="lazy"
+                            />
+                            <div v-else class="w-14 h-14 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-black text-xl">
+                                {{ mitra.nama.charAt(0) }}
+                            </div>
+                        </div>
+
+                        <!-- Mitra Details -->
+                        <div class="text-center">
+                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors line-clamp-2 leading-tight">
+                                {{ mitra.nama }}
+                            </h3>
+                            <p v-if="mitra.deskripsi" class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-snug">
+                                {{ mitra.deskripsi }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div v-else class="text-center py-16 px-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 reveal">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-4">
+                        <Icon icon="solar:handshake-line-duotone" class="w-8 h-8" />
+                    </div>
+                    <h4 class="text-base font-bold text-slate-700 dark:text-slate-300">Belum ada mitra pada kategori ini</h4>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                        Data kemitraan Pemerintah Kota Samarinda sedang diperbarui oleh Sekretariat Daerah.
+                    </p>
+                </div>
+            </div>
+        </section>
 
         <BenefitsSection />
         <FAQSection :faqs="faqs" />

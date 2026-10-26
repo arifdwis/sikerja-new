@@ -88,3 +88,4 @@ Route::middleware('auth')->group(function () {
     Route::get('/templates', [\App\Http\Controllers\TemplateController::class, 'list'])
         ->name('template.list');
 });
+

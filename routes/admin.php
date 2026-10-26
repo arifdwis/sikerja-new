@@ -14,6 +14,11 @@ Route::prefix('master')->name('master.')->group(function () {
     Route::resource('slider', \App\Http\Controllers\Master\SliderController::class);
     Route::resource('faq', \App\Http\Controllers\Master\FaqController::class);
     Route::resource('laman', \App\Http\Controllers\Master\LamanController::class);
+    Route::resource('mitra', \App\Http\Controllers\Master\MitraKerjasamaController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::post('mitra/kategori', [\App\Http\Controllers\Master\MitraKerjasamaController::class, 'storeKategori'])->name('mitra.kategori.store');
+    Route::put('mitra/kategori/{id}', [\App\Http\Controllers\Master\MitraKerjasamaController::class, 'updateKategori'])->name('mitra.kategori.update');
+    Route::delete('mitra/kategori/{id}', [\App\Http\Controllers\Master\MitraKerjasamaController::class, 'destroyKategori'])->name('mitra.kategori.destroy');
+    Route::resource('galeri-tkksd', \App\Http\Controllers\Master\GaleriTkksdController::class)->only(['index', 'store', 'update', 'destroy']);
 });
 
 // Persetujuan (Admin)

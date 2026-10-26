@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Faq;
 use App\Models\Laman;
 use App\Models\Slider;
+use App\Models\KategoriMitra;
+use App\Models\GaleriTkksd;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -42,12 +44,19 @@ class LandingController extends Controller
             'uptime' => $permohonanAktif
         ];
 
+        // Mitra Kerjasama dengan Pemkot Samarinda (4 Kategori)
+        $kategoriMitras = KategoriMitra::with(['activeMitras'])
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->get();
+
         return Inertia::render('Frontend/Landing/Home', [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
             'sliders' => $sliders,
             'faqs' => $faqs,
             'stats' => $stats,
+            'kategoriMitras' => $kategoriMitras,
         ]);
     }
 
@@ -117,40 +126,33 @@ class LandingController extends Controller
             ->where('tanggal_berakhir', '<', now())
             ->count();
 
+        // Metrik spesifik dokumen penyesuaian:
+        // 1. Total Permohonan Kerja Sama
+        // 2. Berapa yang sedang berproses
+        // 3. Berapa yang masuk daftar tunggu
+        $daftarTunggu = (clone $permohonanQuery)->where('status', Permohonan::STATUS_PERMOHONAN)->count();
+        $sedangBerproses = (clone $permohonanQuery)->whereNotIn('status', [
+            Permohonan::STATUS_PERMOHONAN,
+            Permohonan::STATUS_SELESAI,
+            Permohonan::STATUS_DICABUT,
+            Permohonan::STATUS_DITOLAK,
+        ])->count();
+
         $stats = [
             'total' => $total + $manualTotal,
+            'total_permohonan' => $total + $manualTotal,
+            'sedang_berproses' => $sedangBerproses,
+            'daftar_tunggu' => $daftarTunggu,
             'aktif' => $aktif + $manualAktif,
             'selesai' => $selesai + $manualSelesai,
             'dalam_proses' => $dalamProses,
         ];
 
-        // Distribusi per kategori
-        $kategoriPermohonan = (clone $permohonanQuery)->with('kategori')
-            ->selectRaw('id_kategori, COUNT(*) as total')
-            ->groupBy('id_kategori')
-            ->get()
-            ->map(fn($p) => [
-                'kategori' => $p->kategori?->label ?? 'Lainnya',
-                'total' => $p->total,
-            ]);
-
-        $kategoriManual = (clone $manualQuery)->with('kategori')
-            ->selectRaw('id_kategori, COUNT(*) as total')
-            ->groupBy('id_kategori')
-            ->get()
-            ->map(fn($p) => [
-                'kategori' => $p->kategori?->label ?? 'Lainnya',
-                'total' => $p->total,
-            ]);
-
-        $perKategori = $kategoriPermohonan->merge($kategoriManual)
-            ->groupBy('kategori')
-            ->map(fn($items, $kategori) => [
-                'kategori' => $kategori,
-                'total' => $items->sum('total'),
-            ])
-            ->sortByDesc('total')
-            ->values();
+        // Galeri Kegiatan TKKSD
+        $galeriTkksd = GaleriTkksd::where('is_active', true)
+            ->orderBy('tanggal_kegiatan', 'desc')
+            ->orderBy('order', 'asc')
+            ->get();
 
         // Top OPD pelaksana (gabungan dari permohonan & kerjasama_manual)
         $perOpd = \App\Models\Opd::withCount([
@@ -246,12 +248,12 @@ class LandingController extends Controller
 
         return Inertia::render('Frontend/Landing/Infografis', [
             'stats' => $stats,
-            'perKategori' => $perKategori,
             'perOpd' => $perOpd,
             'trendTahun' => $trendTahun,
             'trendBulanan' => $trendBulanan,
             'perStatus' => $perStatus,
             'topInstansi' => $topInstansi,
+            'galeriTkksd' => $galeriTkksd,
             'availableYears' => $availableYears,
             'tahun' => $tahun,
         ]);
