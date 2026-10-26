@@ -65,26 +65,34 @@ onUnmounted(() => {
                     ]">SIKERJA</span>
                 </Link>
 
-                <div class="hidden md:flex items-center gap-8">
+                <div class="hidden md:flex items-center gap-7">
                     <Link href="/" :class="[
-                        'font-semibold transition-colors',
+                        'font-semibold transition-colors text-sm',
                         isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Beranda</Link>
                     <Link href="/alur" :class="[
-                        'font-semibold transition-colors',
+                        'font-semibold transition-colors text-sm',
                         isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Alur Proses</Link>
                     <Link href="/infografis" :class="[
-                        'font-semibold transition-colors',
+                        'font-semibold transition-colors text-sm',
                         isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Infografis</Link>
+                    <Link href="/mitra" :class="[
+                        'font-semibold transition-colors text-sm',
+                        isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
+                    ]">Mitra</Link>
+                    <Link href="/galeri-tkksd" :class="[
+                        'font-semibold transition-colors text-sm',
+                        isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
+                    ]">Galeri TKKSD</Link>
                     
                     <!-- Mega Menu Dropdown -->
                     <div class="relative group" v-if="lamanMenu.length">
-                        <button class="flex items-center gap-1 font-semibold transition-colors py-4"
+                        <button class="flex items-center gap-1 font-semibold transition-colors py-4 text-sm"
                             :class="isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'">
                             Informasi
-                            <Icon icon="solar:alt-arrow-down-bold" class="w-4 h-4 transition-transform duration-200 group-hover:rotate-180" />
+                            <Icon icon="solar:alt-arrow-down-bold" class="w-3.5 h-3.5 transition-transform duration-200 group-hover:rotate-180" />
                         </button>
                         
                         <!-- Mega Menu Content -->
@@ -112,8 +120,14 @@ onUnmounted(() => {
                             </div>
                             <!-- Static Footer Links inside Menu -->
                             <div class="bg-slate-50/50 dark:bg-slate-800/30 px-6 py-3 flex justify-between items-center border-t border-slate-100 dark:border-slate-800">
-                                <span class="text-xs text-slate-500 font-medium tracking-wide">PUSAT BANTUAN</span>
+                                <span class="text-xs text-slate-500 font-medium tracking-wide">PUSAT BANTUAN & MEDIA</span>
                                 <div class="flex gap-4 text-sm font-semibold">
+                                    <Link href="/mitra" class="text-slate-600 hover:text-amber-600 transition-colors flex items-center gap-1">
+                                        Mitra Kerja Sama
+                                    </Link>
+                                    <Link href="/galeri-tkksd" class="text-slate-600 hover:text-amber-600 transition-colors flex items-center gap-1">
+                                        Galeri TKKSD
+                                    </Link>
                                     <Link href="/tentang" class="text-slate-600 hover:text-amber-600 transition-colors flex items-center gap-1">
                                         Tentang Kami
                                     </Link>
@@ -126,11 +140,11 @@ onUnmounted(() => {
                     </div>
                     
                     <Link v-else href="/tentang" :class="[
-                        'font-semibold transition-colors',
+                        'font-semibold transition-colors text-sm',
                         isScrolled ? 'text-slate-800 dark:text-slate-200 hover:text-amber-500' : 'text-white hover:text-amber-300'
                     ]">Tentang</Link>
 
-                    <Link href="/login" class="inline-flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded-xl bg-amber-400 text-slate-900 shadow-lg shadow-amber-400/20 hover:shadow-xl hover:scale-[1.03] transition-all duration-300">
+                    <Link href="/login" class="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold rounded-xl bg-amber-400 text-slate-900 shadow-lg shadow-amber-400/20 hover:shadow-xl hover:scale-[1.03] transition-all duration-300">
                         <Icon icon="solar:login-3-bold" class="w-4 h-4" />
                         Masuk
                     </Link>
@@ -149,6 +163,8 @@ onUnmounted(() => {
                 <Link href="/" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Beranda</Link>
                 <Link href="/alur" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Alur Proses</Link>
                 <Link href="/infografis" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Infografis</Link>
+                <Link href="/mitra" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Mitra Kerja Sama</Link>
+                <Link href="/galeri-tkksd" class="block py-2 font-semibold text-gray-900 dark:text-white hover:text-amber-500 transition-colors">Galeri TKKSD</Link>
                 
                 <div v-if="lamanMenu.length" class="space-y-4 pl-4 border-l border-gray-200 dark:border-gray-800 my-2">
                     <div v-for="(group, key) in groupedLaman" :key="key">

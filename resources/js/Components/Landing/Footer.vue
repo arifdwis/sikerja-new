@@ -38,9 +38,11 @@ const currentYear = new Date().getFullYear()
                     <ul class="space-y-3">
                         <li><Link href="/" class="text-sm hover:text-teal-400 transition-colors flex items-center gap-2 group"><Icon icon="solar:alt-arrow-right-line-duotone" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />Beranda</Link></li>
                         <li><Link href="/alur" class="text-sm hover:text-teal-400 transition-colors flex items-center gap-2 group"><Icon icon="solar:alt-arrow-right-line-duotone" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />Alur Proses</Link></li>
-                        <!-- Dynamic Pages -->
-                        <!-- Dynamic Pages (Limit 5) -->
-                        <li v-for="(item, index) in lamanMenu.slice(0, 5)" :key="index">
+                        <li><Link href="/infografis" class="text-sm hover:text-teal-400 transition-colors flex items-center gap-2 group"><Icon icon="solar:alt-arrow-right-line-duotone" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />Infografis</Link></li>
+                        <li><Link href="/mitra" class="text-sm hover:text-teal-400 transition-colors flex items-center gap-2 group"><Icon icon="solar:alt-arrow-right-line-duotone" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />Mitra Kerja Sama</Link></li>
+                        <li><Link href="/galeri-tkksd" class="text-sm hover:text-teal-400 transition-colors flex items-center gap-2 group"><Icon icon="solar:alt-arrow-right-line-duotone" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />Galeri TKKSD</Link></li>
+                        <!-- Dynamic Pages (Limit 3) -->
+                        <li v-for="(item, index) in lamanMenu.slice(0, 3)" :key="index">
                             <Link :href="item.url" class="text-sm hover:text-teal-400 transition-colors flex items-center gap-2 group">
                                 <Icon icon="solar:alt-arrow-right-line-duotone" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <span class="line-clamp-1">{{ item.label }}</span>

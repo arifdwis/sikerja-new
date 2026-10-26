@@ -32,6 +32,10 @@ Route::controller(\App\Http\Controllers\LandingController::class)->group(functio
     Route::get('/faq', 'faq')->name('landing.faq');
     // Infografis publik (Req 15)
     Route::get('/infografis', 'infografis')->name('landing.infografis');
+    // Dedicated pages: Mitra & Galeri TKKSD
+    Route::get('/mitra', 'mitra')->name('landing.mitra');
+    Route::get('/galeri-tkksd', 'galeri')->name('landing.galeri');
+    Route::get('/galeri', 'galeri')->name('landing.galeri.alias');
     // Kebijakan Privasi & Syarat Layanan (Google OAuth & Public)
     Route::get('/kebijakan-privasi', 'privacy')->name('landing.privacy');
     Route::get('/privacy-policy', 'privacy')->name('landing.privacy.alias');

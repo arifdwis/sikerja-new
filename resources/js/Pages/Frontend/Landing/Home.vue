@@ -12,8 +12,30 @@ const props = defineProps({
     stats: { type: Object, default: () => ({ documents: 150, opds: 35, improvement: 85, uptime: '24/7' }) },
     sliders: { type: Array, default: () => [] },
     faqs: { type: Array, default: () => [] },
-    kategoriMitras: { type: Array, default: () => [] }
+    kategoriMitras: { type: Array, default: () => [] },
+    galeriTkksd: { type: Array, default: () => [] }
 })
+
+const activeModalFoto = ref(null)
+const formatTanggal = (dateStr) => {
+    if (!dateStr) return '-'
+    const d = new Date(dateStr)
+    return d.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    })
+}
+
+const openModalFoto = (item) => {
+    activeModalFoto.value = item
+    document.body.style.overflow = 'hidden'
+}
+
+const closeModalFoto = () => {
+    activeModalFoto.value = null
+    document.body.style.overflow = 'auto'
+}
 
 const selectedKategoriId = ref('all')
 const allMitras = computed(() => {
@@ -662,14 +684,122 @@ const steps = [
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div v-else class="text-center py-16 px-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 reveal">
-                    <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-4">
-                        <Icon icon="solar:handshake-line-duotone" class="w-8 h-8" />
+                <!-- View All Partners Link -->
+                <div class="mt-12 text-center reveal">
+                    <Link 
+                        href="/mitra" 
+                        class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-bold text-xs sm:text-sm shadow-lg hover:bg-teal-600 dark:hover:bg-teal-400 hover:text-white dark:hover:text-slate-950 hover:scale-[1.02] transition-all duration-300"
+                    >
+                        <Icon icon="solar:users-group-two-rounded-bold-duotone" class="w-4 h-4 text-amber-400 dark:text-amber-500" />
+                        <span>Lihat Seluruh Katalog Mitra Kerja Sama ({{ allMitras.length }})</span>
+                        <Icon icon="solar:arrow-right-line-duotone" class="w-4 h-4" />
+                    </Link>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Galeri Kegiatan TKKSD Kota Samarinda -->
+        <section class="py-20 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-200/60 dark:border-slate-800/60 relative overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <!-- Section Header -->
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-xs font-bold uppercase tracking-wider mb-3 border border-teal-200/50 dark:border-teal-800/50">
+                            <Icon icon="solar:gallery-bold-duotone" class="w-4 h-4" />
+                            Dokumentasi Visual Resmi
+                        </div>
+                        <h2 class="text-3xl sm:text-4xl font-black text-slate-950 dark:text-white font-['Outfit'] tracking-tight">
+                            Galeri Kegiatan TKKSD
+                        </h2>
+                        <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-2 max-w-2xl leading-relaxed">
+                            Potret pelaksanaan koordinasi terpadu Tim Koordinasi Kerja Sama Daerah (TKKSD) Kota Samarinda dalam perumusan kebijakan, verifikasi usulan, pembahasan kesepakatan, dan pemantauan monev.
+                        </p>
                     </div>
-                    <h4 class="text-base font-bold text-slate-700 dark:text-slate-300">Belum ada mitra pada kategori ini</h4>
+
+                    <!-- Direct Link to Dedicated Gallery Page -->
+                    <div class="shrink-0">
+                        <Link 
+                            href="/galeri-tkksd"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-teal-500 hover:text-teal-600 dark:hover:text-teal-400 font-bold text-xs sm:text-sm shadow-sm transition-all hover:scale-[1.02]"
+                        >
+                            <span>Buka Halaman Galeri</span>
+                            <Icon icon="solar:arrow-right-line-duotone" class="w-4 h-4" />
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Gallery Cards Grid -->
+                <div v-if="galeriTkksd && galeriTkksd.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div 
+                        v-for="item in galeriTkksd.slice(0, 6)" 
+                        :key="`home-galeri-${item.id}`"
+                        @click="openModalFoto(item)"
+                        class="group cursor-pointer rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/60 overflow-hidden shadow-sm hover:shadow-xl hover:border-teal-500/40 transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between"
+                    >
+                        <!-- Image Container with Aspect Ratio -->
+                        <div class="relative aspect-[16/10] w-full overflow-hidden bg-slate-900">
+                            <img 
+                                v-if="item.foto" 
+                                :src="'/' + item.foto.replace(/^\/+/, '')" 
+                                :alt="item.judul"
+                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                loading="lazy"
+                            />
+                            <div v-else class="w-full h-full flex items-center justify-center text-slate-500">
+                                <Icon icon="solar:camera-broken" class="w-12 h-12" />
+                            </div>
+
+                            <!-- Gradient Overlay -->
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20 opacity-80 group-hover:opacity-90 transition-opacity"></div>
+
+                            <!-- Category Badge -->
+                            <div class="absolute top-3.5 left-3.5 z-10">
+                                <span class="px-2.5 py-1 rounded-xl bg-slate-900/80 backdrop-blur-md text-amber-300 text-[11px] font-bold border border-amber-400/30 flex items-center gap-1">
+                                    <Icon icon="solar:tag-bold-duotone" class="w-3 h-3 text-amber-400" />
+                                    {{ item.kategori_kegiatan || 'Rapat TKKSD' }}
+                                </span>
+                            </div>
+
+                            <!-- Zoom Hint Icon on Hover -->
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                <div class="w-11 h-11 rounded-full bg-black/60 backdrop-blur-md text-white flex items-center justify-center border border-white/30 transform scale-75 group-hover:scale-100 transition-transform">
+                                    <Icon icon="solar:magnifer-zoom-in-bold" class="w-5 h-5 text-amber-400" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Content -->
+                        <div class="p-6 flex-1 flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors line-clamp-2 mb-2 font-['Outfit']">
+                                    {{ item.judul }}
+                                </h3>
+                                <p v-if="item.deskripsi" class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
+                                    {{ item.deskripsi }}
+                                </p>
+                            </div>
+
+                            <div class="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                                <span class="flex items-center gap-1.5 font-medium">
+                                    <Icon icon="solar:calendar-bold-duotone" class="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                                    {{ formatTanggal(item.tanggal_kegiatan) }}
+                                </span>
+                                <span v-if="item.lokasi" class="flex items-center gap-1 truncate max-w-[150px] font-medium" :title="item.lokasi">
+                                    <Icon icon="solar:map-point-bold-duotone" class="w-4 h-4 text-amber-500" />
+                                    {{ item.lokasi }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="text-center py-16 px-6 bg-white dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-4">
+                        <Icon icon="solar:gallery-wide-bold-duotone" class="w-8 h-8" />
+                    </div>
+                    <h4 class="text-base font-bold text-slate-700 dark:text-slate-300">Dokumentasi kegiatan sedang diperbarui</h4>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                        Data kemitraan Pemerintah Kota Samarinda sedang diperbarui oleh Sekretariat Daerah.
+                        Foto kegiatan terbaru Tim Koordinasi Kerja Sama Daerah Kota Samarinda akan tampil secara berkala di sini.
                     </p>
                 </div>
             </div>
@@ -678,6 +808,56 @@ const steps = [
         <BenefitsSection />
         <FAQSection :faqs="faqs" />
     </main>
+
+    <!-- Modal Lightbox Preview Foto TKKSD di Home -->
+    <div 
+        v-if="activeModalFoto" 
+        class="fixed inset-0 z-[120] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in"
+        @click.self="closeModalFoto"
+    >
+        <div class="relative max-w-4xl w-full bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl">
+            <!-- Close Button -->
+            <button 
+                @click="closeModalFoto" 
+                class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/60 text-white hover:bg-white hover:text-black flex items-center justify-center transition-colors"
+                title="Tutup Preview (ESC)"
+            >
+                <Icon icon="solar:close-circle-bold" class="w-6 h-6" />
+            </button>
+
+            <!-- Image View -->
+            <div class="relative bg-black flex items-center justify-center max-h-[70vh] overflow-hidden">
+                <img 
+                    :src="'/' + activeModalFoto.foto.replace(/^\/+/, '')" 
+                    :alt="activeModalFoto.judul"
+                    class="max-h-[70vh] w-auto max-w-full object-contain"
+                />
+            </div>
+
+            <!-- Detail Modal -->
+            <div class="p-6 bg-slate-900 text-white">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <span class="px-2.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300 text-xs font-bold border border-teal-500/30">
+                        {{ activeModalFoto.kategori_kegiatan || 'Rapat TKKSD' }}
+                    </span>
+                    <span v-if="activeModalFoto.tanggal_kegiatan" class="text-xs text-slate-400 flex items-center gap-1">
+                        <Icon icon="solar:calendar-bold-duotone" class="w-3.5 h-3.5 text-teal-400" />
+                        {{ formatTanggal(activeModalFoto.tanggal_kegiatan) }}
+                    </span>
+                    <span v-if="activeModalFoto.lokasi" class="text-xs text-slate-400 flex items-center gap-1">
+                        <Icon icon="solar:map-point-bold-duotone" class="w-3.5 h-3.5 text-amber-400" />
+                        {{ activeModalFoto.lokasi }}
+                    </span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 font-['Outfit']">
+                    {{ activeModalFoto.judul }}
+                </h3>
+                <p v-if="activeModalFoto.deskripsi" class="text-sm text-slate-300 leading-relaxed">
+                    {{ activeModalFoto.deskripsi }}
+                </p>
+            </div>
+        </div>
+    </div>
 
     <Footer />
     <ChatWidget />

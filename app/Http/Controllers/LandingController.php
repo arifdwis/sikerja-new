@@ -50,6 +50,13 @@ class LandingController extends Controller
             ->orderBy('order')
             ->get();
 
+        // Preview Galeri Kegiatan TKKSD terbaru
+        $galeriTkksd = GaleriTkksd::where('is_active', true)
+            ->orderBy('tanggal_kegiatan', 'desc')
+            ->orderBy('order', 'asc')
+            ->take(6)
+            ->get();
+
         return Inertia::render('Frontend/Landing/Home', [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
@@ -57,6 +64,101 @@ class LandingController extends Controller
             'faqs' => $faqs,
             'stats' => $stats,
             'kategoriMitras' => $kategoriMitras,
+            'galeriTkksd' => $galeriTkksd,
+        ]);
+    }
+
+    /**
+     * Halaman Khusus Mitra Kerja Sama Daerah Pemkot Samarinda
+     */
+    public function mitra(Request $request)
+    {
+        $search = $request->query('search');
+        $kategoriSlug = $request->query('kategori');
+
+        $kategoriMitras = KategoriMitra::with(['activeMitras' => function ($q) use ($search) {
+            if ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('nama', 'like', "%{$search}%")
+                        ->orWhere('deskripsi', 'like', "%{$search}%");
+                });
+            }
+        }])
+        ->where('is_active', true)
+        ->orderBy('order')
+        ->get();
+
+        $allMitrasQuery = \App\Models\MitraKerjasama::where('is_active', true)->with('kategori');
+        if ($search) {
+            $allMitrasQuery->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('deskripsi', 'like', "%{$search}%");
+            });
+        }
+        if ($kategoriSlug) {
+            $allMitrasQuery->whereHas('kategori', fn($q) => $q->where('slug', $kategoriSlug));
+        }
+
+        $allMitras = $allMitrasQuery->orderBy('order')->orderBy('nama')->get();
+        $totalMitra = \App\Models\MitraKerjasama::where('is_active', true)->count();
+
+        return Inertia::render('Frontend/Landing/Mitra', [
+            'kategoris' => $kategoriMitras,
+            'mitras' => $allMitras,
+            'totalMitra' => $totalMitra,
+            'filters' => $request->only(['search', 'kategori']),
+        ]);
+    }
+
+    /**
+     * Halaman Khusus Galeri Kegiatan TKKSD Pemkot Samarinda
+     */
+    public function galeri(Request $request)
+    {
+        $search = $request->query('search');
+        $kategori = $request->query('kategori');
+        $tahun = $request->query('tahun');
+
+        $query = GaleriTkksd::where('is_active', true);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('judul', 'like', "%{$search}%")
+                  ->orWhere('deskripsi', 'like', "%{$search}%")
+                  ->orWhere('lokasi', 'like', "%{$search}%");
+            });
+        }
+
+        if ($kategori) {
+            $query->where('kategori_kegiatan', $kategori);
+        }
+
+        if ($tahun) {
+            $query->whereYear('tanggal_kegiatan', $tahun);
+        }
+
+        $galeris = $query->orderBy('tanggal_kegiatan', 'desc')
+            ->orderBy('order', 'asc')
+            ->paginate(12)
+            ->withQueryString();
+
+        $categories = GaleriTkksd::where('is_active', true)
+            ->whereNotNull('kategori_kegiatan')
+            ->distinct()
+            ->pluck('kategori_kegiatan');
+
+        $availableYears = GaleriTkksd::where('is_active', true)
+            ->whereNotNull('tanggal_kegiatan')
+            ->selectRaw('YEAR(tanggal_kegiatan) as tahun')
+            ->distinct()
+            ->orderByDesc('tahun')
+            ->pluck('tahun');
+
+        return Inertia::render('Frontend/Landing/Galeri', [
+            'galeris' => $galeris,
+            'categories' => $categories,
+            'availableYears' => $availableYears,
+            'filters' => $request->only(['search', 'kategori', 'tahun']),
         ]);
     }
 
