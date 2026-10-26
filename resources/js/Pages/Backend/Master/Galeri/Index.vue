@@ -131,7 +131,6 @@ const submitForm = () => {
         })).post(route(props.share.prefix + '.update', currentItem.value.id), {
             onSuccess: () => {
                 showModal.value = false;
-                toast.success('Foto kegiatan TKKSD berhasil diperbarui.');
             },
             onError: (errors) => {
                 Object.values(errors).forEach(msg => toast.error(msg));
@@ -141,7 +140,6 @@ const submitForm = () => {
         form.post(route(props.share.prefix + '.store'), {
             onSuccess: () => {
                 showModal.value = false;
-                toast.success('Foto kegiatan TKKSD berhasil ditambahkan.');
             },
             onError: (errors) => {
                 Object.values(errors).forEach(msg => toast.error(msg));
@@ -161,7 +159,6 @@ const confirmDelete = (item) => {
         rejectLabel: 'Batal',
         accept: () => {
             router.delete(route(props.share.prefix + '.destroy', item.id), {
-                onSuccess: () => toast.success('Foto kegiatan TKKSD berhasil dihapus.'),
                 onError: () => toast.error('Gagal menghapus foto kegiatan.')
             });
         }

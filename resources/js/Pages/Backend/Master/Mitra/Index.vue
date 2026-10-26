@@ -142,7 +142,6 @@ const submitMitraForm = () => {
         })).post(route(props.share.prefix + '.update', currentMitra.value.id), {
             onSuccess: () => {
                 showMitraModal.value = false;
-                toast.success('Mitra kerja sama berhasil diperbarui.');
             },
             onError: (errors) => {
                 Object.values(errors).forEach(msg => toast.error(msg));
@@ -152,7 +151,6 @@ const submitMitraForm = () => {
         mitraForm.post(route(props.share.prefix + '.store'), {
             onSuccess: () => {
                 showMitraModal.value = false;
-                toast.success('Mitra kerja sama berhasil ditambahkan.');
             },
             onError: (errors) => {
                 Object.values(errors).forEach(msg => toast.error(msg));
@@ -171,7 +169,6 @@ const confirmDeleteMitra = (item) => {
         rejectLabel: 'Batal',
         accept: () => {
             router.delete(route(props.share.prefix + '.destroy', item.id), {
-                onSuccess: () => toast.success('Mitra kerja sama berhasil dihapus.'),
                 onError: () => toast.error('Gagal menghapus mitra.')
             });
         }
@@ -205,7 +202,6 @@ const submitKatForm = () => {
         katForm.put(route(props.share.prefix + '.kategori.update', currentKat.value.id), {
             onSuccess: () => {
                 showKatModal.value = false;
-                toast.success('Kategori mitra berhasil diperbarui.');
             },
             onError: (errors) => {
                 Object.values(errors).forEach(msg => toast.error(msg));
@@ -215,7 +211,6 @@ const submitKatForm = () => {
         katForm.post(route(props.share.prefix + '.kategori.store'), {
             onSuccess: () => {
                 showKatModal.value = false;
-                toast.success('Kategori mitra berhasil ditambahkan.');
             },
             onError: (errors) => {
                 Object.values(errors).forEach(msg => toast.error(msg));
@@ -234,7 +229,6 @@ const confirmDeleteKat = (item) => {
         rejectLabel: 'Batal',
         accept: () => {
             router.delete(route(props.share.prefix + '.kategori.destroy', item.id), {
-                onSuccess: () => toast.success('Kategori berhasil dihapus.'),
                 onError: (err) => toast.error(err?.error || 'Gagal menghapus kategori.')
             });
         }
