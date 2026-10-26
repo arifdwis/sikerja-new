@@ -565,18 +565,15 @@ const steps = [
             <div class="max-w-7xl mx-auto px-6 relative z-10">
                 <!-- Section Header -->
                 <div class="text-center mb-14 reveal">
-                    <span class="inline-flex items-center gap-1.5 py-1 px-3.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-bold tracking-wider uppercase text-xs mb-3 border border-teal-200/50 dark:border-teal-800/50">
-                        <Icon icon="solar:handshake-bold-duotone" class="w-4 h-4 text-teal-500" />
-                        Jejaring Kolaborasi
+                    <span class="inline-block py-1 px-3 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 font-bold tracking-wider uppercase text-xs mb-4">
+                        Mitra Kerja Sama
                     </span>
                     <h2 class="font-['Outfit'] text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
                         Pihak yang Bekerjasama <br class="hidden sm:inline" />
-                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-teal-500 to-amber-500">
-                            dengan Pemkot Samarinda
-                        </span>
+                        <span class="text-teal-600">dengan Pemkot Samarinda</span>
                     </h2>
                     <p class="text-slate-600 dark:text-slate-400 text-base sm:text-lg max-w-2xl mx-auto mt-4 leading-relaxed">
-                        Sinergi pentahelix Pemerintah Kota Samarinda bersama pemerintah daerah, perguruan tinggi, badan usaha, organisasi, dan mitra internasional.
+                        Sinergi Pemerintah Kota Samarinda bersama pemerintah daerah, badan usaha, organisasi, perguruan tinggi, dan mitra internasional.
                     </p>
                 </div>
 
