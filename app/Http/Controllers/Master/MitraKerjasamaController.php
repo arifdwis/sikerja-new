@@ -65,12 +65,19 @@ class MitraKerjasamaController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'kategori_mitra_id' => 'required|exists:kategori_mitra,id',
-            'url_website' => 'nullable|url|max:255',
+            'url_website' => 'nullable|string|max:255',
             'deskripsi' => 'nullable|string',
             'order' => 'nullable|integer',
-            'is_active' => 'nullable|boolean',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
+            'is_active' => 'nullable',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg,gif|max:5120',
         ]);
+
+        $urlWebsite = $request->url_website;
+        if (!empty($urlWebsite) && !preg_match("~^(?:f|ht)tps?://~i", $urlWebsite)) {
+            if (str_contains($urlWebsite, '.')) {
+                $urlWebsite = 'https://' . $urlWebsite;
+            }
+        }
 
         $logoPath = null;
         if ($request->hasFile('logo')) {
@@ -95,7 +102,7 @@ class MitraKerjasamaController extends Controller
         MitraKerjasama::create([
             'nama' => $validated['nama'],
             'kategori_mitra_id' => $validated['kategori_mitra_id'],
-            'url_website' => $request->url_website,
+            'url_website' => $urlWebsite,
             'deskripsi' => $request->deskripsi,
             'order' => $request->order ?? 0,
             'is_active' => $request->boolean('is_active', true),
@@ -112,12 +119,19 @@ class MitraKerjasamaController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'kategori_mitra_id' => 'required|exists:kategori_mitra,id',
-            'url_website' => 'nullable|url|max:255',
+            'url_website' => 'nullable|string|max:255',
             'deskripsi' => 'nullable|string',
             'order' => 'nullable|integer',
-            'is_active' => 'nullable|boolean',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
+            'is_active' => 'nullable',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg,gif|max:5120',
         ]);
+
+        $urlWebsite = $request->url_website;
+        if (!empty($urlWebsite) && !preg_match("~^(?:f|ht)tps?://~i", $urlWebsite)) {
+            if (str_contains($urlWebsite, '.')) {
+                $urlWebsite = 'https://' . $urlWebsite;
+            }
+        }
 
         $logoPath = $mitra->logo;
         if ($request->hasFile('logo')) {
@@ -140,7 +154,7 @@ class MitraKerjasamaController extends Controller
         $mitra->update([
             'nama' => $validated['nama'],
             'kategori_mitra_id' => $validated['kategori_mitra_id'],
-            'url_website' => $request->url_website,
+            'url_website' => $urlWebsite,
             'deskripsi' => $request->deskripsi,
             'order' => $request->order ?? 0,
             'is_active' => $request->boolean('is_active', true),

@@ -7,6 +7,7 @@ import { useToast } from "vue-toastification";
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
+import FileUpload from 'primevue/fileupload';
 import Paginator from 'primevue/paginator';
 import Dialog from 'primevue/dialog';
 import DataTable from 'primevue/datatable';
@@ -81,6 +82,7 @@ const openCreateModal = () => {
     editMode.value = false;
     currentItem.value = null;
     form.reset();
+    form.clearErrors();
     form.tanggal_kegiatan = new Date().toISOString().split('T')[0];
     form.kategori_kegiatan = 'Rapat Pembahasan';
     form.lokasi = 'Kota Samarinda';
@@ -94,6 +96,7 @@ const openCreateModal = () => {
 const openEditModal = (item) => {
     editMode.value = true;
     currentItem.value = item;
+    form.clearErrors();
     form.judul = item.judul;
     form.deskripsi = item.deskripsi || '';
     form.tanggal_kegiatan = item.tanggal_kegiatan ? item.tanggal_kegiatan.split('T')[0] : '';
@@ -106,12 +109,16 @@ const openEditModal = (item) => {
     showModal.value = true;
 };
 
-// Handle Image Select
-const handleImageSelect = (e) => {
-    const file = e.target.files[0];
+// Handle FileUpload PrimeVue
+const onFotoSelect = (e) => {
+    const file = e.files[0];
     if (file) {
         form.foto = file;
-        imagePreview.value = URL.createObjectURL(file);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 };
 
@@ -126,7 +133,9 @@ const submitForm = () => {
                 showModal.value = false;
                 toast.success('Foto kegiatan TKKSD berhasil diperbarui.');
             },
-            onError: () => toast.error('Gagal memperbarui foto kegiatan.')
+            onError: (errors) => {
+                Object.values(errors).forEach(msg => toast.error(msg));
+            }
         });
     } else {
         form.post(route(props.share.prefix + '.store'), {
@@ -134,7 +143,9 @@ const submitForm = () => {
                 showModal.value = false;
                 toast.success('Foto kegiatan TKKSD berhasil ditambahkan.');
             },
-            onError: () => toast.error('Gagal menambahkan foto kegiatan. Pastikan memilih file foto.')
+            onError: (errors) => {
+                Object.values(errors).forEach(msg => toast.error(msg));
+            }
         });
     }
 };
@@ -205,93 +216,95 @@ const formatTanggal = (d) => {
                                 currentPageReportTemplate="{first} - {last} dari {totalRecords}" 
                             />
                             
-                            <Button label="Tambah" icon="pi pi-plus" size="small" @click="openCreateModal" />
+                            <Button label="Tambah Kegiatan" icon="pi pi-plus" size="small" @click="openCreateModal" />
                         </div>
                     </div>
 
-                    <!-- Data Table -->
-                    <DataTable 
-                        :value="datas?.data || []" 
-                        dataKey="id"
-                        showGridlines 
-                        stripedRows 
-                        class="text-sm"
-                    >
-                        <template #empty>
-                            <div class="text-center p-4 text-gray-500">
-                                Tidak ada data dokumentasi kegiatan TKKSD.
-                            </div>
-                        </template>
-
-                        <Column header="No" class="w-12 text-center">
-                            <template #body="slotProps">
-                                {{ (currentPage - 1) * perPage + slotProps.index + 1 }}
-                            </template>
-                        </Column>
-
-                        <Column header="Foto" class="w-28 text-center">
-                            <template #body="{ data }">
-                                <img 
-                                    v-if="data.foto" 
-                                    :src="'/' + data.foto.replace(/^\/+/, '')" 
-                                    :alt="data.judul" 
-                                    class="w-20 h-12 object-cover rounded shadow-sm mx-auto" 
-                                />
-                                <span v-else class="text-gray-400 text-xs">No Foto</span>
-                            </template>
-                        </Column>
-
-                        <Column field="judul" header="Judul Kegiatan" sortable>
-                            <template #body="{ data }">
-                                <span class="font-medium text-gray-900 dark:text-white">{{ data.judul }}</span>
-                                <span v-if="data.deskripsi" class="text-gray-500 text-xs block truncate max-w-sm">{{ data.deskripsi }}</span>
-                            </template>
-                        </Column>
-
-                        <Column field="kategori_kegiatan" header="Kategori" sortable class="w-40">
-                            <template #body="{ data }">
-                                <span class="px-2 py-1 rounded bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 text-xs font-semibold">
-                                    {{ data.kategori_kegiatan || 'TKKSD' }}
-                                </span>
-                            </template>
-                        </Column>
-
-                        <Column field="tanggal_kegiatan" header="Tanggal" sortable class="w-32">
-                            <template #body="{ data }">
-                                <span class="text-xs text-gray-600 dark:text-gray-300">{{ formatTanggal(data.tanggal_kegiatan) }}</span>
-                            </template>
-                        </Column>
-
-                        <Column field="lokasi" header="Lokasi" sortable class="w-40">
-                            <template #body="{ data }">
-                                <span class="text-xs text-gray-600 dark:text-gray-300 truncate block max-w-xs">{{ data.lokasi || '-' }}</span>
-                            </template>
-                        </Column>
-
-                        <Column field="order" header="Urutan" sortable class="w-20 text-center">
-                            <template #body="{ data }">
-                                <span class="font-semibold">{{ data.order }}</span>
-                            </template>
-                        </Column>
-
-                        <Column field="is_active" header="Status" sortable class="w-24 text-center">
-                            <template #body="{ data }">
-                                <Tag :value="data.is_active ? 'Aktif' : 'Tidak Aktif'" :severity="data.is_active ? 'success' : 'danger'" />
-                            </template>
-                        </Column>
-
-                        <Column header="Aksi" class="w-32 text-center">
-                            <template #body="{ data }">
-                                <div class="flex justify-center gap-2">
-                                    <Button icon="pi pi-pencil" severity="info" size="small" @click="openEditModal(data)" v-tooltip="'Edit'" />
-                                    <Button icon="pi pi-trash" severity="danger" size="small" @click="confirmDelete(data)" v-tooltip="'Hapus'" />
+                    <!-- Data Table PrimeVue with Responsive Overflow & Precise Widths -->
+                    <div class="overflow-x-auto">
+                        <DataTable 
+                            :value="datas?.data || []" 
+                            dataKey="id"
+                            showGridlines 
+                            stripedRows 
+                            class="text-sm w-full"
+                        >
+                            <template #empty>
+                                <div class="text-center p-4 text-gray-500">
+                                    Tidak ada data dokumentasi kegiatan TKKSD.
                                 </div>
                             </template>
-                        </Column>
-                    </DataTable>
 
-                    <!-- Paginator Bottom -->
-                    <div class="mt-4">
+                            <Column header="No" class="w-12 text-center" style="width: 50px;">
+                                <template #body="slotProps">
+                                    {{ (currentPage - 1) * perPage + slotProps.index + 1 }}
+                                </template>
+                            </Column>
+
+                            <Column header="Foto" class="w-24 text-center" style="width: 90px;">
+                                <template #body="{ data }">
+                                    <img 
+                                        v-if="data.foto" 
+                                        :src="'/' + data.foto.replace(/^\/+/, '')" 
+                                        :alt="data.judul" 
+                                        class="w-16 h-10 object-cover rounded shadow-sm mx-auto" 
+                                    />
+                                    <span v-else class="text-gray-400 text-xs">No Foto</span>
+                                </template>
+                            </Column>
+
+                            <Column field="judul" header="Judul Kegiatan" sortable>
+                                <template #body="{ data }">
+                                    <span class="font-medium text-gray-900 dark:text-white">{{ data.judul }}</span>
+                                    <span v-if="data.deskripsi" class="text-gray-500 text-xs block truncate max-w-sm">{{ data.deskripsi }}</span>
+                                </template>
+                            </Column>
+
+                            <Column field="kategori_kegiatan" header="Kategori" sortable class="w-36 text-center" style="width: 140px;">
+                                <template #body="{ data }">
+                                    <span class="px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 text-xs font-semibold whitespace-nowrap">
+                                        {{ data.kategori_kegiatan || 'TKKSD' }}
+                                    </span>
+                                </template>
+                            </Column>
+
+                            <Column field="tanggal_kegiatan" header="Tanggal" sortable class="w-28 text-center" style="width: 110px;">
+                                <template #body="{ data }">
+                                    <span class="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ formatTanggal(data.tanggal_kegiatan) }}</span>
+                                </template>
+                            </Column>
+
+                            <Column field="lokasi" header="Lokasi" sortable class="w-40" style="width: 160px;">
+                                <template #body="{ data }">
+                                    <span class="text-xs text-gray-600 dark:text-gray-300 truncate block max-w-[150px]" :title="data.lokasi">{{ data.lokasi || '-' }}</span>
+                                </template>
+                            </Column>
+
+                            <Column field="order" header="Urutan" sortable class="w-16 text-center" style="width: 70px;">
+                                <template #body="{ data }">
+                                    <span class="font-semibold">{{ data.order }}</span>
+                                </template>
+                            </Column>
+
+                            <Column field="is_active" header="Status" sortable class="w-20 text-center" style="width: 85px;">
+                                <template #body="{ data }">
+                                    <Tag :value="data.is_active ? 'Aktif' : 'Tidak Aktif'" :severity="data.is_active ? 'success' : 'danger'" />
+                                </template>
+                            </Column>
+
+                            <Column header="Aksi" class="w-24 text-center" style="width: 95px;">
+                                <template #body="{ data }">
+                                    <div class="flex justify-center gap-1.5">
+                                        <Button icon="pi pi-pencil" severity="info" size="small" @click="openEditModal(data)" v-tooltip="'Edit'" />
+                                        <Button icon="pi pi-trash" severity="danger" size="small" @click="confirmDelete(data)" v-tooltip="'Hapus'" />
+                                    </div>
+                                </template>
+                            </Column>
+                        </DataTable>
+                    </div>
+
+                    <!-- Paginator Bottom hanya tampil jika data > perPage -->
+                    <div v-if="datas?.total > perPage" class="mt-4">
                         <Paginator 
                             :totalRecords="datas?.total || 0" 
                             :rows="perPage" 
@@ -306,8 +319,8 @@ const formatTanggal = (d) => {
             </div>
         </div>
 
-        <!-- Modal Create/Edit -->
-        <Dialog v-model:visible="showModal" :header="editMode ? 'Edit Foto Kegiatan TKKSD' : 'Tambah Foto Kegiatan TKKSD'" modal :style="{ width: '550px' }">
+        <!-- Modal Create/Edit (Clean PrimeVue with FileUpload) -->
+        <Dialog v-model:visible="showModal" :header="editMode ? 'Edit Foto Kegiatan TKKSD' : 'Tambah Foto Kegiatan TKKSD'" modal :style="{ width: '520px' }">
             <form @submit.prevent="submitForm" class="space-y-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Judul Kegiatan *</label>
@@ -319,16 +332,19 @@ const formatTanggal = (d) => {
                     <div class="flex flex-col gap-2">
                         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Kategori Kegiatan</label>
                         <InputText v-model="form.kategori_kegiatan" placeholder="Rapat Pembahasan / Penandatanganan" class="w-full" />
+                        <small v-if="form.errors.kategori_kegiatan" class="text-red-500">{{ form.errors.kategori_kegiatan }}</small>
                     </div>
                     <div class="flex flex-col gap-2">
                         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Tanggal Kegiatan</label>
                         <input type="date" v-model="form.tanggal_kegiatan" class="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm py-2" />
+                        <small v-if="form.errors.tanggal_kegiatan" class="text-red-500">{{ form.errors.tanggal_kegiatan }}</small>
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Lokasi Kegiatan</label>
                     <InputText v-model="form.lokasi" placeholder="Contoh: Balai Kota Samarinda" class="w-full" />
+                    <small v-if="form.errors.lokasi" class="text-red-500">{{ form.errors.lokasi }}</small>
                 </div>
 
                 <div class="flex flex-col gap-2">
@@ -337,17 +353,21 @@ const formatTanggal = (d) => {
                     <small v-if="form.errors.deskripsi" class="text-red-500">{{ form.errors.deskripsi }}</small>
                 </div>
 
+                <!-- Foto FileUpload PrimeVue -->
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Upload Foto Kegiatan {{ editMode ? '(Opsional jika tidak diganti)' : '*' }}</label>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Foto Kegiatan {{ editMode ? '(Opsional jika tidak diganti)' : '*' }}</label>
                     <div v-if="imagePreview" class="mb-2">
-                        <img :src="imagePreview" class="w-full h-40 object-cover rounded border" />
+                        <img :src="imagePreview" class="w-full h-36 object-cover rounded border" />
                     </div>
-                    <input 
-                        type="file" 
+                    <FileUpload 
+                        mode="basic" 
+                        name="foto" 
                         accept="image/*" 
-                        @change="handleImageSelect"
-                        :required="!editMode"
-                        class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                        :maxFileSize="10000000" 
+                        @select="onFotoSelect" 
+                        :auto="true" 
+                        chooseLabel="Pilih Foto Kegiatan" 
+                        class="w-full" 
                     />
                     <small v-if="form.errors.foto" class="text-red-500">{{ form.errors.foto }}</small>
                 </div>
@@ -358,8 +378,8 @@ const formatTanggal = (d) => {
                         <input type="number" v-model="form.order" class="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm py-2" />
                     </div>
                     <div class="flex items-center gap-2 pt-6">
-                        <InputSwitch v-model="form.is_active" inputId="is_active" />
-                        <label for="is_active" class="text-sm font-medium text-gray-700 dark:text-gray-300">Aktif</label>
+                        <InputSwitch v-model="form.is_active" inputId="is_active_galeri" />
+                        <label for="is_active_galeri" class="text-sm font-medium text-gray-700 dark:text-gray-300">Aktif</label>
                     </div>
                 </div>
 

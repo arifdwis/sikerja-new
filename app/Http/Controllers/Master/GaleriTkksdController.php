@@ -65,8 +65,8 @@ class GaleriTkksdController extends Controller
             'kategori_kegiatan' => 'nullable|string|max:100',
             'lokasi' => 'nullable|string|max:255',
             'order' => 'nullable|integer',
-            'is_active' => 'nullable|boolean',
-            'foto' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'is_active' => 'nullable',
+            'foto' => 'required|image|mimes:jpeg,png,jpg,webp,svg,gif|max:10240',
         ]);
 
         $fotoPath = null;
