@@ -20,7 +20,7 @@ class GaleriTkksdController extends Controller
     {
         $this->title = 'Galeri Kegiatan TKKSD';
         $this->view = 'Backend/Master/Galeri';
-        $this->prefix = 'master.galeri';
+        $this->prefix = 'master.galeri-tkksd';
 
         $this->share = [
             'title' => $this->title,
@@ -42,13 +42,15 @@ class GaleriTkksdController extends Controller
             });
         }
 
-        $galeris = $query->orderBy('tanggal_kegiatan', 'desc')
+        $perPage = $request->input('per_page', 10);
+        $datas = $query->orderBy('tanggal_kegiatan', 'desc')
             ->orderBy('order', 'asc')
-            ->paginate(12)
+            ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render("$this->view/Index", [
-            'galeris' => $galeris,
+            'datas' => $datas,
+            'galeris' => $datas,
             'share' => $this->share,
             'filters' => $request->only(['search']),
         ]);

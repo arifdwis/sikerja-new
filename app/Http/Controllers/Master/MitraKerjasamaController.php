@@ -43,14 +43,16 @@ class MitraKerjasamaController extends Controller
             $query->where('kategori_mitra_id', $request->kategori_id);
         }
 
+        $perPage = $request->input('per_page', 10);
         $mitras = $query->orderBy('kategori_mitra_id')
             ->orderBy('order')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
 
         $kategoris = KategoriMitra::withCount('mitras')->orderBy('order')->get();
 
         return Inertia::render("$this->view/Index", [
+            'datas' => $mitras,
             'mitras' => $mitras,
             'kategoris' => $kategoris,
             'share' => $this->share,
