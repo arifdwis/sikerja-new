@@ -160,13 +160,13 @@ class PersetujuanController extends Controller implements HasMiddleware
             'type'          => 'jadwal_rejected',
             'title'         => 'Jadwal Penandatanganan Belum Disetujui',
             'message'       => $payload['system']['message'],
-            'data'          => json_encode(['uuid' => $permohonan->uuid]),
+            'data'          => ['uuid' => $permohonan->uuid],
             'is_read'       => false,
         ]);
 
         try {
             $wa = app(WhatsappService::class);
-            $targetRecipient = $user ?: ($pemohonProfile ?: $phone);
+            $targetRecipient = $user ?: ($pemohonProfile ?: ($permohonan->telepon ?? null));
             if ($targetRecipient) {
                 $wa->sendMessage($targetRecipient, $payload['wa']);
             }
@@ -194,13 +194,13 @@ class PersetujuanController extends Controller implements HasMiddleware
             'type'          => 'jadwal_approved',
             'title'         => $payload['system']['title'],
             'message'       => $payload['system']['message'],
-            'data'          => json_encode(['uuid' => $permohonan->uuid]),
+            'data'          => ['uuid' => $permohonan->uuid],
             'is_read'       => false,
         ]);
 
         try {
             $wa = app(WhatsappService::class);
-            $targetRecipient = $user ?: ($pemohonProfile ?: $phone);
+            $targetRecipient = $user ?: ($pemohonProfile ?: ($permohonan->telepon ?? null));
             if ($targetRecipient) {
                 $wa->sendMessage($targetRecipient, $payload['wa']);
             }

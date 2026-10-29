@@ -176,7 +176,7 @@ class PksController extends Controller
             'category' => 'permohonan',
             'title'    => $payload['system']['title'],
             'message'  => $payload['system']['message'],
-            'data'     => json_encode(['uuid' => $permohonan->uuid]),
+            'data'     => ['uuid' => $permohonan->uuid],
             'is_read'  => false,
         ]);
 
@@ -204,7 +204,7 @@ class PksController extends Controller
             'category' => 'permohonan',
             'title'    => $payload['system']['title'],
             'message'  => $payload['system']['message'],
-            'data'     => json_encode(['uuid' => $permohonan->uuid]),
+            'data'     => ['uuid' => $permohonan->uuid],
             'is_read'  => false,
         ]);
 

@@ -87,7 +87,8 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
             $fileRecord = PermohonanFile::create([
                 'id_permohonan' => $permohonan->id,
                 'label' => $request->file_label ?? $file->getClientOriginalName(),
-                'file' => $path,
+                'file' => 'storage/' . $path,
+                'file_path' => $path,
                 'deskripsi' => 'Diunggah melalui diskusi pembahasan',
                 'status' => PermohonanFile::STATUS_DIPROSES
             ]);
@@ -388,9 +389,9 @@ class PermohonanPembahasanController extends Controller implements HasMiddleware
         // Update the file record
         $oldFilePath = $file->file_path;
         $file->update([
+            'file' => 'storage/' . $path,
             'file_path' => $path,
             'file_name' => $uploadedFile->getClientOriginalName(),
-            'file_url' => asset('storage/' . $path),
             'status' => 0, // Reset to pending review
             'komentar' => null, // Clear previous rejection comment
         ]);

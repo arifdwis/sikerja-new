@@ -149,15 +149,15 @@ const canManageFiles = (item) => {
                 </div>
 
                 <div class="w-full grid grid-cols-2 gap-2 mt-2">
-                    <!-- Edit Button (untuk Pemohon, status 0=Menunggu Validasi atau 9=Ditolak/Revisi) -->
+                    <!-- Edit Button (untuk Pemohon, status -1=Draft, 0=Menunggu Validasi, 9=Ditolak, 11=Revisi) -->
                      <button 
-                        v-if="!isAdmin && (item.status == 0 || item.status == 9)"
+                        v-if="!isAdmin && (item.status == -1 || item.status == 0 || item.status == 9 || item.status == 11)"
                         @click.stop="$emit('edit', item)" 
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-white shadow-sm col-span-2"
-                        :class="item.status == 9 ? 'text-red-600 hover:bg-red-50' : 'text-yellow-600 hover:bg-yellow-50'"
+                        :class="(item.status == 9 || item.status == 11) ? 'text-red-600 hover:bg-red-50' : 'text-yellow-600 hover:bg-yellow-50'"
                     >
-                        <Icon :icon="item.status == 9 ? 'solar:refresh-bold' : 'solar:pen-bold'" class="w-3.5 h-3.5" />
-                        <span>{{ item.status == 9 ? 'Revisi & Ajukan Ulang' : 'Edit Pengajuan' }}</span>
+                        <Icon :icon="(item.status == 9 || item.status == 11) ? 'solar:refresh-bold' : 'solar:pen-bold'" class="w-3.5 h-3.5" />
+                        <span>{{ (item.status == 9 || item.status == 11) ? 'Revisi & Ajukan Ulang' : (item.status == -1 ? 'Lanjutkan Draft' : 'Edit Pengajuan') }}</span>
                     </button>
 
                     <button 

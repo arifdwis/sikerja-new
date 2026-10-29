@@ -133,6 +133,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has any of the specified roles (alias for hasRole array).
+     */
+    public function hasAnyRole($role): bool
+    {
+        return $this->hasRole($role);
+    }
+
+    /**
      * Check if user is admin
      */
     public function isAdmin(): bool

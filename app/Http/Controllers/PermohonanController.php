@@ -335,7 +335,7 @@ class PermohonanController extends Controller implements HasMiddleware
             'alamat' => 'nullable|string',
             'email' => 'nullable|email|max:255',
             'telepon' => 'nullable|string|max:30',
-            'website' => 'nullable|string|max:255',
+            'website' => 'nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
             'pic1_nama' => 'nullable|string|max:255',
             'pic1_jabatan' => 'nullable|string|max:255',
             'pic1_phone' => 'nullable|string|max:50',
@@ -377,8 +377,10 @@ class PermohonanController extends Controller implements HasMiddleware
 
         $isDraft = (bool) ($validated['is_draft'] ?? false);
         $validated['is_draft'] = $isDraft;
-        $validated['tipe_dokumen'] = 'KB';
-        $validated['kode'] = 'KB-' . strtoupper(Str::random(8));
+        $tipeDokumen = $validated['tipe_dokumen'] ?? 'KB';
+        $prefix = $tipeDokumen === 'PKS' ? 'PKS-' : 'KB-';
+        $validated['tipe_dokumen'] = $tipeDokumen;
+        $validated['kode'] = $prefix . strtoupper(Str::random(8));
         $validated['nomor_permohonan'] = 'REQ/' . date('Y') . '/' . str_pad(Permohonan::whereYear('created_at', date('Y'))->count() + 1, 4, '0', STR_PAD_LEFT);
         $validated['id_pemohon_0'] = Auth::id();
         $validated['status'] = $isDraft ? Permohonan::STATUS_DRAFT : Permohonan::STATUS_PERMOHONAN;
@@ -389,12 +391,6 @@ class PermohonanController extends Controller implements HasMiddleware
         if (!empty($opdIds)) {
             $permohonan->opds()->sync($opdIds);
         }
-
-        PermohonanHistori::create([
-            'id_permohonan' => $permohonan->id,
-            'id_operator' => Auth::id(),
-            'deskripsi' => $isDraft ? 'Draft permohonan kerjasama disimpan.' : 'Permohonan kerjasama resmi diajukan.',
-        ]);
 
         $successMsg = $isDraft ? 'Draft permohonan berhasil disimpan.' : 'Permohonan berhasil dibuat dan diajukan.';
 
@@ -467,8 +463,13 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        // Izinkan edit jika status: Permohonan Baru (0) atau Ditolak (9 - revisi)
-        $editableStatuses = [Permohonan::STATUS_PERMOHONAN, Permohonan::STATUS_DITOLAK];
+        // Izinkan edit jika status: Draft (-1), Permohonan Baru (0), Revisi (11), atau Ditolak (9)
+        $editableStatuses = [
+            Permohonan::STATUS_DRAFT,
+            Permohonan::STATUS_PERMOHONAN,
+            Permohonan::STATUS_REVISI,
+            Permohonan::STATUS_DITOLAK,
+        ];
         if (!in_array($permohonan->status, $editableStatuses)) {
             return redirect()->route("$this->prefix.show", $permohonan->uuid)
                 ->with('error', 'Permohonan tidak dapat diedit karena sudah diproses.');
@@ -532,7 +533,7 @@ class PermohonanController extends Controller implements HasMiddleware
             'alamat' => 'nullable|string',
             'email' => 'nullable|email|max:255',
             'telepon' => 'nullable|string|max:30',
-            'website' => 'nullable|url|max:255',
+            'website' => 'nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
             'pic1_nama' => 'nullable|string|max:255',
             'pic1_jabatan' => 'nullable|string|max:255',
             'pic1_phone' => 'nullable|string|max:50',

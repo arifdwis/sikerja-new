@@ -37,8 +37,14 @@ class PermohonanObserver
         PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
             'id_operator'   => auth()->id() ?? $permohonan->id_pemohon_0,
-            'deskripsi'     => 'Permohonan kerja sama dibuat.',
+            'deskripsi'     => ($permohonan->is_draft || $permohonan->status == Permohonan::STATUS_DRAFT)
+                ? 'Draft permohonan kerjasama disimpan.'
+                : 'Permohonan kerjasama resmi diajukan.',
         ]);
+
+        if ($permohonan->is_draft || $permohonan->status == Permohonan::STATUS_DRAFT) {
+            return;
+        }
 
         // 2. Notifikasi sistem ke admin / TKKSD (admin = whitelist via scope)
         $admins = User::adminNotificationRecipients()->get();
@@ -51,7 +57,7 @@ class PermohonanObserver
                 'category' => 'permohonan',
                 'title'    => 'Permohonan Baru Masuk',
                 'message'  => "Permohonan baru dari {$permohonan->nama_instansi} menunggu validasi awal.",
-                'data'     => json_encode(['uuid' => $permohonan->uuid]),
+                'data'     => ['uuid' => $permohonan->uuid],
                 'is_read'  => false,
             ]);
         }
@@ -132,7 +138,7 @@ class PermohonanObserver
             'category' => 'permohonan',
             'title'    => $payload['system']['title'],
             'message'  => $payload['system']['message'],
-            'data'     => json_encode(['uuid' => $permohonan->uuid]),
+            'data'     => ['uuid' => $permohonan->uuid],
             'is_read'  => false,
         ]);
 
@@ -181,7 +187,7 @@ class PermohonanObserver
                 'category' => 'permohonan',
                 'title'    => $title,
                 'message'  => $message,
-                'data'     => json_encode(['uuid' => $permohonan->uuid]),
+                'data'     => ['uuid' => $permohonan->uuid],
                 'is_read'  => false,
             ]);
 
@@ -254,7 +260,7 @@ class PermohonanObserver
                 'type'          => 'jangka_waktu_change',
                 'title'         => 'Perubahan Jangka Waktu Kerja Sama',
                 'message'       => $payload['system']['message'],
-                'data'          => json_encode(['uuid' => $permohonan->uuid, 'changes' => $changedFields]),
+                'data'          => ['uuid' => $permohonan->uuid, 'changes' => $changedFields],
                 'is_read'       => false,
             ]);
 

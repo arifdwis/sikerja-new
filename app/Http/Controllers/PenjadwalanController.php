@@ -219,7 +219,7 @@ class PenjadwalanController extends Controller implements HasMiddleware
     public function destroy(string $uuid)
     {
         $user = Auth::user();
-        abort_unless($user && ($user->hasAnyRole(['administrator', 'superadmin', 'tkksd'])), 403, 'Anda tidak memiliki hak akses untuk menghapus jadwal ini.');
+        abort_unless($user && ($user->hasRole(['administrator', 'superadmin', 'tkksd'])), 403, 'Anda tidak memiliki hak akses untuk menghapus jadwal ini.');
 
         $penjadwalan = Penjadwalan::where('uuid', $uuid)->firstOrFail();
         $penjadwalan->delete();

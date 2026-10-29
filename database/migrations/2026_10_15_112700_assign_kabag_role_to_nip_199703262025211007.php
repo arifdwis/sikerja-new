@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -13,11 +14,15 @@ return new class extends Migration
         $nip = '199703262025211007';
 
         // 1. Cari user berdasarkan email / uid / number_id
-        $user = DB::table('users')
+        $userQuery = DB::table('users')
             ->where('email', $nip)
-            ->orWhere('uid', $nip)
-            ->orWhere('number_id', $nip)
-            ->first();
+            ->orWhere('uid', $nip);
+
+        if (Schema::hasColumn('users', 'number_id')) {
+            $userQuery->orWhere('number_id', $nip);
+        }
+
+        $user = $userQuery->first();
 
         if ($user) {
             // Ambil role kabag_kerjasama dan administrator
@@ -60,11 +65,15 @@ return new class extends Migration
     public function down(): void
     {
         $nip = '199703262025211007';
-        $user = DB::table('users')
+        $userQuery = DB::table('users')
             ->where('email', $nip)
-            ->orWhere('uid', $nip)
-            ->orWhere('number_id', $nip)
-            ->first();
+            ->orWhere('uid', $nip);
+
+        if (Schema::hasColumn('users', 'number_id')) {
+            $userQuery->orWhere('number_id', $nip);
+        }
+
+        $user = $userQuery->first();
 
         if ($user) {
             $kabagRole = DB::table('roles')->where('slug', 'kabag_kerjasama')->first();

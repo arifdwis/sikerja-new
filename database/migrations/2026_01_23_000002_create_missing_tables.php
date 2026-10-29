@@ -3,8 +3,9 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
+use App\Models\Permission;
+use App\Models\Role;
 
 return new class extends Migration {
     /**
@@ -65,7 +66,14 @@ return new class extends Migration {
         ];
 
         foreach ($permissions as $perm) {
-            Permission::firstOrCreate(['name' => $perm]);
+            DB::table('permissions')->updateOrInsert(
+                ['name' => $perm],
+                [
+                    'slug' => $perm,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
 
         // 5. Assign Permissions to Roles (administrator, superadmin)

@@ -41,13 +41,13 @@ const showTtd = computed(() => status.value >= 4 || (props.data?.ttdFiles?.lengt
 // Dokumen pemohon (Surat, KAK, MOU) di-upload sebelum pembahasan, tapi terlihat di semua fase.
 const showDocuments = computed(() => true);
 
-const isInitialStage = computed(() => [0, 1, 9].includes(status.value));
+const isInitialStage = computed(() => [-1, 0, 1, 9, 10, 11].includes(status.value));
 const isScheduleStage = computed(() => status.value === 2);
 const isSigningStage = computed(() => [3, 4, 5].includes(status.value));
 const isExecutionStage = computed(() => [6, 7, 8].includes(status.value));
 
 const stages = [
-    { order: 0, ids: [0], label: 'Validasi', icon: 'solar:clipboard-check-bold' },
+    { order: 0, ids: [-1, 0, 10, 11], label: 'Validasi', icon: 'solar:clipboard-check-bold' },
     { order: 1, ids: [1, 9], label: 'Pembahasan', icon: 'solar:documents-bold' },
     { order: 2, ids: [2], label: 'Jadwal', icon: 'solar:calendar-date-bold' },
     { order: 3, ids: [3, 4, 5], label: 'Tanda Tangan', icon: 'solar:pen-new-square-bold' },
@@ -58,11 +58,29 @@ const stages = [
 
 const stageContext = computed(() => {
     const contexts = {
+        '-1': {
+            title: 'Draft Permohonan',
+            detail: 'Permohonan masih dalam bentuk draft dan belum diajukan secara resmi.',
+            tone: 'border-slate-200 bg-slate-50 text-slate-800',
+            icon: 'solar:document-text-bold',
+        },
         0: {
             title: 'Tahap Validasi Permohonan',
             detail: 'Admin memeriksa data permohonan sebelum dokumen masuk pembahasan.',
             tone: 'border-slate-200 bg-white text-slate-900',
             icon: 'solar:clipboard-check-bold',
+        },
+        10: {
+            title: 'Tahap Verifikasi Administrasi / Kabag',
+            detail: 'Dokumen administrasi telah diverifikasi dan sedang menunggu validasi Kepala Bagian.',
+            tone: 'border-indigo-200 bg-indigo-50 text-indigo-900',
+            icon: 'solar:user-check-bold',
+        },
+        11: {
+            title: 'Permohonan Perlu Perbaikan / Revisi',
+            detail: 'Admin/Kabag meminta perbaikan dokumen permohonan. Silakan periksa catatan dan ajukan ulang.',
+            tone: 'border-amber-200 bg-amber-50 text-amber-900',
+            icon: 'solar:refresh-bold',
         },
         1: {
             title: 'Tahap Pembahasan Dokumen',
@@ -125,7 +143,10 @@ const stageContext = computed(() => {
 
 const stageState = (stage) => {
     const currentOrder = {
+        '-1': 0,
         0: 0,
+        10: 0,
+        11: 0,
         1: 1,
         2: 2,
         3: 3,

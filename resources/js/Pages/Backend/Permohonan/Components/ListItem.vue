@@ -43,12 +43,13 @@ const getStatusColor = (status) => {
         </div>
         <div class="flex items-center gap-2">
             <button 
-                 v-if="item.status == 0"
+                 v-if="item.status == -1 || item.status == 0 || item.status == 9 || item.status == 11"
                  @click="$emit('edit', item)"
-                class="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 flex items-center gap-1"
+                class="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1"
+                :class="(item.status == 9 || item.status == 11) ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-yellow-500 text-white hover:bg-yellow-600'"
             >
-                <Icon icon="solar:pen-bold" class="w-4 h-4" />
-                Edit
+                <Icon :icon="(item.status == 9 || item.status == 11) ? 'solar:refresh-bold' : 'solar:pen-bold'" class="w-4 h-4" />
+                {{ (item.status == 9 || item.status == 11) ? 'Revisi' : (item.status == -1 ? 'Draft' : 'Edit') }}
             </button>
             <button @click="$emit('detail', item)" class="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                 Detail

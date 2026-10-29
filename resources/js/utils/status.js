@@ -16,6 +16,7 @@
  */
 
 export const STATUS_LABEL = {
+    '-1': 'Draft',
     0: 'Menunggu Validasi',
     1: 'Dalam Pembahasan',
     2: 'Menunggu Jadwal Penandatanganan',
@@ -26,6 +27,8 @@ export const STATUS_LABEL = {
     7: 'Selesai',
     8: 'Dicabut',
     9: 'Ditolak',
+    10: 'Verifikasi Admin/Kabag',
+    11: 'Perlu Revisi',
 };
 
 /**
@@ -34,6 +37,7 @@ export const STATUS_LABEL = {
  * `text` = warna teks saja.
  */
 export const STATUS_THEME = {
+    '-1': { solid: 'bg-slate-500 text-white',     subtle: 'bg-slate-50 text-slate-700 ring-slate-200',     text: 'text-slate-700',     accent: 'slate'   },
     0: { solid: 'bg-amber-500 text-white',     subtle: 'bg-amber-50 text-amber-700 ring-amber-200',     text: 'text-amber-700',     accent: 'amber'   },
     1: { solid: 'bg-sky-500 text-white',       subtle: 'bg-sky-50 text-sky-700 ring-sky-200',           text: 'text-sky-700',       accent: 'sky'     },
     2: { solid: 'bg-blue-600 text-white',      subtle: 'bg-blue-50 text-blue-700 ring-blue-200',        text: 'text-blue-700',      accent: 'blue'    },
@@ -44,12 +48,15 @@ export const STATUS_THEME = {
     7: { solid: 'bg-emerald-600 text-white',   subtle: 'bg-emerald-50 text-emerald-700 ring-emerald-200', text: 'text-emerald-700', accent: 'emerald' },
     8: { solid: 'bg-rose-700 text-white',      subtle: 'bg-rose-50 text-rose-700 ring-rose-200',        text: 'text-rose-700',      accent: 'rose'    },
     9: { solid: 'bg-red-600 text-white',       subtle: 'bg-red-50 text-red-700 ring-red-200',           text: 'text-red-700',       accent: 'red'     },
+    10: { solid: 'bg-indigo-600 text-white',   subtle: 'bg-indigo-50 text-indigo-700 ring-indigo-200',   text: 'text-indigo-700',   accent: 'indigo'  },
+    11: { solid: 'bg-amber-600 text-white',    subtle: 'bg-amber-50 text-amber-700 ring-amber-200',     text: 'text-amber-700',     accent: 'amber'   },
 };
 
 /**
  * PrimeVue Tag severity untuk konsistensi dengan Tag-based UI.
  */
 export const STATUS_SEVERITY = {
+    '-1': 'secondary',
     0: 'warning',
     1: 'info',
     2: 'info',
@@ -60,6 +67,8 @@ export const STATUS_SEVERITY = {
     7: 'success',
     8: 'danger',
     9: 'danger',
+    10: 'info',
+    11: 'warning',
 };
 
 export function getStatusLabel(status) {

@@ -150,6 +150,9 @@ class MonevController extends Controller implements HasMiddleware
                         'pmh_kendala_lapangan' => $m->pmh_kendala_lapangan,
                         'pmh_keberlanjutan' => $m->pmh_keberlanjutan,
                         'pmh_file_laporan' => $m->pmh_file_laporan,
+                        'progress_persen' => $m->progress_persen,
+                        'file_berita_acara' => $m->file_berita_acara,
+                        'file_dokumentasi' => $m->file_dokumentasi,
                         'tkl_kepatuhan_pks' => $m->tkl_kepatuhan_pks,
                         'tkl_koordinasi_mitra' => $m->tkl_koordinasi_mitra,
                         'tkl_kesesuaian_anggaran' => $m->tkl_kesesuaian_anggaran,
@@ -217,6 +220,9 @@ class MonevController extends Controller implements HasMiddleware
                         'pmh_kendala_lapangan' => $m->pmh_kendala_lapangan,
                         'pmh_keberlanjutan' => $m->pmh_keberlanjutan,
                         'pmh_file_laporan' => $m->pmh_file_laporan,
+                        'progress_persen' => $m->progress_persen,
+                        'file_berita_acara' => $m->file_berita_acara,
+                        'file_dokumentasi' => $m->file_dokumentasi,
                         'tkl_kepatuhan_pks' => $m->tkl_kepatuhan_pks,
                         'tkl_koordinasi_mitra' => $m->tkl_koordinasi_mitra,
                         'tkl_kesesuaian_anggaran' => $m->tkl_kesesuaian_anggaran,
@@ -789,7 +795,7 @@ class MonevController extends Controller implements HasMiddleware
                 'type'          => 'monev_submitted',
                 'title'         => "Monev Diterima dari {$submitterRoleLabel}",
                 'message'       => "{$submitterRoleLabel} ({$submitterName}) mengirim Monev {$monev->kode_monev} untuk kerja sama \"{$kerjasamaObj->label}\". Mohon ditinjau pada dashboard.",
-                'data'          => json_encode(['monev_uuid' => $monev->uuid, 'is_manual' => (bool)$monev->id_kerjasama_manual]),
+                'data'          => ['monev_uuid' => $monev->uuid, 'is_manual' => (bool)$monev->id_kerjasama_manual],
                 'is_read'       => false,
             ]);
 
@@ -845,7 +851,7 @@ class MonevController extends Controller implements HasMiddleware
                     'type' => 'monev_tkksd_approved',
                     'title' => 'Monev Disetujui TKKSD Lokus',
                     'message' => "Hasil evaluasi pemohon untuk monev {$monev->kode_monev} telah disetujui TKKSD Lokus. Silakan buat monev final.",
-                    'data' => json_encode(['monev_uuid' => $monev->uuid]),
+                    'data' => ['monev_uuid' => $monev->uuid],
                     'is_read' => false,
                 ]);
             }
@@ -1033,7 +1039,7 @@ class MonevController extends Controller implements HasMiddleware
             'is_read'       => false,
         ]);
 
-        $targetRecipient = $pemohonUser ?: ($permohonan?->pemohon ?: $targetPhone);
+        $targetRecipient = $pemohonUser ?: ($permohonan?->pemohon ?: ($permohonan?->telepon ?? null));
         if (!$targetRecipient) {
             return redirect()->back()->with('warning', 'Notifikasi aplikasi dibuat, namun email pemohon tidak ditemukan.');
         }

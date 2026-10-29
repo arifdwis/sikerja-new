@@ -15,8 +15,9 @@ return new class extends Migration {
             $table->uuid('uuid')->unique();
 
             // Relasi
-            $table->foreignId('id_permohonan')->constrained('permohonans')->onDelete('cascade');
-            $table->foreignId('id_operator')->constrained('operators')->onDelete('cascade');
+            $table->unsignedInteger('id_permohonan')->nullable();
+            $table->foreign('id_permohonan')->references('id')->on('permohonan')->onDelete('cascade');
+            $table->unsignedBigInteger('id_operator')->nullable();
 
             // Identitas
             $table->string('kode_monev')->unique();
