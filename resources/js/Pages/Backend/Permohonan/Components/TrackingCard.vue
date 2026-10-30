@@ -26,14 +26,29 @@ const currentStatusId = computed(() => {
     return props.permohonan?.status !== undefined ? parseInt(props.permohonan.status) : 0;
 });
 
+const statusToStep = {
+    '-1': 0,
+    0: 0,
+    10: 0,
+    1: 1,
+    2: 2,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 6,
+    7: 7,
+};
+
 const getStepState = (stepId) => {
     const current = currentStatusId.value;
     
-    // Dicabut atau ditolak tidak berada di jalur progres normal
-    if ([8, 9].includes(current)) return 'rejected';
+    // Dicabut, ditolak, atau revisi tidak berada di jalur progres normal
+    if ([8, 9, 11].includes(current)) return 'rejected';
     
-    if (current > stepId) return 'completed';
-    if (current === stepId) return 'active';
+    const currentStep = statusToStep[current] ?? 0;
+
+    if (currentStep > stepId) return 'completed';
+    if (currentStep === stepId) return 'active';
     
     return 'pending';
 };
@@ -110,10 +125,10 @@ const histories = computed(() => {
         </div>
 
         <div
-            v-if="currentStatusId === 9"
+            v-if="currentStatusId === 9 || currentStatusId === 11"
             class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
         >
-            Permohonan berstatus ditolak/revisi. Silakan perbaiki data lalu ajukan ulang.
+            {{ currentStatusId === 11 ? 'Permohonan berstatus perlu perbaikan / revisi. Silakan periksa catatan admin lalu perbaiki pengajuan.' : 'Permohonan berstatus ditolak. Silakan perbaiki data lalu ajukan ulang.' }}
         </div>
         <div
             v-else-if="currentStatusId === 8"

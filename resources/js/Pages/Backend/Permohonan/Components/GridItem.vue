@@ -35,6 +35,7 @@ const diffForHumans = (dateString) => {
 
 const getStatusColor = (status) => {
     const colors = {
+        '-1': { bg: 'bg-slate-300',   text: 'text-slate-950',    border: 'border-slate-500' },
         0: { bg: 'bg-amber-300',    text: 'text-amber-950',    border: 'border-amber-500' },
         1: { bg: 'bg-sky-300',      text: 'text-sky-950',      border: 'border-sky-500' },
         2: { bg: 'bg-blue-400',     text: 'text-blue-950',     border: 'border-blue-600' },
@@ -45,6 +46,8 @@ const getStatusColor = (status) => {
         7: { bg: 'bg-emerald-400',  text: 'text-emerald-950',  border: 'border-emerald-600' },
         8: { bg: 'bg-rose-300',     text: 'text-rose-950',     border: 'border-rose-500' },
         9: { bg: 'bg-red-300',      text: 'text-red-950',      border: 'border-red-500' },
+        10: { bg: 'bg-indigo-300',  text: 'text-indigo-950',   border: 'border-indigo-500' },
+        11: { bg: 'bg-amber-400',   text: 'text-amber-950',    border: 'border-amber-500' },
     };
     return colors[status] || { bg: 'bg-gray-300', text: 'text-gray-950', border: 'border-gray-500' };
 };

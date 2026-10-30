@@ -140,7 +140,7 @@ const openDetailModal = async (item) => {
 };
 
 const openUploadDialog = async (item) => {
-    if (item.status == 0) {
+    if (item.status == -1 || item.status == 0 || item.status == 10) {
         toast.error('Mohon tunggu validasi admin sebelum mengupload berkas.');
         return;
     }

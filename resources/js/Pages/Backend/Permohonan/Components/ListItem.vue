@@ -10,6 +10,7 @@ const emit = defineEmits(['detail', 'tracking']);
 
 const getStatusColor = (status) => {
     const colors = {
+        '-1': { bg: 'bg-slate-400', text: 'text-slate-950', border: 'border-slate-400' },
         0: { bg: 'bg-amber-400', text: 'text-amber-950', border: 'border-amber-400' },
         1: { bg: 'bg-sky-400', text: 'text-sky-950', border: 'border-sky-400' },
         2: { bg: 'bg-blue-500', text: 'text-blue-950', border: 'border-blue-500' },
@@ -20,6 +21,8 @@ const getStatusColor = (status) => {
         7: { bg: 'bg-emerald-500', text: 'text-emerald-950', border: 'border-emerald-500' },
         8: { bg: 'bg-rose-500', text: 'text-rose-950', border: 'border-rose-500' },
         9: { bg: 'bg-red-500', text: 'text-red-950', border: 'border-red-500' },
+        10: { bg: 'bg-indigo-400', text: 'text-indigo-950', border: 'border-indigo-400' },
+        11: { bg: 'bg-amber-500', text: 'text-amber-950', border: 'border-amber-500' },
     };
     return colors[status] || { bg: 'bg-gray-400', text: 'text-gray-950', border: 'border-gray-400' };
 };
