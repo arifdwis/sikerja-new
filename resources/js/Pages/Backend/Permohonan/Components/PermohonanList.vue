@@ -66,9 +66,12 @@ defineEmits(['create', 'detail', 'edit', 'schedule', 'tracking', 'upload']);
                     v-for="item in items" 
                     :key="item.id" 
                     :item="item"
+                    :isAdmin="isAdmin"
                     @detail="$emit('detail', $event)"
                     @edit="$emit('edit', $event)"
+                    @schedule="$emit('schedule', $event)"
                     @tracking="$emit('tracking', $event)"
+                    @upload="$emit('upload', $event)"
                 />
             </div>
         </div>

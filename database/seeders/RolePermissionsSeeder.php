@@ -11,13 +11,11 @@ class RolePermissionsSeeder extends Seeder
 {
     public function run()
     {
-        // Clear existing role_permissions
         DB::table('role_permissions')->truncate();
 
-        // Define permissions per role
         $rolePermissions = [
             // Superadmin - All permissions
-            'superadmin' => ['*'], // All permission
+            'superadmin' => ['*'],
 
             // Administrator - Full access to settings and permohonan management
             'administrator' => [
@@ -82,41 +80,65 @@ class RolePermissionsSeeder extends Seeder
                 'monev.review',
             ],
 
-            // TKKSD - Validasi & Pembahasan access
-            'tkksd' => [
+            // Kepala Bagian Kerja Sama (Kabag)
+            'kabag_kerjasama' => [
                 'dashboard',
                 'nue.profile',
-                // Permohonan - Limited access
                 'permohonan.index',
                 'permohonan.show',
                 'permohonan.status',
                 'permohonan.menu.validasi',
                 'permohonan.menu.pembahasan',
-                'permohonan.menu.persetujuan', // Allow TKKSD to see persetujuan/finalize
-                // Penjadwalan
+                'permohonan.menu.persetujuan',
                 'penjadwalan.index',
                 'penjadwalan.create',
                 'penjadwalan.edit',
-                // Riwayat
+                'riwayat.index',
+                'monev.menu',
+                'monev.menu.admin',
+                'monev.view',
+                'monev.review',
+            ],
+
+            // TKKSD - Validasi & Pembahasan access
+            'tkksd' => [
+                'dashboard',
+                'nue.profile',
+                'permohonan.index',
+                'permohonan.show',
+                'permohonan.status',
+                'permohonan.menu.validasi',
+                'permohonan.menu.pembahasan',
+                'permohonan.menu.persetujuan',
+                'penjadwalan.index',
+                'penjadwalan.create',
+                'penjadwalan.edit',
                 'riwayat.index',
             ],
 
-            // Pemohon - Create & view own permohonan
+            // TKKSD Lokus OPD - Monev & Kerjasama OPD
+            'tkksd_lokus' => [
+                'dashboard',
+                'nue.profile',
+                'permohonan.show',
+                'monev.menu',
+                'monev.create',
+                'monev.view',
+            ],
+
+            // Pemohon - Create & view own permohonan + submit monev
             'pemohon' => [
                 'dashboard',
                 'nue.profile',
-                // Permohonan - Create & view
                 'permohonan.index',
                 'permohonan.create',
                 'permohonan.show',
-                'permohonan.edit', // Edit own only (controller handles ownership)
-                // Profile & Corporate
+                'permohonan.edit',
                 'profile.edit',
                 'profile.corporate',
-                // Riwayat
                 'riwayat.index',
-                // Monev - only view
                 'monev.menu',
+                'monev.create',
                 'monev.view',
             ],
         ];
@@ -129,7 +151,6 @@ class RolePermissionsSeeder extends Seeder
             }
 
             foreach ($permissionNames as $permName) {
-                // Handle wildcard permission
                 if ($permName === '*') {
                     $permission = Permission::where('slug', '*')->first();
                 } else {
@@ -137,7 +158,6 @@ class RolePermissionsSeeder extends Seeder
                 }
 
                 if ($permission) {
-                    // Check if already exists
                     $exists = DB::table('role_permissions')
                         ->where('role_id', $role->id)
                         ->where('permission_id', $permission->id)

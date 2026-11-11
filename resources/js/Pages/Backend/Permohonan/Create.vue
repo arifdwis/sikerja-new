@@ -1,24 +1,33 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, watch, onMounted, computed } from 'vue';
 import { Icon } from '@iconify/vue';
+import MultiSelect from 'primevue/multiselect';
 import Breadcrumb from '@/Flowbite/Breadcrumb/Solid.vue';
 import { computeJangkaWaktu } from '@/utils/jangkaWaktu';
+import { useToast } from "vue-toastification";
+
+const toast = useToast();
 
 const props = defineProps({
     kategoris: Array,
     provinsis: Array,
-    opds: Array,         // Daftar OPD aktif
-    userOpd: Object,     // OPD user (null jika non-Pemkot)
-    pemohon: Object,    // Logged in pemohon profile
-    corporate: Object,  // Logged in corporate profile
-    pemohonanList: Array, // For PPKSD-2 auto-fill
-    kbInduk: Object,     // PKS Turunan dari KB
+    opds: Array,
+    userOpd: Object,
+    pemohon: Object,
+    corporate: Object,
+    pemohonanList: Array,
+    kbInduk: Object,
     share: Object,
 });
 
 const isPksTurunan = computed(() => !!props.kbInduk);
+
+const opdOptions = computed(() => (props.opds || []).map(o => ({
+    id: o.id,
+    label: o.singkatan ? `${o.nama} (${o.singkatan})` : o.nama,
+})));
 
 const form = useForm({
     tipe_dokumen: props.kbInduk ? 'PKS' : 'KB',
@@ -27,7 +36,7 @@ const form = useForm({
 
     id_kategori: props.kbInduk?.id_kategori || '',
     label: props.kbInduk ? `PKS Pelaksanaan: ${props.kbInduk.label}` : '',
-    nama_instansi: props.kbInduk?.nama_instansi || props.corporate?.nama_instansi || props.pemohon?.nama_instansi || '',
+    nama_instansi: props.kbInduk?.nama_instansi || props.corporate?.nama_instansi || props.corporate?.name || props.pemohon?.nama_instansi || '',
     
     // Data Pimpinan Tertinggi
     nama_pimpinan: props.kbInduk?.nama_pimpinan || '',
@@ -48,20 +57,18 @@ const form = useForm({
 
     id_provinsi: props.kbInduk?.id_provinsi || props.corporate?.kota_ref?.province_id || props.pemohon?.kota_ref?.province_id || '',
     id_kota: props.kbInduk?.id_kota || props.corporate?.kota_id || props.pemohon?.kota_id || '',
-    kode_pos: props.kbInduk?.kode_pos || '',
-    alamat: props.kbInduk?.alamat || props.corporate?.alamat_instansi || props.pemohon?.alamat_instansi || '',
-    email: props.kbInduk?.email || props.corporate?.email_instansi || props.pemohon?.email_instansi || '',
-    telepon: props.kbInduk?.telepon || props.corporate?.telepon_instansi || props.pemohon?.telepon_instansi || '',
+    kode_pos: props.kbInduk?.kode_pos || props.corporate?.postal_code || '',
+    alamat: props.kbInduk?.alamat || props.corporate?.alamat_instansi || props.corporate?.address || props.pemohon?.alamat_instansi || '',
+    email: props.kbInduk?.email || props.corporate?.email_instansi || props.corporate?.email || props.pemohon?.email_instansi || '',
+    telepon: props.kbInduk?.telepon || props.corporate?.telepon_instansi || props.corporate?.phone || props.pemohon?.telepon_instansi || '',
     website: props.kbInduk?.website || props.corporate?.website || props.pemohon?.website || '',
     
-    // Legacy fields (optional)
     id_pemohon_1: '', 
 
     latar_belakang: '',
     maksud_tujuan: '',
     lokasi_kerjasama: props.kbInduk?.lokasi_kerjasama || '',
     ruang_lingkup: '',
-    // OPD multiple - Req 12. Jika user SSO punya OPD, auto-isi
     opd_ids: props.kbInduk?.opds ? props.kbInduk.opds.map(o => o.id) : (props.userOpd ? [props.userOpd.id] : []),
     jangka_waktu: '',
     tanggal_mulai: '',
@@ -69,9 +76,15 @@ const form = useForm({
     manfaat: '',
     analisis_dampak: '',
     pembiayaan: '',
+
+    // Berkas kelengkapan awal
+    surat_permohonan: null,
+    proposal_kak: null,
+    draft_mou: null,
+    dokumen_legalitas: null,
+    dokumen_pendukung: null,
 });
 
-// Auto-hitung jangka waktu dari tanggal_mulai & tanggal_berakhir
 const jangkaWaktuAuto = computed(() =>
     computeJangkaWaktu(form.tanggal_mulai, form.tanggal_berakhir)
 );
@@ -85,7 +98,6 @@ watch([
 const kotas = ref([]);
 const loadingKotas = ref(false);
 
-// Load initial kotas if province is pre-filled
 onMounted(async () => {
     if (form.id_provinsi) {
         await loadKotas(form.id_provinsi);
@@ -103,13 +115,9 @@ const loadKotas = async (provinsiId) => {
     loadingKotas.value = false;
 };
 
-// Load kotas when provinsi changes
 watch(() => form.id_provinsi, async (provinsiId, oldProvinsiId) => {
     if (provinsiId && provinsiId !== oldProvinsiId) {
         await loadKotas(provinsiId);
-        // Reset kota only if it doesn't match the new list (simplified logic: just reset if user changes it)
-        // But on initial mount we want to keep the pre-filled value.
-        // The watch triggers on mount too? Vue 3 watch immediate is false by default.
         if (oldProvinsiId) { 
              form.id_kota = ''; 
         }
@@ -119,11 +127,27 @@ watch(() => form.id_provinsi, async (provinsiId, oldProvinsiId) => {
     }
 });
 
-import { useToast } from "vue-toastification";
+const docFields = [
+    { key: 'surat_permohonan', label: 'Surat Permohonan Kerjasama', format: 'PDF', accept: '.pdf,application/pdf', required: true },
+    { key: 'proposal_kak', label: 'Proposal / Kerangka Acuan Kerja (KAK)', format: 'PDF', accept: '.pdf,application/pdf', required: true },
+    { key: 'draft_mou', label: 'Draft Kesepakatan Bersama (KB) / PKS', format: 'DOC / DOCX', accept: '.doc,.docx', required: true },
+    { key: 'dokumen_legalitas', label: 'Dokumen Legalitas Instansi (Akta/SK/NPWP)', format: 'PDF / ZIP', accept: '.pdf,.zip', required: false },
+    { key: 'dokumen_pendukung', label: 'Dokumen Pendukung Lainnya', format: 'PDF / ZIP', accept: '.pdf,.zip', required: false },
+];
 
-const toast = useToast();
-
-// ... existing code ...
+const onFileChange = (event, doc) => {
+    const file = event.target?.files?.[0] || null;
+    if (!file) {
+        form[doc.key] = null;
+        return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+        toast.error(`Ukuran berkas ${file.name} melebihi batas 15 MB.`);
+        event.target.value = '';
+        return;
+    }
+    form[doc.key] = file;
+};
 
 const submit = (asDraft = false) => {
     form.is_draft = asDraft;
@@ -134,6 +158,7 @@ const submit = (asDraft = false) => {
     }
 
     form.post(route('permohonan.store'), {
+        forceFormData: true,
         onError: (errors) => {
              const firstError = Object.values(errors)[0];
              toast.error(firstError || "Mohon lengkapi semua field yang wajib diisi (bertanda *).");
@@ -175,7 +200,7 @@ const submit = (asDraft = false) => {
                 <!-- Header -->
                 <div v-else class="mb-4">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Buat Permohonan Baru</h2>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">Isi formulir untuk mengajukan permohonan kerjasama (Kesepakatan Bersama / MoU).</p>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">Isi formulir untuk mengajukan permohonan kerja sama (Kesepakatan Bersama / PKS).</p>
                 </div>
 
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 overflow-hidden">
@@ -245,7 +270,7 @@ const submit = (asDraft = false) => {
                             </div>
                         </div>
 
-                        <!-- Data Pimpinan & PIC 2 Orang (Proses Bisnis Perda 7/2020) -->
+                        <!-- Data Pimpinan & PIC 2 Orang -->
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b pb-2 flex items-center gap-2">
                                 <Icon icon="solar:user-id-bold" class="w-5 h-5 text-blue-600" />
@@ -333,7 +358,7 @@ const submit = (asDraft = false) => {
                             </div>
                         </div>
 
-                        <!-- Detail -->
+                        <!-- Detail Substansi -->
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 border-b pb-2">Detail Kerjasama</h3>
                             <div class="space-y-4">
@@ -357,32 +382,28 @@ const submit = (asDraft = false) => {
                                     <p v-if="form.errors.ruang_lingkup" class="text-red-500 text-sm mt-1">{{ form.errors.ruang_lingkup }}</p>
                                 </div>
 
-                                <!-- Field OPD Multiple (Req 12) -->
+                                <!-- Field OPD Multiple dengan PrimeVue MultiSelect -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         OPD Terkait <span class="text-red-500">*</span>
                                     </label>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                                        Pilih satu atau lebih OPD yang terlibat dalam kerjasama ini
+                                        Pilih satu atau lebih OPD Pemerintah Kota Samarinda yang terlibat
                                     </p>
-
-                                    <div class="space-y-2">
-                                        <select
-                                            multiple
-                                            v-model="form.opd_ids"
-                                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white min-h-[120px]"
-                                        >
-                                            <option v-for="opd in opds" :key="opd.id" :value="opd.id">
-                                                {{ opd.nama }}{{ opd.singkatan ? ` (${opd.singkatan})` : '' }}
-                                            </option>
-                                        </select>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                                            Tahan Ctrl (Windows) atau Cmd (Mac) untuk pilih lebih dari satu
-                                        </p>
-                                    </div>
-
+                                    <MultiSelect
+                                        v-model="form.opd_ids"
+                                        :options="opdOptions"
+                                        option-label="label"
+                                        option-value="id"
+                                        placeholder="Cari dan pilih OPD terkait..."
+                                        display="chip"
+                                        filter
+                                        :max-selected-labels="3"
+                                        class="w-full"
+                                    />
                                     <p v-if="form.errors.opd_ids" class="text-red-500 text-sm mt-1">{{ form.errors.opd_ids }}</p>
                                 </div>
+
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Mulai</label>
@@ -421,6 +442,42 @@ const submit = (asDraft = false) => {
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pembiayaan</label>
                                     <textarea v-model="form.pembiayaan" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lampiran Berkas Awal -->
+                        <div class="bg-blue-50/50 dark:bg-gray-700/30 rounded-xl p-6 border border-blue-200 dark:border-gray-700">
+                            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                                <Icon icon="solar:cloud-upload-bold-duotone" class="w-5 h-5 text-blue-600" />
+                                Unggah Dokumen Kelengkapan Awal
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                Lampirkan dokumen permohonan, KAK, draf KB/PKS, dan legalitas untuk diverifikasi Bagian Kerja Sama.
+                            </p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div
+                                    v-for="doc in docFields"
+                                    :key="doc.key"
+                                    class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-2"
+                                >
+                                    <div class="flex items-center justify-between gap-2">
+                                        <label class="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                            {{ doc.label }}
+                                            <span v-if="doc.required" class="text-blue-600 font-bold ml-1">(Utama)</span>
+                                        </label>
+                                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-gray-700 text-[10px] font-bold text-slate-600 dark:text-gray-200">
+                                            {{ doc.format }}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        :accept="doc.accept"
+                                        @change="(e) => onFileChange(e, doc)"
+                                        class="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
+                                    <p v-if="form.errors?.[doc.key]" class="text-red-500 text-xs">{{ form.errors[doc.key] }}</p>
                                 </div>
                             </div>
                         </div>

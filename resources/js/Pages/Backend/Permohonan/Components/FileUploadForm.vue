@@ -14,7 +14,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'success']);
 
-const alreadyUploaded = computed(() => (props.permohonan?.files?.length ?? 0) > 0);
+const isRevisiStage = computed(() => [9, 11].includes(Number(props.permohonan?.status)));
+const hasExistingFiles = computed(() => (props.permohonan?.files?.length ?? 0) > 0);
+const alreadyUploaded = computed(() => hasExistingFiles.value && !isRevisiStage.value);
 
 const form = useForm({
     surat_permohonan: null,
@@ -47,9 +49,9 @@ const handleFileSelect = (event, field) => {
             );
             return;
         }
-        // Validasi ukuran 10 MB
-        if (file.size > 10 * 1024 * 1024) {
-            toast.error(`Ukuran file maksimal 10 MB. File ${file.name} (${formatFileSize(file.size)}) terlalu besar.`);
+        // Validasi ukuran 15 MB
+        if (file.size > 15 * 1024 * 1024) {
+            toast.error(`Ukuran file maksimal 15 MB. File ${file.name} (${formatFileSize(file.size)}) terlalu besar.`);
             return;
         }
     }
@@ -79,6 +81,18 @@ const formatFileSize = (bytes) => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
+
+const hasAnySelectedFile = computed(() =>
+    Boolean(form.surat_permohonan || form.proposal_kak || form.draft_mou || form.dokumen_legalitas || form.dokumen_pendukung)
+);
+
+const canSubmit = computed(() => {
+    if (alreadyUploaded.value) return false;
+    if (hasExistingFiles.value && isRevisiStage.value) {
+        return hasAnySelectedFile.value;
+    }
+    return Boolean(form.surat_permohonan && form.proposal_kak && form.draft_mou);
+});
 
 const submit = () => {
     if (alreadyUploaded.value) {
@@ -161,6 +175,10 @@ const getFileRef = (key) => {
     if (key === 'dokumen_pendukung') return dokumenPendukungFile.value;
     return null;
 };
+
+const getExistingFile = (key) => {
+    return (props.permohonan?.files || []).find(f => f.kategori_dokumen === key);
+};
 </script>
 
 <template>
@@ -170,9 +188,11 @@ const getFileRef = (key) => {
             <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Icon icon="solar:cloud-upload-bold-duotone" class="w-8 h-8 text-blue-600" />
             </div>
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white">Upload Dokumen Kerjasama</h3>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                {{ hasExistingFiles && isRevisiStage ? 'Perbarui Berkas Permohonan' : 'Upload Dokumen Kerjasama' }}
+            </h3>
             <p class="text-sm text-gray-500 mt-2">
-                Silakan upload dokumen yang diperlukan untuk melanjutkan proses pembahasan kerjasama.
+                Silakan unggah dokumen kelengkapan administrasi untuk diverifikasi oleh Bagian Kerja Sama & TKKSD.
             </p>
         </div>
 
@@ -186,25 +206,13 @@ const getFileRef = (key) => {
             </div>
         </div>
 
-        <!-- Info Alert -->
-        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4 flex gap-3">
-            <Icon icon="solar:info-circle-bold" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div class="text-sm">
-                <p class="font-medium text-amber-800 dark:text-amber-200">Perhatian</p>
-                <p class="text-amber-700 dark:text-amber-300 mt-1">
-                    Format file yang diterima: PDF, DOC, DOCX (Maks. 10MB per file). 
-                    Pastikan dokumen yang diupload sudah sesuai dan lengkap.
-                </p>
-            </div>
-        </div>
-
         <!-- Requirement Note -->
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 flex gap-3">
             <Icon icon="solar:checklist-minimalistic-bold" class="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div class="text-sm">
                 <p class="font-medium text-blue-800 dark:text-blue-200">Kelengkapan Dokumen Kerjasama</p>
                 <p class="text-blue-700 dark:text-blue-300 mt-1">
-                    Anda wajib mengupload <strong>3 dokumen utama</strong> (Surat Permohonan, Proposal/KAK, dan Draft Kesepakatan Bersama). Dokumen Legalitas dan Pendukung dapat diunggah untuk mempercepat proses telaah oleh TKKSD.
+                    Anda wajib mengupload <strong>3 dokumen utama</strong> (Surat Permohonan, Proposal/KAK, dan Draft Kesepakatan Bersama / PKS). Dokumen Legalitas dan Pendukung dapat diunggah untuk mempercepat telaah.
                 </p>
             </div>
         </div>
@@ -231,8 +239,8 @@ const getFileRef = (key) => {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <h4 class="font-semibold text-gray-900 dark:text-white">{{ fileType.label }}</h4>
-                            <span v-if="fileType.required" class="text-red-500 text-xs font-bold">*Wajib</span>
-                            <span v-else class="text-gray-400 text-xs">(Opsional)</span>
+                            <span v-if="fileType.required && !hasExistingFiles" class="text-red-500 text-xs font-bold">*Wajib</span>
+                            <span v-else class="text-gray-400 text-xs">(Opsional / Ganti jika revisi)</span>
                             <!-- Format ditetapkan (Req 3) -->
                             <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider"
                                 :class="`bg-${fileType.color}-100 text-${fileType.color}-700 dark:bg-${fileType.color}-900/30 dark:text-${fileType.color}-300`">
@@ -241,8 +249,9 @@ const getFileRef = (key) => {
                             </span>
                         </div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ fileType.description }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5">
-                            Format file yang diterima: <span class="font-semibold">{{ fileType.format }}</span> · Maks. 10 MB
+                        <p v-if="getExistingFile(fileType.key)" class="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                            <Icon icon="solar:check-circle-bold" class="w-3.5 h-3.5" />
+                            Berkas saat ini: {{ getExistingFile(fileType.key).file_name || getExistingFile(fileType.key).label }}
                         </p>
 
                         <!-- File Preview or Upload Button -->
@@ -272,7 +281,7 @@ const getFileRef = (key) => {
                                     :auto="false"
                                     :disabled="alreadyUploaded"
                                     :accept="fileType.accept"
-                                    :maxFileSize="10000000"
+                                    :maxFileSize="15728640"
                                     @select="(e) => handleFileSelect(e, fileType.key)"
                                     chooseLabel="Pilih File"
                                     class="w-full"
@@ -300,10 +309,10 @@ const getFileRef = (key) => {
                 />
                 <Button 
                     type="submit" 
-                    label="Upload & Lanjutkan" 
+                    :label="hasExistingFiles && isRevisiStage ? 'Simpan Perbaikan Berkas' : 'Upload & Lanjutkan'" 
                     icon="pi pi-upload"
                     :loading="form.processing"
-                    :disabled="alreadyUploaded || !form.surat_permohonan || !form.proposal_kak || !form.draft_mou"
+                    :disabled="!canSubmit"
                 />
             </div>
         </form>

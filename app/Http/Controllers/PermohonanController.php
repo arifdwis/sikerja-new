@@ -13,6 +13,7 @@ use App\Models\PermohonanFile;
 use App\Models\PermohonanHistori;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\WhatsappService;
 use Inertia\Inertia;
@@ -44,21 +45,12 @@ class PermohonanController extends Controller implements HasMiddleware
 
     public static function middleware(): array
     {
-        // Define permission mapping
         return [
-            // Index bisa diakses oleh berbagai role dengan permission dasar index
-            // Role Verifikator/Pimpinan juga harus punya permission ini untuk lihat list
             new Middleware('can:permohonan.index', only: ['index']),
-
             new Middleware('can:permohonan.create', only: ['create', 'store']),
             new Middleware('can:permohonan.show', only: ['show']),
-
-            // Edit & Update butuh permission edit
             new Middleware('can:permohonan.edit', only: ['edit', 'update']),
-
             new Middleware('can:permohonan.destroy', only: ['destroy']),
-
-            // Update status khusus role tertentu (verifikator/pimpinan)
             new Middleware('can:permohonan.status', only: ['updateStatus']),
         ];
     }
@@ -84,42 +76,46 @@ class PermohonanController extends Controller implements HasMiddleware
 
         // Filter based on Route Name (untuk menu Sidebar)
         if ($routeName === 'validasi.index') {
-            // Validasi: status 0 (Permohonan Baru menunggu validasi admin)
-            $query->where('status', Permohonan::STATUS_PERMOHONAN);
+            $query->whereIn('status', [
+                Permohonan::STATUS_PERMOHONAN,
+                Permohonan::STATUS_VERIFIKASI_ADMIN,
+                Permohonan::STATUS_REVISI,
+            ]);
             $pageTitle = 'Validasi Permohonan';
         } elseif ($routeName === 'pembahasan.index') {
-            // Pembahasan: status 1 (Dalam Pembahasan TKKSD)
-            $query->where('status', Permohonan::STATUS_PEMBAHASAN);
+            $query->whereIn('status', [
+                Permohonan::STATUS_PEMBAHASAN,
+                Permohonan::STATUS_TERVERIFIKASI,
+                Permohonan::STATUS_PEMBAHASAN_PKS,
+            ]);
             $pageTitle = 'Pembahasan Permohonan';
         } elseif ($routeName === 'persetujuan.index') {
-            // Persetujuan: status 2 saja (admin review jadwal yang diajukan pemohon)
             $query->where('status', Permohonan::STATUS_PENJADWALAN);
             $pageTitle = 'Persetujuan Jadwal';
         } elseif ($routeName === 'penandatanganan.index') {
-            // Penandatanganan: tahap upload PKS sampai validasi dokumen TTD
-            // 3 = Jadwal Disetujui, menunggu pemohon upload PKS
-            // 4 = PKS terupload, menunggu hari penandatanganan
-            // 5 = Pasca-tandatangan, admin validasi dokumen + approve PKS final
             $query->whereIn('status', [
                 Permohonan::STATUS_JADWAL_DISETUJUI,
                 Permohonan::STATUS_MENUNGGU_TANDATANGAN,
                 Permohonan::STATUS_PASCA_TANDATANGAN,
+                Permohonan::STATUS_KB_FINAL,
+                Permohonan::STATUS_PKS_FINAL,
+                Permohonan::STATUS_TTD_PKS,
             ]);
             $pageTitle = 'Penandatanganan Kerjasama';
         } elseif ($routeName === 'pelaksanaan.index') {
-            // Pelaksanaan: status 6 (kerjasama aktif berjalan)
-            $query->where('status', Permohonan::STATUS_PELAKSANAAN);
+            $query->whereIn('status', [
+                Permohonan::STATUS_PELAKSANAAN,
+                Permohonan::STATUS_EVALUASI,
+                Permohonan::STATUS_PERPANJANGAN,
+            ]);
             $pageTitle = 'Pelaksanaan Kerjasama';
         } elseif ($routeName === 'permohonan.selesai') {
-            // Permohonan Selesai: status 7 (monev final dibuat, kerjasama selesai)
             $query->where('status', Permohonan::STATUS_SELESAI);
             $pageTitle = 'Permohonan Selesai';
         } else {
             // Default permohonan.index ("Permohonan Saya"):
-            // Pemohon hanya melihat alur aktif. Status final dipindah ke menu Riwayat.
-            // tampil di menu Riwayat agar tidak campur dengan permohonan yang masih berproses.
-            if (Auth::user()->hasRole('pemohon')
-                && !Auth::user()->hasRole(['administrator', 'superadmin', 'tkksd', 'tkksd_lokus'])) {
+            // Pemohon murni hanya melihat alur aktif. Status final dipindah ke menu Riwayat.
+            if (Auth::user()->isPurePemohon()) {
                 $query->whereNotIn('status', [
                     Permohonan::STATUS_PELAKSANAAN,
                     Permohonan::STATUS_SELESAI,
@@ -130,13 +126,12 @@ class PermohonanController extends Controller implements HasMiddleware
         }
 
         // Filter by user role (Ownership Scope)
-        // Pemohon hanya melihat data miliknya sendiri
         if (Auth::user()->isPurePemohon()) {
             $query->where('id_pemohon_0', Auth::id());
         }
 
         // TKKSD Lokus hanya melihat kerjasama yang melibatkan OPD-nya
-        if (Auth::user()->hasRole('tkksd_lokus') && !Auth::user()->hasRole(['administrator', 'superadmin'])) {
+        if (Auth::user()->hasRole('tkksd_lokus') && !Auth::user()->hasRole(['administrator', 'superadmin', 'kabag_kerjasama'])) {
             $opdId = Auth::user()->id_opd;
             if ($opdId) {
                 $query->whereHas('opds', fn($q) => $q->where('opd.id', $opdId));
@@ -172,7 +167,6 @@ class PermohonanController extends Controller implements HasMiddleware
         $kategoris = Kategori::all();
         $provinsis = Provinsi::all();
 
-        // Data needed for Create Modal
         $user = Auth::user();
         $pemohon = null;
         $corporate = null;
@@ -182,10 +176,8 @@ class PermohonanController extends Controller implements HasMiddleware
             $corporate = Corporate::where('id_operator', $user->id)->first();
         }
 
-        // Load all pemohon for PPKSD-2 dropdown
         $pemohonanList = Pemohon::orderBy('name')->get(['id', 'name', 'jabatan', 'unit_kerja']);
 
-        // Daftar OPD aktif untuk multi-select & auto-fill OPD jika user terhubung via SSO
         $opds = \App\Models\Opd::active()->orderBy('nama')->get();
         $userOpd = $user->id_opd ? \App\Models\Opd::find($user->id_opd) : null;
 
@@ -213,30 +205,23 @@ class PermohonanController extends Controller implements HasMiddleware
     {
         $pageTitle = 'Riwayat Permohonan';
 
-        // Riwayat menampilkan semua kerjasama yang sudah keluar dari alur aktif:
-        // - 6 = Pelaksanaan (sedang terlaksana, sebelum tanggal_berakhir)
-        // - 7 = Selesai (tanggal_berakhir kerjasama sudah lewat)
-        // - 8 = Dicabut
-        // - 9 = Ditolak (revisi)
         $finalStatuses = [
             Permohonan::STATUS_PELAKSANAAN,
+            Permohonan::STATUS_EVALUASI,
+            Permohonan::STATUS_PERPANJANGAN,
             Permohonan::STATUS_SELESAI,
             Permohonan::STATUS_DICABUT,
             Permohonan::STATUS_DITOLAK,
         ];
 
-        // Build one history query for all final statuses. The old status tabs were
-        // removed from the page, so a stale ?tab= query must not hide records.
         $base = $this->data::query()->whereIn('status', $finalStatuses);
 
-        // Ownership Check (Strictly for Pemohon)
         if (Auth::user()->isPurePemohon()) {
             $base->where('id_pemohon_0', Auth::id());
         }
 
         $query = $base->with(['kategori', 'operator', 'kota']);
 
-        // Search
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -267,30 +252,24 @@ class PermohonanController extends Controller implements HasMiddleware
     {
         $user = Auth::user();
         if ($this->isPrivilegedAdmin($user)) {
-            abort(403, 'Akun admin/superadmin tidak dapat mengajukan permohonan kerjasama.');
+            abort(403, 'Akun admin/superadmin/kabag tidak dapat mengajukan permohonan kerjasama.');
         }
 
         $kategoris = Kategori::all();
         $provinsis = Provinsi::all();
         $opds = \App\Models\Opd::active()->orderBy('nama')->get();
 
-        // Load pemohon and corporate data for auto-fill
         $pemohon = null;
         $corporate = null;
-        $pemohonanList = [];
 
         if ($user->hasRole('pemohon')) {
             $pemohon = Pemohon::where('id_operator', $user->id)->with('kotaRef')->first();
             $corporate = Corporate::where('id_operator', $user->id)->with('kotaRef')->first();
         }
 
-        // Load all pemohon for PPKSD-2 dropdown
         $pemohonanList = Pemohon::orderBy('name')->get(['id', 'name', 'jabatan', 'unit_kerja']);
-
-        // Auto-fill OPD jika user terhubung ke OPD via SSO (id_opd di users)
         $userOpd = $user->id_opd ? \App\Models\Opd::find($user->id_opd) : null;
 
-        // PKS Turunan dari Kesepakatan Bersama (KB)
         $kbInduk = null;
         if ($request->has('kb_uuid')) {
             $kbInduk = Permohonan::where('uuid', $request->kb_uuid)
@@ -312,64 +291,74 @@ class PermohonanController extends Controller implements HasMiddleware
     }
 
     /**
-     * Store a newly created permohonan.
+     * Store a newly created permohonan (termasuk berkas awal jika diunggah langsung).
      */
     public function store(Request $request)
     {
         if ($this->isPrivilegedAdmin(Auth::user())) {
-            return redirect()->back()->with('error', 'Akun admin/superadmin tidak dapat mengajukan permohonan kerjasama.');
+            return redirect()->back()->with('error', 'Akun admin/superadmin/kabag tidak dapat mengajukan permohonan kerjasama.');
         }
 
         $validated = $request->validate([
-            'tipe_dokumen' => 'nullable|in:KB,PKS',
-            'id_kb_induk' => 'nullable|exists:permohonan,id',
-            'id_kategori' => 'required|exists:kategori,id',
-            'label' => 'required|string|max:255',
-            'nama_instansi' => 'required|string|max:255',
-            'nama_pimpinan' => 'nullable|string|max:255',
-            'jabatan_pimpinan' => 'nullable|string|max:255',
-            'nip_pimpinan' => 'nullable|string|max:100',
-            'id_provinsi' => 'nullable|exists:master_provinces,id',
-            'id_kota' => 'nullable|exists:master_cities,id',
-            'kode_pos' => 'nullable|string|max:10',
-            'alamat' => 'nullable|string',
-            'email' => 'nullable|email|max:255',
-            'telepon' => 'nullable|string|max:30',
-            'website' => 'nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'pic1_nama' => 'nullable|string|max:255',
-            'pic1_jabatan' => 'nullable|string|max:255',
-            'pic1_phone' => 'nullable|string|max:50',
-            'pic1_email' => 'nullable|email|max:255',
-            'pic2_nama' => 'nullable|string|max:255',
-            'pic2_jabatan' => 'nullable|string|max:255',
-            'pic2_phone' => 'nullable|string|max:50',
-            'pic2_email' => 'nullable|email|max:255',
-            'is_draft' => 'nullable|boolean',
-            'id_pemohon_1' => 'nullable|exists:pemohon,id',
-            'latar_belakang' => 'required|string',
-            'maksud_tujuan' => 'required|string',
-            'lokasi_kerjasama' => 'nullable|string',
-            'ruang_lingkup' => 'required|string',
-            'jangka_waktu' => 'nullable|string|max:255',
-            'tanggal_mulai' => 'nullable|date',
-            'tanggal_berakhir' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'manfaat' => 'nullable|string',
-            'analisis_dampak' => 'nullable|string',
-            'pembiayaan' => 'nullable|string',
-            // OPD multiple - Req 12
-            'opd_ids' => 'nullable|array',
-            'opd_ids.*' => 'exists:opd,id',
+            'tipe_dokumen'      => 'nullable|in:KB,PKS',
+            'id_kb_induk'       => 'nullable|exists:permohonan,id',
+            'id_kategori'       => 'required|exists:kategori,id',
+            'label'             => 'required|string|max:255',
+            'nama_instansi'     => 'required|string|max:255',
+            'nama_pimpinan'     => 'nullable|string|max:255',
+            'jabatan_pimpinan'  => 'nullable|string|max:255',
+            'nip_pimpinan'      => 'nullable|string|max:100',
+            'id_provinsi'       => 'nullable|exists:master_provinces,id',
+            'id_kota'           => 'nullable|exists:master_cities,id',
+            'kode_pos'          => 'nullable|string|max:10',
+            'alamat'            => 'nullable|string',
+            'email'             => 'nullable|email|max:255',
+            'telepon'           => 'nullable|string|max:30',
+            'website'           => 'nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
+            'pic1_nama'         => 'nullable|string|max:255',
+            'pic1_jabatan'      => 'nullable|string|max:255',
+            'pic1_phone'        => 'nullable|string|max:50',
+            'pic1_email'        => 'nullable|email|max:255',
+            'pic2_nama'         => 'nullable|string|max:255',
+            'pic2_jabatan'      => 'nullable|string|max:255',
+            'pic2_phone'        => 'nullable|string|max:50',
+            'pic2_email'        => 'nullable|email|max:255',
+            'is_draft'          => 'nullable|boolean',
+            'id_pemohon_1'      => 'nullable|exists:pemohon,id',
+            'latar_belakang'    => 'required|string',
+            'maksud_tujuan'     => 'required|string',
+            'lokasi_kerjasama'  => 'nullable|string',
+            'ruang_lingkup'     => 'required|string',
+            'jangka_waktu'      => 'nullable|string|max:255',
+            'tanggal_mulai'     => 'nullable|date',
+            'tanggal_berakhir'  => 'nullable|date|after_or_equal:tanggal_mulai',
+            'manfaat'           => 'nullable|string',
+            'analisis_dampak'   => 'nullable|string',
+            'pembiayaan'        => 'nullable|string',
+            'opd_ids'           => 'nullable|array',
+            'opd_ids.*'         => 'exists:opd,id',
+            // Opsional upload berkas awal langsung saat membuat permohonan
+            'surat_permohonan'  => 'nullable|file|mimes:pdf|max:10240',
+            'proposal_kak'      => 'nullable|file|mimes:pdf|max:10240',
+            'draft_mou'         => 'nullable|file|mimes:doc,docx|max:10240',
+            'dokumen_legalitas' => 'nullable|file|mimes:pdf,zip|max:15360',
+            'dokumen_pendukung' => 'nullable|file|mimes:pdf,zip|max:15360',
         ]);
 
-        // Auto-fill OPD jika user terhubung ke OPD via SSO dan tidak ada opd_ids di request
         $opdIds = $validated['opd_ids'] ?? [];
         $user = Auth::user();
         if (empty($opdIds) && $user->id_opd) {
             $opdIds = [$user->id_opd];
         }
-        unset($validated['opd_ids']);
+        unset(
+            $validated['opd_ids'],
+            $validated['surat_permohonan'],
+            $validated['proposal_kak'],
+            $validated['draft_mou'],
+            $validated['dokumen_legalitas'],
+            $validated['dokumen_pendukung']
+        );
 
-        // Auto-compute jangka_waktu dari tanggal_mulai & tanggal_berakhir (safeguard server-side)
         $validated['jangka_waktu'] = $this->computeJangkaWaktu(
             $validated['tanggal_mulai'] ?? null,
             $validated['tanggal_berakhir'] ?? null
@@ -387,10 +376,12 @@ class PermohonanController extends Controller implements HasMiddleware
 
         $permohonan = $this->data::create($validated);
 
-        // Sync OPD ke pivot
         if (!empty($opdIds)) {
             $permohonan->opds()->sync($opdIds);
         }
+
+        // Jika pemohon melampirkan berkas langsung pada saat pengajuan awal, simpan berkasnya
+        $this->saveUploadedFiles($request, $permohonan);
 
         $successMsg = $isDraft ? 'Draft permohonan berhasil disimpan.' : 'Permohonan berhasil dibuat dan diajukan.';
 
@@ -399,13 +390,13 @@ class PermohonanController extends Controller implements HasMiddleware
     }
 
     /**
-     * Admin & superadmin berperan sebagai reviewer/manajer alur,
+     * Admin, superadmin, & kabag_kerjasama berperan sebagai reviewer/manajer alur,
      * bukan pihak pengaju permohonan.
      */
     private function isPrivilegedAdmin(?User $user): bool
     {
         if (!$user) return false;
-        return $user->hasRole(['administrator', 'superadmin', 'admin']);
+        return $user->hasRole(['administrator', 'superadmin', 'admin', 'kabag_kerjasama']) && !$user->isPurePemohon();
     }
 
     /**
@@ -420,6 +411,7 @@ class PermohonanController extends Controller implements HasMiddleware
             'kota',
             'pemohon1',
             'pemohon2',
+            'kbInduk:id,uuid,label,nomor_permohonan,kode',
             'files',
             'opds',
             'pksFiles.uploader',
@@ -431,13 +423,11 @@ class PermohonanController extends Controller implements HasMiddleware
             }
         ])->uuid($uuid)->firstOrFail();
 
-        // Ownership check can be handled by Policy, or kept here if Policy not set up
         if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403, 'Unauthorized access to this permohonan');
         }
 
-        // TKKSD Lokus: hanya boleh lihat kerjasama yang melibatkan OPD-nya
-        if (Auth::user()->hasRole('tkksd_lokus') && !Auth::user()->hasRole(['administrator', 'superadmin'])) {
+        if (Auth::user()->hasRole('tkksd_lokus') && !Auth::user()->hasRole(['administrator', 'superadmin', 'kabag_kerjasama'])) {
             $opdId = Auth::user()->id_opd;
             $opdIds = $permohonan->opds->pluck('id')->toArray();
             if (!$opdId || !in_array($opdId, $opdIds)) {
@@ -457,13 +447,12 @@ class PermohonanController extends Controller implements HasMiddleware
      */
     public function edit(string $uuid)
     {
-        $permohonan = $this->data::uuid($uuid)->firstOrFail();
+        $permohonan = $this->data::with(['files', 'opds'])->uuid($uuid)->firstOrFail();
 
         if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
         }
 
-        // Izinkan edit jika status: Draft (-1), Permohonan Baru (0), Revisi (11), atau Ditolak (9)
         $editableStatuses = [
             Permohonan::STATUS_DRAFT,
             Permohonan::STATUS_PERMOHONAN,
@@ -479,8 +468,7 @@ class PermohonanController extends Controller implements HasMiddleware
         $provinsis = Provinsi::all();
         $kotas = Kota::where('province_id', $permohonan->id_provinsi)->get();
         $opds = \App\Models\Opd::active()->orderBy('nama')->get();
-        $selectedOpdIds = $permohonan->opds()->pluck('opd.id')->toArray();
-        // Untuk dropdown PPKSD-2 (Pihak Kedua) saat edit/revisi
+        $selectedOpdIds = $permohonan->opds->pluck('id')->toArray();
         $pemohonanList = Pemohon::orderBy('name')->get(['id', 'name', 'jabatan', 'unit_kerja']);
 
         return Inertia::render("$this->view/Edit", [
@@ -506,7 +494,6 @@ class PermohonanController extends Controller implements HasMiddleware
             abort(403);
         }
 
-        // Izinkan edit jika status: Draft (-1), Permohonan Baru (0), Revisi (11), atau Ditolak (9)
         $editableStatuses = [
             Permohonan::STATUS_DRAFT,
             Permohonan::STATUS_PERMOHONAN,
@@ -521,69 +508,80 @@ class PermohonanController extends Controller implements HasMiddleware
         $wasRejected = in_array($permohonan->status, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_REVISI]);
 
         $validated = $request->validate([
-            'id_kategori' => 'required|exists:kategori,id',
-            'label' => 'required|string|max:255',
-            'nama_instansi' => 'required|string|max:255',
-            'nama_pimpinan' => 'nullable|string|max:255',
-            'jabatan_pimpinan' => 'nullable|string|max:255',
-            'nip_pimpinan' => 'nullable|string|max:100',
-            'id_provinsi' => 'nullable|exists:master_provinces,id',
-            'id_kota' => 'nullable|exists:master_cities,id',
-            'kode_pos' => 'nullable|string|max:10',
-            'alamat' => 'nullable|string',
-            'email' => 'nullable|email|max:255',
-            'telepon' => 'nullable|string|max:30',
-            'website' => 'nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-            'pic1_nama' => 'nullable|string|max:255',
-            'pic1_jabatan' => 'nullable|string|max:255',
-            'pic1_phone' => 'nullable|string|max:50',
-            'pic1_email' => 'nullable|email|max:255',
-            'pic2_nama' => 'nullable|string|max:255',
-            'pic2_jabatan' => 'nullable|string|max:255',
-            'pic2_phone' => 'nullable|string|max:50',
-            'pic2_email' => 'nullable|email|max:255',
-            'is_draft' => 'nullable|boolean',
-            'id_pemohon_1' => 'nullable|exists:pemohon,id',
-            'latar_belakang' => 'required|string',
-            'maksud_tujuan' => 'required|string',
-            'lokasi_kerjasama' => 'nullable|string',
-            'ruang_lingkup' => 'required|string',
-            'jangka_waktu' => 'nullable|string|max:255',
-            'tanggal_mulai' => 'nullable|date',
-            'tanggal_berakhir' => 'nullable|date|after_or_equal:tanggal_mulai',
-            'manfaat' => 'nullable|string',
-            'analisis_dampak' => 'nullable|string',
-            'pembiayaan' => 'nullable|string',
-            'opd_ids' => 'nullable|array',
-            'opd_ids.*' => 'exists:opd,id',
+            'id_kategori'       => 'required|exists:kategori,id',
+            'label'             => 'required|string|max:255',
+            'nama_instansi'     => 'required|string|max:255',
+            'nama_pimpinan'     => 'nullable|string|max:255',
+            'jabatan_pimpinan'  => 'nullable|string|max:255',
+            'nip_pimpinan'      => 'nullable|string|max:100',
+            'id_provinsi'       => 'nullable|exists:master_provinces,id',
+            'id_kota'           => 'nullable|exists:master_cities,id',
+            'kode_pos'          => 'nullable|string|max:10',
+            'alamat'            => 'nullable|string',
+            'email'             => 'nullable|email|max:255',
+            'telepon'           => 'nullable|string|max:30',
+            'website'           => 'nullable|regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
+            'pic1_nama'         => 'nullable|string|max:255',
+            'pic1_jabatan'      => 'nullable|string|max:255',
+            'pic1_phone'        => 'nullable|string|max:50',
+            'pic1_email'        => 'nullable|email|max:255',
+            'pic2_nama'         => 'nullable|string|max:255',
+            'pic2_jabatan'      => 'nullable|string|max:255',
+            'pic2_phone'        => 'nullable|string|max:50',
+            'pic2_email'        => 'nullable|email|max:255',
+            'is_draft'          => 'nullable|boolean',
+            'id_pemohon_1'      => 'nullable|exists:pemohon,id',
+            'latar_belakang'    => 'required|string',
+            'maksud_tujuan'     => 'required|string',
+            'lokasi_kerjasama'  => 'nullable|string',
+            'ruang_lingkup'     => 'required|string',
+            'jangka_waktu'      => 'nullable|string|max:255',
+            'tanggal_mulai'     => 'nullable|date',
+            'tanggal_berakhir'  => 'nullable|date|after_or_equal:tanggal_mulai',
+            'manfaat'           => 'nullable|string',
+            'analisis_dampak'   => 'nullable|string',
+            'pembiayaan'        => 'nullable|string',
+            'opd_ids'           => 'nullable|array',
+            'opd_ids.*'         => 'exists:opd,id',
+            'surat_permohonan'  => 'nullable|file|mimes:pdf|max:10240',
+            'proposal_kak'      => 'nullable|file|mimes:pdf|max:10240',
+            'draft_mou'         => 'nullable|file|mimes:doc,docx|max:10240',
+            'dokumen_legalitas' => 'nullable|file|mimes:pdf,zip|max:15360',
+            'dokumen_pendukung' => 'nullable|file|mimes:pdf,zip|max:15360',
         ]);
 
         $opdIds = $validated['opd_ids'] ?? null;
-        unset($validated['opd_ids']);
+        unset(
+            $validated['opd_ids'],
+            $validated['surat_permohonan'],
+            $validated['proposal_kak'],
+            $validated['draft_mou'],
+            $validated['dokumen_legalitas'],
+            $validated['dokumen_pendukung']
+        );
 
-        // Auto-compute jangka_waktu dari tanggal_mulai & tanggal_berakhir (safeguard server-side)
         $validated['jangka_waktu'] = $this->computeJangkaWaktu(
             $validated['tanggal_mulai'] ?? null,
             $validated['tanggal_berakhir'] ?? null
         ) ?: ($validated['jangka_waktu'] ?? null);
 
-        // Jika user submit dari draft ke pengajuan resmi
         $isDraft = (bool) ($validated['is_draft'] ?? false);
         if ($permohonan->status == Permohonan::STATUS_DRAFT) {
             $validated['status'] = $isDraft ? Permohonan::STATUS_DRAFT : Permohonan::STATUS_PERMOHONAN;
             $validated['is_draft'] = $isDraft;
         } elseif ($wasRejected) {
-            // Jika permohonan sebelumnya ditolak/revisi, reset status ke Permohonan Baru (0)
             $validated['status'] = Permohonan::STATUS_PERMOHONAN;
             $validated['alasan_tolak'] = null;
+            $validated['is_draft'] = false;
         }
 
         $permohonan->update($validated);
 
-        // Sync OPD jika dikirim
         if ($opdIds !== null) {
             $permohonan->opds()->sync($opdIds);
         }
+
+        $this->saveUploadedFiles($request, $permohonan);
 
         $deskripsi = $wasRejected
             ? 'Permohonan direvisi dan diajukan kembali.'
@@ -620,18 +618,12 @@ class PermohonanController extends Controller implements HasMiddleware
             ->with('success', 'Permohonan berhasil dihapus.');
     }
 
-    /**
-     * Get kotas by provinsi (AJAX) - Usually public/authenticated helper
-     */
     public function getKotas(int $provinsiId)
     {
         $kotas = Kota::where('province_id', $provinsiId)->orderBy('name')->get();
         return response()->json($kotas);
     }
 
-    /**
-     * Get all kotas grouped by provinsi (AJAX)
-     */
     public function getAllKotas()
     {
         $provinsis = Provinsi::orderBy('name')->with([
@@ -663,15 +655,12 @@ class PermohonanController extends Controller implements HasMiddleware
         $permohonan = $this->data::uuid($uuid)->firstOrFail();
 
         $validated = $request->validate([
-            'status' => 'required|integer|in:0,1,2,4,7,8,9',
+            'status' => 'required|integer|in:0,1,2,4,7,8,9,10,11',
             'keterangan' => 'nullable|string|max:2000',
         ]);
 
         $oldStatus = $permohonan->status;
 
-        // Aturan khusus tahap pelaksanaan:
-        // - hanya boleh ditandai selesai (7)
-        // - atau dicabut (8) dengan alasan wajib
         if ($oldStatus == Permohonan::STATUS_PELAKSANAAN) {
             if (!in_array($validated['status'], [Permohonan::STATUS_SELESAI, Permohonan::STATUS_DICABUT], true)) {
                 return redirect()->back()->with('error', 'Status pelaksanaan hanya dapat diubah ke Selesai atau Dicabut.');
@@ -682,7 +671,7 @@ class PermohonanController extends Controller implements HasMiddleware
         }
 
         $updatePayload = ['status' => $validated['status']];
-        if (in_array($validated['status'], [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT], true)) {
+        if (in_array($validated['status'], [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, Permohonan::STATUS_REVISI], true)) {
             $updatePayload['alasan_tolak'] = isset($validated['keterangan']) ? trim($validated['keterangan']) : null;
         } else {
             $updatePayload['alasan_tolak'] = null;
@@ -700,52 +689,121 @@ class PermohonanController extends Controller implements HasMiddleware
             'komentar' => $validated['keterangan'] ?? null,
         ]);
 
-        // Notifikasi pemohon dan grup admin di-handle oleh PermohonanObserver via NotificationTemplate.
-
         return redirect()->back()->with('success', 'Status berhasil diperbarui.');
     }
+
     /**
-     * Upload cooperation documents (after validation).
+     * Helper simpan/perbarui berkas awal permohonan.
+     */
+    protected function saveUploadedFiles(Request $request, Permohonan $permohonan): bool
+    {
+        $fileTypes = [
+            'surat_permohonan'  => 'Surat Permohonan Kerjasama',
+            'proposal_kak'      => 'Proposal / Kerangka Acuan Kerja',
+            'draft_mou'         => 'Draft Kesepakatan Bersama (MoU) / PKS',
+            'dokumen_legalitas' => 'Dokumen Legalitas Organisasi',
+            'dokumen_pendukung' => 'Dokumen Pendukung Lainnya',
+        ];
+
+        $anyUploaded = false;
+
+        foreach ($fileTypes as $field => $label) {
+            if ($request->hasFile($field)) {
+                $file = $request->file($field);
+                $filename = time() . '_' . $field . '_' . Str::slug($permohonan->kode) . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('uploads/permohonan/' . $permohonan->id, $filename, 'public');
+
+                $existingFile = PermohonanFile::where('id_permohonan', $permohonan->id)
+                    ->where('kategori_dokumen', $field)
+                    ->first();
+
+                if ($existingFile) {
+                    if ($existingFile->file_path && Storage::disk('public')->exists($existingFile->file_path)) {
+                        Storage::disk('public')->delete($existingFile->file_path);
+                    }
+                    $existingFile->update([
+                        'label'            => $label,
+                        'file'             => 'storage/' . $path,
+                        'file_path'        => $path,
+                        'file_name'        => $file->getClientOriginalName(),
+                        'status'           => PermohonanFile::STATUS_DIPROSES,
+                        'komentar'         => null,
+                    ]);
+                } else {
+                    PermohonanFile::create([
+                        'id_permohonan'    => $permohonan->id,
+                        'label'            => $label,
+                        'kategori_dokumen' => $field,
+                        'file'             => 'storage/' . $path,
+                        'file_path'        => $path,
+                        'file_name'        => $file->getClientOriginalName(),
+                        'deskripsi'        => 'Dokumen ' . $label . ' untuk permohonan ' . $permohonan->kode,
+                        'status'           => PermohonanFile::STATUS_DIPROSES,
+                    ]);
+                }
+
+                $anyUploaded = true;
+            }
+        }
+
+        if ($anyUploaded) {
+            PermohonanHistori::create([
+                'id_permohonan' => $permohonan->id,
+                'id_operator'   => Auth::id(),
+                'deskripsi'     => 'Dokumen kelengkapan kerjasama telah diunggah.',
+            ]);
+
+            try {
+                $wa = app(WhatsappService::class);
+                $adminMsg = \App\Services\NotificationTemplate::berkasAwalDiupload($permohonan, Auth::user()?->name ?? 'Pemohon');
+                $wa->sendToGroup($adminMsg);
+            } catch (\Exception $e) {
+                \Log::error("Failed to send WA Notification: " . $e->getMessage());
+            }
+        }
+
+        return $anyUploaded;
+    }
+
+    /**
+     * Upload cooperation documents (initial stage or during discussion/revision).
      */
     public function uploadFile(Request $request, string $uuid)
     {
-        \Log::info('Upload files request received', [
-            'uuid' => $uuid,
-            'user_id' => Auth::id(),
-            'files' => $request->allFiles()
-        ]);
-
         $permohonan = $this->data::uuid($uuid)->firstOrFail();
 
-        // Ownership check: Pemohon can only upload their own files
-        // Admin/Operator can upload for any permohonan
         if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403, 'Anda tidak memiliki akses untuk upload file ini.');
         }
 
-        // Pemohon hanya melakukan upload berkas awal sekali. Jika ada berkas yang
-        // perlu diperbaiki, upload ulang harus lewat alur revisi berkas ditolak.
-        if (Auth::user()->hasRole('pemohon') && $permohonan->files()->exists()) {
-            return redirect()->back()->with(
-                'error',
-                'Berkas sudah diupload. Upload ulang hanya tersedia pada berkas yang diminta revisi.'
-            );
-        }
+        $allowedUploadStatuses = [
+            Permohonan::STATUS_DRAFT,
+            Permohonan::STATUS_PERMOHONAN,
+            Permohonan::STATUS_VERIFIKASI_ADMIN,
+            Permohonan::STATUS_REVISI,
+            Permohonan::STATUS_TERVERIFIKASI,
+            Permohonan::STATUS_PEMBAHASAN,
+            Permohonan::STATUS_DITOLAK,
+            Permohonan::STATUS_PENGAJUAN_PKS,
+            Permohonan::STATUS_PEMBAHASAN_PKS,
+        ];
 
-        if (Auth::user()->hasRole('pemohon') && $permohonan->status != Permohonan::STATUS_PEMBAHASAN) {
-            abort(403, 'Upload berkas hanya tersedia saat permohonan dalam tahap pembahasan.');
-        }
-
-        // Lock berkas pemohon setelah pembahasan selesai
-        // Pemohon tidak bisa upload/ubah berkas tahap awal jika status sudah > PEMBAHASAN
-        if (Auth::user()->hasRole('pemohon') && $permohonan->status > Permohonan::STATUS_PEMBAHASAN) {
+        if (Auth::user()->isPurePemohon() && !in_array((int) $permohonan->status, $allowedUploadStatuses, true)) {
             abort(403, 'Berkas tidak dapat diubah karena permohonan sudah melewati tahap pembahasan.');
         }
 
-        $validated = $request->validate([
-            // Req 3: Format dokumen ditetapkan
-            'surat_permohonan'  => 'required|file|mimes:pdf|max:10240',
-            'proposal_kak'      => 'required|file|mimes:pdf|max:10240',
+        $isRevisiStage = in_array((int) $permohonan->status, [Permohonan::STATUS_REVISI, Permohonan::STATUS_DITOLAK], true);
+        if (Auth::user()->isPurePemohon() && $permohonan->files()->exists() && !$isRevisiStage) {
+            return redirect()->back()->with(
+                'error',
+                'Berkas sudah diupload. Upload ulang hanya tersedia saat permohonan atau dokumen diminta revisi.'
+            );
+        }
+
+        $hasExistingFiles = $permohonan->files()->exists();
+        $request->validate([
+            'surat_permohonan'  => ($hasExistingFiles ? 'nullable' : 'required') . '|file|mimes:pdf|max:10240',
+            'proposal_kak'      => ($hasExistingFiles ? 'nullable' : 'required') . '|file|mimes:pdf|max:10240',
             'draft_mou'         => 'nullable|file|mimes:doc,docx|max:10240',
             'dokumen_legalitas' => 'nullable|file|mimes:pdf,zip|max:15360',
             'dokumen_pendukung' => 'nullable|file|mimes:pdf,zip|max:15360',
@@ -764,56 +822,12 @@ class PermohonanController extends Controller implements HasMiddleware
             'dokumen_pendukung.max' => 'Ukuran file maksimal 15MB.',
         ]);
 
-        \Log::info('Validation passed, processing files');
-
-        $fileTypes = [
-            'surat_permohonan'  => 'Surat Permohonan Kerjasama',
-            'proposal_kak'      => 'Proposal / Kerangka Acuan Kerja',
-            'draft_mou'         => 'Draft Kesepakatan Bersama (MoU)',
-            'dokumen_legalitas' => 'Dokumen Legalitas Organisasi',
-            'dokumen_pendukung' => 'Dokumen Pendukung Lainnya',
-        ];
-
-        foreach ($fileTypes as $field => $label) {
-            if ($request->hasFile($field)) {
-                $file = $request->file($field);
-                $filename = time() . '_' . $field . '_' . Str::slug($permohonan->kode) . '.' . $file->getClientOriginalExtension();
-                $path = $file->storeAs('uploads/permohonan/' . $permohonan->id, $filename, 'public');
-
-                \Log::info("File saved: $field", ['path' => $path]);
-
-                PermohonanFile::create([
-                    'id_permohonan'    => $permohonan->id,
-                    'label'            => $label,
-                    'kategori_dokumen' => $field,
-                    'file'             => 'storage/' . $path,
-                    'file_path'        => $path,
-                    'file_name'        => $file->getClientOriginalName(),
-                    'deskripsi'        => 'Dokumen ' . $label . ' untuk permohonan ' . $permohonan->kode,
-                    'status'           => PermohonanFile::STATUS_DIPROSES,
-                ]);
-            }
-        }
-
-        // Log the upload activity
-        PermohonanHistori::create([
-            'id_permohonan' => $permohonan->id,
-            'id_operator' => Auth::id(),
-            'deskripsi' => 'Dokumen kerjasama telah diupload.',
-        ]);
-
-        // Send WhatsApp Notification to Admin Group — pakai template internal formal
-        try {
-            $wa = app(WhatsappService::class);
-            $adminMsg = \App\Services\NotificationTemplate::berkasAwalDiupload($permohonan, Auth::user()?->name ?? 'Pemohon');
-            $wa->sendToGroup($adminMsg);
-        } catch (\Exception $e) {
-            \Log::error("Failed to send WA Notification: " . $e->getMessage());
-        }
+        $this->saveUploadedFiles($request, $permohonan);
 
         return redirect()->route("$this->prefix.index")
             ->with('success', 'Dokumen berhasil diupload. Permohonan akan segera diproses.');
     }
+
     /**
      * Get discussion history for a specific file.
      */
@@ -821,7 +835,6 @@ class PermohonanController extends Controller implements HasMiddleware
     {
         $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
 
-        // Ensure user has access
         $permohonan = $file->permohonan;
         if (Auth::user()->isPurePemohon() && $permohonan->id_pemohon_0 != Auth::id()) {
             abort(403);
@@ -872,23 +885,21 @@ class PermohonanController extends Controller implements HasMiddleware
     }
 
     /**
-     * Review a file (Approve/Reject) - Admin only.
+     * Review a file (Approve/Reject) - Admin/Kabag/TKKSD only.
      */
     public function reviewFile(Request $request, string $uuid)
     {
         $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
 
-        // Ensure user is admin/verifier
-        if (!Auth::user()->hasRole(['administrator', 'superadmin', 'verifikator', 'tkksd'])) {
+        if (!Auth::user()->hasRole(['administrator', 'superadmin', 'verifikator', 'tkksd', 'kabag_kerjasama'])) {
             abort(403, 'Unauthorized');
         }
 
         $validated = $request->validate([
-            'status' => 'required|integer|in:1,2', // 1=Approved, 2=Rejected
+            'status' => 'required|integer|in:1,2',
             'komentar' => 'nullable|string',
         ]);
 
-        // Check if this user already approved this file (prevent duplicate)
         if ($validated['status'] == 1) {
             $alreadyApproved = PermohonanHistori::where('id_file', $file->id)
                 ->where('id_operator', Auth::id())
@@ -937,9 +948,6 @@ class PermohonanController extends Controller implements HasMiddleware
         ]);
     }
 
-    /**
-     * Get approval info for a file
-     */
     private function getFileApprovals(PermohonanFile $file): array
     {
         $approvals = PermohonanHistori::where('id_file', $file->id)
@@ -959,19 +967,14 @@ class PermohonanController extends Controller implements HasMiddleware
         ];
     }
 
-    /**
-     * Upload a revision for a rejected file.
-     */
     public function uploadFileRevision(Request $request, string $uuid)
     {
         $file = PermohonanFile::where('uuid', $uuid)->firstOrFail();
 
-        // Lock berkas setelah pembahasan selesai
-        if (Auth::user()->hasRole('pemohon') && $file->permohonan->status > Permohonan::STATUS_PEMBAHASAN) {
+        if (Auth::user()->isPurePemohon() && $file->permohonan->status > Permohonan::STATUS_PEMBAHASAN && !in_array((int) $file->permohonan->status, [Permohonan::STATUS_REVISI, Permohonan::STATUS_DITOLAK], true)) {
             abort(403, 'Revisi tidak diizinkan setelah permohonan melewati tahap pembahasan.');
         }
 
-        // Ensure strictly for Rejected files
         if ($file->status != PermohonanFile::STATUS_DITOLAK) {
             abort(400, 'File is not in rejected status.');
         }
@@ -980,17 +983,16 @@ class PermohonanController extends Controller implements HasMiddleware
             'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
         ]);
 
-        // Upload new file
         $newFile = $request->file('file');
-        $filename = time() . '_REVISION_' . $file->label . '.' . $newFile->getClientOriginalExtension();
+        $filename = time() . '_REVISION_' . Str::slug($file->label) . '.' . $newFile->getClientOriginalExtension();
         $path = $newFile->storeAs('uploads/permohonan/' . $file->id_permohonan, $filename, 'public');
 
         $file->update([
             'file' => 'storage/' . $path,
             'file_path' => $path,
             'file_name' => $newFile->getClientOriginalName(),
-            'status' => PermohonanFile::STATUS_DIPROSES, // Reset to Pending
-            'komentar' => null, // Clear rejection comment
+            'status' => PermohonanFile::STATUS_DIPROSES,
+            'komentar' => null,
         ]);
 
         PermohonanHistori::create([
@@ -1003,10 +1005,6 @@ class PermohonanController extends Controller implements HasMiddleware
         return response()->json(['message' => 'Revision uploaded', 'file' => $file]);
     }
 
-    /**
-     * Hitung jangka waktu kerjasama otomatis dari tanggal_mulai → tanggal_berakhir.
-     * Output: "X Tahun, Y Bulan, Z Hari" (komponen 0 di-skip).
-     */
     protected function computeJangkaWaktu(?string $mulai, ?string $akhir): ?string
     {
         if (!$mulai || !$akhir) return null;

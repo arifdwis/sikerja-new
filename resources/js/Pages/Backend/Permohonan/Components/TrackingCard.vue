@@ -1,26 +1,25 @@
 <script setup>
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
-import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     permohonan: Object,
 });
 
-const page = usePage();
+const isPks = computed(() => props.permohonan?.tipe_dokumen === 'PKS');
+const docShortName = computed(() => isPks.value ? 'PKS' : 'KB / PKS');
 
 // Status Mapping (From Permohonan Model)
-// 0..7 proses utama, 8 dicabut, 9 ditolak/revisi
-const statusSteps = [
-    { id: 0, label: 'Permohonan Masuk', icon: 'solar:file-send-linear', activeClass: 'border-amber-500 text-amber-600 ring-4 ring-amber-100' },
-    { id: 1, label: 'Validasi & Pembahasan', icon: 'solar:clipboard-check-linear', activeClass: 'border-sky-500 text-sky-600 ring-4 ring-sky-100' },
-    { id: 2, label: 'Penjadwalan', icon: 'solar:calendar-date-linear', activeClass: 'border-blue-500 text-blue-600 ring-4 ring-blue-100' },
-    { id: 3, label: 'Upload PKS Final (Admin)', icon: 'solar:document-add-linear', activeClass: 'border-violet-500 text-violet-600 ring-4 ring-violet-100' },
-    { id: 4, label: 'Menunggu Penandatanganan', icon: 'solar:pen-new-square-linear', activeClass: 'border-pink-500 text-pink-600 ring-4 ring-pink-100' },
-    { id: 5, label: 'Validasi Dokumen TTD', icon: 'solar:shield-check-linear', activeClass: 'border-orange-500 text-orange-600 ring-4 ring-orange-100' },
-    { id: 6, label: 'Pelaksanaan Kerjasama', icon: 'solar:buildings-3-linear', activeClass: 'border-teal-500 text-teal-600 ring-4 ring-teal-100' },
+const statusSteps = computed(() => [
+    { id: 0, label: 'Pengajuan & Verifikasi Administrasi', icon: 'solar:file-send-linear', activeClass: 'border-amber-500 text-amber-600 ring-4 ring-amber-100' },
+    { id: 1, label: `Pembahasan Draf ${docShortName.value} (TKKSD)`, icon: 'solar:clipboard-check-linear', activeClass: 'border-sky-500 text-sky-600 ring-4 ring-sky-100' },
+    { id: 2, label: 'Penjadwalan Penandatanganan', icon: 'solar:calendar-date-linear', activeClass: 'border-blue-500 text-blue-600 ring-4 ring-blue-100' },
+    { id: 3, label: `Penyiapan Naskah Final ${docShortName.value}`, icon: 'solar:document-add-linear', activeClass: 'border-violet-500 text-violet-600 ring-4 ring-violet-100' },
+    { id: 4, label: 'Penandatanganan & Upload Dokumen TTD', icon: 'solar:pen-new-square-linear', activeClass: 'border-pink-500 text-pink-600 ring-4 ring-pink-100' },
+    { id: 5, label: 'Validasi Dokumen Pasca-TTD', icon: 'solar:shield-check-linear', activeClass: 'border-orange-500 text-orange-600 ring-4 ring-orange-100' },
+    { id: 6, label: 'Pelaksanaan & Monev Kerjasama', icon: 'solar:buildings-3-linear', activeClass: 'border-teal-500 text-teal-600 ring-4 ring-teal-100' },
     { id: 7, label: 'Selesai', icon: 'solar:check-circle-linear', activeClass: 'border-emerald-500 text-emerald-600 ring-4 ring-emerald-100' },
-];
+]);
 
 const currentStatusId = computed(() => {
     return props.permohonan?.status !== undefined ? parseInt(props.permohonan.status) : 0;
@@ -30,12 +29,20 @@ const statusToStep = {
     '-1': 0,
     0: 0,
     10: 0,
+    12: 0,
+    20: 0,
     1: 1,
+    21: 1,
+    13: 3,
     2: 2,
     3: 3,
+    22: 3,
     4: 4,
+    23: 4,
     5: 5,
     6: 6,
+    25: 6,
+    26: 6,
     7: 7,
 };
 
@@ -108,14 +115,11 @@ const histories = computed(() => {
                         </span>
                     </div>
 
-                    <!-- History logs relevant to this 'phase' could ideally be mapped here. 
-                         For now, showing most recent log if active -->
                     <div v-if="getStepState(step.id) === 'active' && histories.length > 0" class="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                         <p class="italic">"{{ histories[0].deskripsi }}"</p>
                         <p class="text-xs text-gray-400 mt-1">{{ $formatDate(histories[0].created_at) }} • {{ histories[0].operator?.name }}</p>
                     </div>
 
-                    <!-- Show completion info if completed -->
                      <div v-if="getStepState(step.id) === 'completed'" class="mt-1 text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
                         <Icon icon="solar:check-read-linear" class="w-3 h-3" />
                         Selesai
@@ -132,7 +136,7 @@ const histories = computed(() => {
         </div>
         <div
             v-else-if="currentStatusId === 8"
-            class="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300"
+            class="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-red-800 dark:bg-rose-900/30 dark:text-rose-300"
         >
             Kerjasama dicabut pada tahap pelaksanaan. Proses dihentikan dan tidak dapat dilanjutkan.
         </div>

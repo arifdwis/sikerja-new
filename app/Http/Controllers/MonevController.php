@@ -1054,7 +1054,14 @@ class MonevController extends Controller implements HasMiddleware
 
     public function export(Request $request)
     {
-        $monevs = Monev::with(['permohonan.kategori', 'kerjasamaManual.kategori', 'adminDetail', 'pemohonDetail', 'tkksdDetail'])
+        $monevs = Monev::with([
+            'permohonan.kategori',
+            'kerjasamaManual.kategori',
+            'submitter',
+            'adminDetail',
+            'pemohonDetail',
+            'tkksdDetail'
+        ])
             ->latest()
             ->get();
 
@@ -1072,46 +1079,89 @@ class MonevController extends Controller implements HasMiddleware
 
             fputcsv($file, [
                 'Kode Monev',
+                'Peran Pengisi',
+                'Nama Pengisi',
                 'Kerjasama',
                 'Instansi',
                 'Kategori',
                 'Tanggal Evaluasi',
-                'Kesesuaian Tujuan',
-                'Ketepatan Waktu',
-                'Kontribusi Mitra',
-                'Tingkat Koordinasi',
-                'Capaian Indikator',
-                'Dampak Pelaksanaan',
-                'Inovasi Manfaat',
-                'Kelengkapan Dokumen',
-                'Pelaporan Berkala',
-                'Relevansi Kebutuhan',
-                'Rekomendasi Lanjutan',
-                'Kendala Administrasi',
-                'Saran Rekomendasi',
+                // Kolom Pemohon (pmh_*)
+                'Progres Realisasi (%)',
+                'Realisasi Kegiatan (Pemohon)',
+                'Kesesuaian Output (Pemohon)',
+                'Pemanfaatan Hasil (Pemohon)',
+                'Kendala Lapangan (Pemohon)',
+                'Usulan Keberlanjutan (Pemohon)',
+                // Kolom TKKSD Lokus (tkl_*)
+                'Kepatuhan PKS (TKKSD Lokus)',
+                'Koordinasi Mitra (TKKSD Lokus)',
+                'Kesesuaian Anggaran (TKKSD Lokus)',
+                'Temuan Pengawasan (TKKSD Lokus)',
+                'Rekomendasi Lokus (TKKSD Lokus)',
+                'Catatan Lokus (TKKSD Lokus)',
+                // Kolom Admin
+                'Kesesuaian Tujuan (Admin)',
+                'Ketepatan Waktu (Admin)',
+                'Kontribusi Mitra (Admin)',
+                'Tingkat Koordinasi (Admin)',
+                'Capaian Indikator (Admin)',
+                'Dampak Pelaksanaan (Admin)',
+                'Inovasi Manfaat (Admin)',
+                'Kelengkapan Dokumen (Admin)',
+                'Pelaporan Berkala (Admin)',
+                'Relevansi Kebutuhan (Admin)',
+                'Rekomendasi Lanjutan (Admin)',
+                'Rating (1-5)',
+                'Kendala Administrasi (Admin)',
+                'Saran Rekomendasi (Admin)',
             ]);
 
             foreach ($monevs as $monev) {
                 $kerjasama = $monev->permohonan ?: $monev->kerjasamaManual;
+                $roleLabel = match ($monev->submitter_role) {
+                    'pemohon' => 'Pemohon',
+                    'tkksd_lokus' => 'TKKSD Lokus',
+                    'admin' => 'Admin',
+                    default => $monev->submitter_role ?? '-',
+                };
+
                 fputcsv($file, [
                     $monev->kode_monev,
+                    $roleLabel,
+                    $monev->submitter?->name ?? '-',
                     $kerjasama?->label ?? '-',
                     $kerjasama?->nama_instansi ?? '-',
                     $kerjasama?->kategori?->label ?? '-',
                     $monev->tanggal_evaluasi?->format('d/m/Y'),
-                    $monev->kesesuaian_tujuan,
-                    $monev->ketepatan_waktu,
-                    $monev->kontribusi_mitra,
-                    $monev->tingkat_koordinasi,
-                    $monev->capaian_indikator,
-                    $monev->dampak_pelaksanaan,
-                    $monev->inovasi_manfaat,
-                    $monev->kelengkapan_dokumen,
-                    $monev->pelaporan_berkala,
-                    $monev->relevansi_kebutuhan,
-                    $monev->rekomendasi_lanjutan,
-                    $monev->kendala_administrasi,
-                    $monev->saran_rekomendasi,
+                    // Pemohon
+                    $monev->progress_persen !== null ? $monev->progress_persen . '%' : '-',
+                    $monev->pmh_realisasi_kegiatan ?? '-',
+                    $monev->pmh_kesesuaian_output ?? '-',
+                    $monev->pmh_pemanfaatan_hasil ?? '-',
+                    $monev->pmh_kendala_lapangan ?? '-',
+                    $monev->pmh_keberlanjutan ?? '-',
+                    // TKKSD Lokus
+                    $monev->tkl_kepatuhan_pks ?? '-',
+                    $monev->tkl_koordinasi_mitra ?? '-',
+                    $monev->tkl_kesesuaian_anggaran ?? '-',
+                    $monev->tkl_temuan_pengawasan ?? '-',
+                    $monev->tkl_rekomendasi_lokus ?? '-',
+                    $monev->tkl_catatan ?? '-',
+                    // Admin
+                    $monev->kesesuaian_tujuan ?? '-',
+                    $monev->ketepatan_waktu ?? '-',
+                    $monev->kontribusi_mitra ?? '-',
+                    $monev->tingkat_koordinasi ?? '-',
+                    $monev->capaian_indikator ?? '-',
+                    $monev->dampak_pelaksanaan ?? '-',
+                    $monev->inovasi_manfaat ?? '-',
+                    $monev->kelengkapan_dokumen ?? '-',
+                    $monev->pelaporan_berkala ?? '-',
+                    $monev->relevansi_kebutuhan ?? '-',
+                    $monev->rekomendasi_lanjutan ?? '-',
+                    $monev->rating ?? '-',
+                    $monev->kendala_administrasi ?? '-',
+                    $monev->saran_rekomendasi ?? '-',
                 ]);
             }
 

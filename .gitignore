@@ -29,3 +29,5 @@ error_log
 test_monev_query.php
 
 .claude/
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore

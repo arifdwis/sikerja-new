@@ -4,7 +4,6 @@ import { ref, watch, computed } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useToast } from "vue-toastification";
 import Step1Instansi from './Steps/Step1Instansi.vue';
-import Step2Pihak from './Steps/Step2Pihak.vue';
 import Step3Detail from './Steps/Step3Detail.vue';
 
 const props = defineProps({
@@ -51,18 +50,19 @@ const getInitialOpdIds = () => {
 };
 
 const form = useForm({
+    _method: props.mode === 'edit' ? 'put' : 'post',
     id: props.initialData?.id || null,
     uuid: props.initialData?.uuid || null,
     id_kategori: getInitialValue('id_kategori'),
     label: getInitialValue('label'),
-    nama_instansi: props.mode === 'edit' ? getInitialValue('nama_instansi') : (props.corporate?.name || ''),
+    nama_instansi: props.mode === 'edit' ? getInitialValue('nama_instansi') : (props.corporate?.name || props.corporate?.nama_instansi || props.pemohon?.nama_instansi || ''),
     id_provinsi: props.mode === 'edit' ? getInitialValue('id_provinsi') : (props.pemohon?.kota_ref?.province_id || props.corporate?.kota_ref?.province_id || ''),
     id_kota: props.mode === 'edit' ? getInitialValue('id_kota') : (props.pemohon?.kota_id || props.corporate?.kota_id || ''),
     kode_pos: props.mode === 'edit' ? getInitialValue('kode_pos') : (props.corporate?.postal_code || ''),
-    alamat: props.mode === 'edit' ? getInitialValue('alamat') : (props.corporate?.address || ''),
-    email: props.mode === 'edit' ? getInitialValue('email') : (props.corporate?.email || ''),
-    telepon: props.mode === 'edit' ? getInitialValue('telepon') : (props.corporate?.phone || ''),
-    website: props.mode === 'edit' ? getInitialValue('website') : (props.corporate?.website || ''),
+    alamat: props.mode === 'edit' ? getInitialValue('alamat') : (props.corporate?.address || props.corporate?.alamat_instansi || props.pemohon?.alamat_instansi || ''),
+    email: props.mode === 'edit' ? getInitialValue('email') : (props.corporate?.email || props.corporate?.email_instansi || props.pemohon?.email_instansi || ''),
+    telepon: props.mode === 'edit' ? getInitialValue('telepon') : (props.corporate?.phone || props.corporate?.telepon_instansi || props.pemohon?.telepon_instansi || ''),
+    website: props.mode === 'edit' ? getInitialValue('website') : (props.corporate?.website || props.pemohon?.website || ''),
     nama_pimpinan: getInitialValue('nama_pimpinan'),
     jabatan_pimpinan: getInitialValue('jabatan_pimpinan'),
     nip_pimpinan: getInitialValue('nip_pimpinan'),
@@ -80,7 +80,6 @@ const form = useForm({
     maksud_tujuan: getInitialValue('maksud_tujuan'),
     lokasi_kerjasama: getInitialValue('lokasi_kerjasama'),
     ruang_lingkup: getInitialValue('ruang_lingkup'),
-    // Req 12 — OPD multiple select. Auto-fill bila user Pemkot punya id_opd via SSO.
     opd_ids: getInitialOpdIds(),
     jangka_waktu: getInitialValue('jangka_waktu'),
     tanggal_mulai: getInitialValue('tanggal_mulai'),
@@ -88,6 +87,12 @@ const form = useForm({
     manfaat: getInitialValue('manfaat'),
     analisis_dampak: getInitialValue('analisis_dampak'),
     pembiayaan: getInitialValue('pembiayaan'),
+    // Dokumen awal opsional langsung saat submit
+    surat_permohonan: null,
+    proposal_kak: null,
+    draft_mou: null,
+    dokumen_legalitas: null,
+    dokumen_pendukung: null,
 });
 
 const kotas = ref([]);
@@ -131,9 +136,9 @@ const submit = (asDraft = false) => {
 
     const routeName = props.mode === 'edit' ? 'permohonan.update' : 'permohonan.store';
     const routeId = props.mode === 'edit' ? form.uuid : undefined;
-    const method = props.mode === 'edit' ? 'put' : 'post';
 
-    form[method](route(routeName, routeId), {
+    form.post(route(routeName, routeId), {
+        forceFormData: true,
         onSuccess: () => {
             const successMsg = asDraft 
                 ? 'Draft permohonan berhasil disimpan' 
@@ -149,8 +154,14 @@ const submit = (asDraft = false) => {
     });
 };
 
+// Langsung dari Step 1 (Data Instansi, Pimpinan & 2 PIC) ke Step 3 (Detail Substansi & Dokumen)
+// Sesuai kesepakatan: pemohon eksternal tidak perlu memilih pejabat penandatangan internal (Step 2 di-bypass).
 const currentStep = ref(1);
-const totalSteps = 3;
+const steps = [
+    { number: 1, title: 'Identitas Instansi, Pimpinan & PIC' },
+    { number: 2, title: 'Substansi Kerjasama & Lampiran Berkas' },
+];
+const totalSteps = steps.length;
 
 const nextStep = () => {
     if (currentStep.value < totalSteps) currentStep.value++;
@@ -160,29 +171,34 @@ const prevStep = () => {
     if (currentStep.value > 1) currentStep.value--;
 };
 
-const kategoriOptions = computed(() => props.kategoris.map(k => ({ value: k.id, name: k.label })));
-const provinsiOptions = computed(() => props.provinsis.map(p => ({ value: p.id, name: p.name })));
+const kategoriOptions = computed(() => (props.kategoris || []).map(k => ({ value: k.id, name: k.label })));
+const provinsiOptions = computed(() => (props.provinsis || []).map(p => ({ value: p.id, name: p.name })));
 const kotaOptions = computed(() => kotas.value.map(k => ({ value: k.id, name: k.name })));
-const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id, name: `${p.name} — ${p.jabatan}` })));
 </script>
 
 <template>
     <div class="h-full flex flex-col relative bg-white dark:bg-gray-800">
         <div class="px-6 pt-6 pb-2 flex-shrink-0">
             <div class="flex items-center justify-center mb-4">
-                <div v-for="step in totalSteps" :key="step" class="flex items-center">
-                    <div 
-                        class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm transition"
-                        :class="step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'"
-                    >
-                        {{ step }}
+                <div v-for="(s, idx) in steps" :key="s.number" class="flex items-center">
+                    <div class="flex items-center gap-2">
+                        <div 
+                            class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm transition"
+                            :class="s.number < currentStep ? 'bg-emerald-600 text-white' : (s.number === currentStep ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40' : 'bg-gray-100 dark:bg-gray-700 text-gray-400')"
+                        >
+                            <Icon v-if="s.number < currentStep" icon="lucide:check" class="w-4 h-4" />
+                            <span v-else>{{ s.number }}</span>
+                        </div>
+                        <span class="text-xs font-semibold hidden sm:inline" :class="s.number === currentStep ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'">
+                            {{ s.title }}
+                        </span>
                     </div>
-                    <div v-if="step < totalSteps" class="w-12 h-0.5 mx-2" :class="step < currentStep ? 'bg-blue-600' : 'bg-gray-100 dark:bg-gray-700'"></div>
+                    <div v-if="idx < steps.length - 1" class="w-12 h-0.5 mx-3" :class="s.number < currentStep ? 'bg-emerald-600' : 'bg-gray-200 dark:bg-gray-700'"></div>
                 </div>
             </div>
         </div>
 
-        <form @submit.prevent="submit" class="flex-1 overflow-y-auto px-6 py-2 custom-scrollbar">
+        <form @submit.prevent="submit(false)" class="flex-1 overflow-y-auto px-6 py-2 custom-scrollbar">
             <Step1Instansi 
                 v-if="currentStep === 1" 
                 :form="form" 
@@ -192,19 +208,12 @@ const ppksdOptions = computed(() => props.pemohonanList.map(p => ({ value: p.id,
                 :loadingKotas="loadingKotas"
             />
             
-            <Step2Pihak 
-                v-if="currentStep === 2" 
-                :form="form" 
-                :pemohon="pemohon"
-                :ppksdOptions="ppksdOptions"
-                :pemohonanList="pemohonanList"
-            />
-            
             <Step3Detail 
-                v-if="currentStep === 3" 
+                v-if="currentStep === 2" 
                 :form="form" 
                 :opds="opds"
                 :userOpd="userOpd"
+                :existingFiles="initialData?.files || []"
             />
         </form>
 

@@ -141,11 +141,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is admin
+     * Check if user is admin (includes Kabag Kerja Sama for administrative/approval actions)
      */
     public function isAdmin(): bool
     {
-        return $this->hasRole(['administrator', 'superadmin']);
+        return $this->hasRole(['administrator', 'superadmin', 'kabag_kerjasama']);
     }
 
     /**

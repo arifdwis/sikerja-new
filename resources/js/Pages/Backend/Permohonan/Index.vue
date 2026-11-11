@@ -140,12 +140,9 @@ const openDetailModal = async (item) => {
 };
 
 const openUploadDialog = async (item) => {
-    if (item.status == -1 || item.status == 0 || item.status == 10) {
-        toast.error('Mohon tunggu validasi admin sebelum mengupload berkas.');
-        return;
-    }
-    if (item.files && item.files.length > 0) {
-        toast.error('Berkas sudah diupload. Upload ulang hanya tersedia saat dokumen diminta revisi.');
+    const allowedUploadStatuses = [-1, 0, 1, 9, 10, 11, 12, 20, 21];
+    if (!allowedUploadStatuses.includes(Number(item.status))) {
+        toast.error('Upload berkas awal hanya tersedia sebelum tahap penjadwalan.');
         return;
     }
 
@@ -153,7 +150,7 @@ const openUploadDialog = async (item) => {
         const response = await axios.get(route(props.share.prefix + '.show', item.uuid));
         const latestItem = response.data;
 
-        if (latestItem.files?.length > 0) {
+        if (latestItem.files?.length > 0 && ![9, 11].includes(Number(latestItem.status))) {
             toast.error('Berkas sudah diupload. Tunggu review atau upload perbaikan dari dokumen yang diminta revisi.');
             router.reload({ only: ['permohonan'] });
             return;
@@ -228,14 +225,14 @@ const isAdmin = computed(() => {
     // HandleInertiaRequests menyediakan auth.role (slug terakhir) dan auth.roles (array slug)
     const role = page.props.auth?.role;
     const roles = page.props.auth?.roles || [];
-    const adminSlugs = ['administrator', 'admin', 'superadmin', 'super-admin', 'verifikator', 'tkksd'];
+    const adminSlugs = ['administrator', 'admin', 'superadmin', 'super-admin', 'verifikator', 'tkksd', 'kabag_kerjasama'];
     return adminSlugs.includes(role) || roles.some((r) => adminSlugs.includes(r));
 });
 
 const canCreatePermohonan = computed(() => {
     const role = page.props.auth?.role;
     const roles = page.props.auth?.roles || [];
-    const blocked = ['administrator', 'admin', 'superadmin'];
+    const blocked = ['administrator', 'admin', 'superadmin', 'kabag_kerjasama'];
     return !(blocked.includes(role) || roles.some((r) => blocked.includes(r)));
 });
 

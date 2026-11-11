@@ -23,14 +23,16 @@ const toast = useToast();
 
 const page = usePage();
 const userRole = computed(() => page.props.auth?.role);
-const isPemohon = computed(() => userRole.value === 'pemohon');
-const isAdmin = computed(() => ['administrator', 'superadmin'].includes(userRole.value));
+const userRoles = computed(() => page.props.auth?.roles || []);
+const isPemohon = computed(() => userRole.value === 'pemohon' && !userRoles.value.some(r => ['administrator', 'superadmin', 'kabag_kerjasama'].includes(r)));
+const isAdmin = computed(() => ['administrator', 'superadmin', 'kabag_kerjasama'].includes(userRole.value) || userRoles.value.some(r => ['administrator', 'superadmin', 'kabag_kerjasama'].includes(r)));
+const docShort = computed(() => props.permohonan?.tipe_dokumen === 'PKS' ? 'PKS Final' : 'Naskah Final (KB/PKS)');
 
 const STATUS_MENUNGGU_TANDATANGAN = 4;
 const STATUS_PASCA_TANDATANGAN = 5;
 
 const status = computed(() => Number(props.permohonan?.status));
-const ttdFiles = computed(() => props.permohonan?.ttd_files || []);
+const ttdFiles = computed(() => props.permohonan?.ttd_files || props.permohonan?.ttdFiles || []);
 const ttdPemohon = computed(() => ttdFiles.value.find(f => f.tipe === 'pemohon'));
 const ttdAdmin = computed(() => ttdFiles.value.find(f => f.tipe === 'admin'));
 

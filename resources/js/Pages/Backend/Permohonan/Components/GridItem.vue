@@ -1,14 +1,14 @@
 <script setup>
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
-import { Link } from '@inertiajs/vue3';
+import { getStatusTheme } from '@/utils/status';
 
 const props = defineProps({
     item: Object,
     isAdmin: Boolean
 });
 
-const emit = defineEmits(['detail', 'tracking', 'upload', 'schedule']);
+const emit = defineEmits(['detail', 'edit', 'tracking', 'upload', 'schedule']);
 
 const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -34,51 +34,35 @@ const diffForHumans = (dateString) => {
 };
 
 const getStatusColor = (status) => {
-    const colors = {
-        '-1': { bg: 'bg-slate-300',   text: 'text-slate-950',    border: 'border-slate-500' },
-        0: { bg: 'bg-amber-300',    text: 'text-amber-950',    border: 'border-amber-500' },
-        1: { bg: 'bg-sky-300',      text: 'text-sky-950',      border: 'border-sky-500' },
-        2: { bg: 'bg-blue-400',     text: 'text-blue-950',     border: 'border-blue-600' },
-        3: { bg: 'bg-violet-400',   text: 'text-violet-950',   border: 'border-violet-600' },
-        4: { bg: 'bg-pink-300',     text: 'text-pink-950',     border: 'border-pink-500' },
-        5: { bg: 'bg-orange-300',   text: 'text-orange-950',   border: 'border-orange-500' },
-        6: { bg: 'bg-teal-300',     text: 'text-teal-950',     border: 'border-teal-500' },
-        7: { bg: 'bg-emerald-400',  text: 'text-emerald-950',  border: 'border-emerald-600' },
-        8: { bg: 'bg-rose-300',     text: 'text-rose-950',     border: 'border-rose-500' },
-        9: { bg: 'bg-red-300',      text: 'text-red-950',      border: 'border-red-500' },
-        10: { bg: 'bg-indigo-300',  text: 'text-indigo-950',   border: 'border-indigo-500' },
-        11: { bg: 'bg-amber-400',   text: 'text-amber-950',    border: 'border-amber-500' },
+    const theme = getStatusTheme(status);
+    return {
+        bg: theme.cardBg || 'bg-gray-300',
+        text: theme.cardText || 'text-gray-950',
+        border: theme.cardBorder || 'border-gray-500',
     };
-    return colors[status] || { bg: 'bg-gray-300', text: 'text-gray-950', border: 'border-gray-500' };
 };
 
-const getUploadButtonLabel = (item) => {
-    return (item.files && item.files.length > 0) ? 'Kelola Berkas' : 'Upload Berkas';
-};
+const docTypeLabel = computed(() => props.item?.tipe_dokumen === 'PKS' ? 'PKS Final' : 'Naskah Final (KB/PKS)');
 
 /**
- * Upload berkas (Surat Permohonan, KAK, MoU) hanya boleh saat status 1 (Dalam Pembahasan).
- * Setelah masuk Penjadwalan (status 2+), berkas dikunci sesuai Req 7.4.
- *
- * Catatan:
- * - Status 0 = Menunggu Validasi → admin yang upload, pemohon menunggu
- * - Status 1 = Dalam Pembahasan → pemohon upload berkas pertama kali
- * - Status >= 2 = Penjadwalan/Penandatanganan/Pelaksanaan → upload PKS & TTD
- *   pakai tombol terpisah di halaman Detail
- * - Status 9 = Ditolak → pemohon klik "Revisi & Ajukan Ulang", bukan upload
- * - Status 8 = Dicabut → final, tidak bisa revisi
+ * Upload berkas awal (Surat Permohonan, KAK, MoU, Legalitas) diizinkan sejak tahap pengajuan
+ * (status -1 Draft, 0 Menunggu Verifikasi, 11 Revisi, dan 1 Dalam Pembahasan) selama berkas belum diunggah.
+ * Jika status 11 (Revisi) atau 9 (Ditolak), pemohon juga dapat mengunggah/melengkapi berkas.
  */
 const canManageFiles = (item) => {
     if (props.isAdmin) return false;
 
     const status = Number(item.status);
-    if (status !== 1) return false;
+    const allowedInitialStatuses = [-1, 0, 1, 9, 10, 11, 12, 20, 21];
+    if (!allowedInitialStatuses.includes(status)) return false;
 
-    // Jika file sudah diupload dan masih dalam review, jangan tampilkan tombol upload lagi.
-    // (Pemohon harus tunggu admin review dulu, baru bisa upload revisi.)
-    if (item.files && item.files.length > 0) return false;
+    // Jika berkas belum ada sama sekali, izinkan upload di semua tahap awal
+    if (!item.files || item.files.length === 0) return true;
 
-    return true;
+    // Jika sedang diminta revisi administrasi (status 11 atau 9), izinkan buka dialog upload/kelola berkas
+    if ([9, 11].includes(status)) return true;
+
+    return false;
 };
 </script>
 
@@ -101,9 +85,13 @@ const canManageFiles = (item) => {
             </div>
 
             <div class="mb-4">
-                <div class="bg-white/80 backdrop-blur-sm border border-white/50 rounded-lg px-3 py-2 shadow-sm">
+                <div class="bg-white/80 backdrop-blur-sm border border-white/50 rounded-lg px-3 py-2 shadow-sm flex items-center justify-between gap-2">
                     <span class="text-xs font-mono font-bold select-all truncate block">
                         {{ item.nomor_permohonan || item.kode }}
+                    </span>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0"
+                        :class="item.tipe_dokumen === 'PKS' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'">
+                        {{ item.tipe_dokumen === 'PKS' ? 'PKS' : 'KB' }}
                     </span>
                 </div>
             </div>
@@ -114,13 +102,15 @@ const canManageFiles = (item) => {
                 </h4>
             </div>
 
-            <!-- Alasan penolakan/pencabutan -->
-            <div v-if="[8,9].includes(Number(item.status)) && item.alasan_tolak"
+            <!-- Alasan penolakan/pencabutan/revisi -->
+            <div v-if="[8, 9, 11].includes(Number(item.status)) && item.alasan_tolak"
                 class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div class="flex items-start gap-2 text-red-800">
                     <Icon icon="solar:danger-triangle-bold" class="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <div class="text-xs">
-                        <p class="font-bold uppercase tracking-wide mb-0.5">{{ Number(item.status) === 8 ? 'Alasan Pencabutan' : 'Alasan Penolakan' }}</p>
+                        <p class="font-bold uppercase tracking-wide mb-0.5">
+                            {{ Number(item.status) === 8 ? 'Alasan Pencabutan' : (Number(item.status) === 11 ? 'Catatan Revisi' : 'Alasan Penolakan') }}
+                        </p>
                         <p class="font-medium">{{ item.alasan_tolak }}</p>
                     </div>
                 </div>
@@ -153,62 +143,81 @@ const canManageFiles = (item) => {
 
                 <div class="w-full grid grid-cols-2 gap-2 mt-2">
                     <!-- Edit Button (untuk Pemohon, status -1=Draft, 0=Menunggu Validasi, 9=Ditolak, 11=Revisi) -->
-                     <button 
+                    <button 
                         v-if="!isAdmin && (item.status == -1 || item.status == 0 || item.status == 9 || item.status == 11)"
                         @click.stop="$emit('edit', item)" 
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-white shadow-sm col-span-2"
-                        :class="(item.status == 9 || item.status == 11) ? 'text-red-600 hover:bg-red-50' : 'text-yellow-600 hover:bg-yellow-50'"
+                        :class="(item.status == 9 || item.status == 11) ? 'text-red-600 hover:bg-red-50' : 'text-yellow-700 hover:bg-yellow-50'"
                     >
                         <Icon :icon="(item.status == 9 || item.status == 11) ? 'solar:refresh-bold' : 'solar:pen-bold'" class="w-3.5 h-3.5" />
                         <span>{{ (item.status == 9 || item.status == 11) ? 'Revisi & Ajukan Ulang' : (item.status == -1 ? 'Lanjutkan Draft' : 'Edit Pengajuan') }}</span>
                     </button>
 
+                    <!-- Upload Berkas Awal (jika berkas belum diunggah atau sedang revisi) -->
+                    <button 
+                        v-if="canManageFiles(item)"
+                        @click.stop="$emit('upload', item)" 
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all col-span-2 bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+                    >
+                        <Icon icon="solar:upload-bold" class="w-3.5 h-3.5" />
+                        <span>{{ (item.files && item.files.length > 0) ? 'Perbarui Berkas' : 'Upload Berkas Awal' }}</span>
+                    </button>
+
+                    <!-- Buat Jadwal (status 2) -->
                     <button 
                         v-if="!isAdmin && item.status == 2 && (!item.penjadwalans || item.penjadwalans.length === 0 || item.penjadwalans[0].status === 2)"
                         @click.stop="$emit('schedule', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all bg-indigo-600 text-white col-span-2"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-indigo-600 hover:bg-indigo-700 text-white col-span-2 shadow-sm"
                     >
                         <Icon icon="solar:calendar-add-bold" class="w-3.5 h-3.5" />
                         <span>Buat Jadwal</span>
                     </button>
 
-                    <!-- Upload PKS Final (status 3) — admin: buka modal detail untuk upload -->
+                    <!-- Upload Naskah Final (status 3) — admin: buka modal detail untuk upload -->
                     <button
                         v-if="isAdmin && item.status == 3"
                         @click.stop="$emit('detail', item)"
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-violet-700 hover:bg-violet-800 text-white col-span-2"
                     >
                         <Icon icon="solar:document-add-bold" class="w-3.5 h-3.5" />
-                        <span>Upload PKS Final (PDF)</span>
+                        <span>Upload {{ docTypeLabel }} (PDF)</span>
                     </button>
 
-                    <!-- Status 3 — pemohon: info menunggu admin upload PKS final -->
+                    <!-- Status 3 — pemohon: info menunggu admin upload naskah final -->
                     <div
                         v-if="!isAdmin && item.status == 3"
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-violet-800"
                     >
                         <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
-                        <span>Menunggu PKS final dari admin</span>
+                        <span>Menunggu {{ docTypeLabel }} dari admin</span>
                     </div>
 
-                    <!-- Menunggu Hari Penandatanganan (status 4) — info only -->
-                    <div
-                        v-if="!isAdmin && item.status == 4"
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-pink-800"
-                    >
-                        <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
-                        <span>Menunggu waktu penandatanganan</span>
-                    </div>
-
-                    <!-- Upload Dokumen Tertandatangani (status 5) — pemohon -->
+                    <!-- Status 4 (Menunggu Penandatanganan) — Pemohon Upload Dokumen Tertandatangani -->
                     <button
-                        v-if="!isAdmin && item.status == 5"
+                        v-if="!isAdmin && item.status == 4"
                         @click.stop="$emit('detail', item)"
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-orange-600 hover:bg-orange-700 text-white col-span-2"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-pink-600 hover:bg-pink-700 text-white col-span-2 shadow-sm"
                     >
-                        <Icon icon="solar:document-text-bold" class="w-3.5 h-3.5" />
+                        <Icon icon="solar:pen-new-square-bold" class="w-3.5 h-3.5" />
                         <span>Upload Dokumen TTD</span>
                     </button>
+
+                    <!-- Status 5 (Pasca-Tandatangan) — Admin Validasi TTD / Pemohon Menunggu Validasi -->
+                    <button
+                        v-if="isAdmin && item.status == 5"
+                        @click.stop="$emit('detail', item)"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase transition-all bg-orange-600 hover:bg-orange-700 text-white col-span-2 shadow-sm"
+                    >
+                        <Icon icon="solar:shield-check-bold" class="w-3.5 h-3.5" />
+                        <span>Validasi Dokumen TTD</span>
+                    </button>
+                    <div
+                        v-if="!isAdmin && item.status == 5"
+                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-orange-800"
+                    >
+                        <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
+                        <span>Menunggu Validasi TTD Admin</span>
+                    </div>
 
                     <button 
                         @click.stop="$emit('detail', item)" 
@@ -224,21 +233,14 @@ const canManageFiles = (item) => {
                         <span>Lacak</span>
                         <Icon icon="solar:alt-arrow-right-bold" class="w-3.5 h-3.5" />
                     </button>
-                    <button 
-                        v-if="canManageFiles(item)"
-                        @click.stop="$emit('upload', item)" 
-                        class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-all col-span-2 bg-orange-600 text-white"
-                    >
-                        <Icon icon="solar:upload-bold" class="w-3.5 h-3.5" />
-                        <span>Upload Berkas</span>
-                    </button>
-                    <!-- Info: berkas masih dalam tahap pembahasan (status = 1) -->
+
+                    <!-- Info: berkas sudah diupload & sedang ditinjau -->
                     <div 
-                        v-else-if="!isAdmin && item.files && item.files.length > 0 && Number(item.status) === 1"
+                        v-if="!isAdmin && item.files && item.files.length > 0 && [0, 1, 10, 12].includes(Number(item.status))"
                         class="flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold col-span-2 bg-white/80 text-blue-700"
                     >
-                        <Icon icon="solar:clock-circle-bold" class="w-3.5 h-3.5" />
-                        <span>Berkas sedang dalam pembahasan</span>
+                        <Icon icon="solar:check-circle-bold" class="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{{ item.files.length }} Berkas Terlampir</span>
                     </div>
                 </div>
             </div>

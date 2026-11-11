@@ -9,21 +9,18 @@ class MenusSeeder extends Seeder
 {
     public function run()
     {
-        // Truncate tables first (optional, be careful)
-        // Menu::truncate(); 
-
         $menus = [
             [
                 'title' => 'Dashboard',
                 'route' => 'dashboard',
                 'icon' => 'solar:home-2-bold',
                 'order' => 1,
-                'roles' => 'administrator,superadmin,tkksd,pemohon',
+                'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd,pemohon',
                 'children' => []
             ],
             [
                 'title' => 'Permohonan Saya',
-                'route' => 'permohonan.index', // Adjust if route different
+                'route' => 'permohonan.index',
                 'icon' => 'solar:document-text-bold',
                 'order' => 2,
                 'roles' => 'pemohon',
@@ -31,7 +28,7 @@ class MenusSeeder extends Seeder
             ],
             [
                 'title' => 'Riwayat',
-                'route' => 'riwayat.index', // Adjust if route different
+                'route' => 'riwayat.index',
                 'icon' => 'solar:history-bold',
                 'order' => 3,
                 'roles' => 'pemohon',
@@ -43,72 +40,86 @@ class MenusSeeder extends Seeder
                 'route' => null,
                 'icon' => 'solar:folder-open-bold',
                 'order' => 4,
-                'roles' => 'administrator,superadmin,tkksd',
+                'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                 'children' => [
                     [
                         'title' => 'Daftar Permohonan',
                         'route' => 'permohonan.index',
                         'icon' => 'solar:document-text-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 1
                     ],
                     [
-                        'title' => 'Validasi',
+                        'title' => 'Validasi & Disposisi',
                         'route' => 'validasi.index',
                         'icon' => 'solar:check-circle-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 2
                     ],
                     [
                         'title' => 'Pembahasan',
                         'route' => 'pembahasan.index',
                         'icon' => 'solar:chat-round-dots-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 3
                     ],
                     [
-                        'title' => 'Persetujuan',
+                        'title' => 'Persetujuan Jadwal',
                         'route' => 'persetujuan.index',
                         'icon' => 'solar:verified-check-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 4
+                    ],
+                    [
+                        'title' => 'Penandatanganan',
+                        'route' => 'penandatanganan.index',
+                        'icon' => 'solar:pen-new-square-linear',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama',
+                        'order' => 5
+                    ],
+                    [
+                        'title' => 'Pelaksanaan',
+                        'route' => 'pelaksanaan.index',
+                        'icon' => 'solar:rocket-linear',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama',
+                        'order' => 6
                     ],
                 ]
             ],
             [
-                'title' => 'Penjadwalan',
-                'route' => 'penjadwalan.index',
-                'icon' => 'solar:calendar-bold',
+                'title' => 'Kerjasama Manual',
+                'route' => 'kerjasama-manual.index',
+                'icon' => 'solar:archive-minimalistic-bold',
                 'order' => 5,
-                'roles' => 'administrator,superadmin,tkksd',
+                'roles' => 'administrator,superadmin,kabag_kerjasama',
                 'children' => []
             ],
             [
-                'title' => 'Laporan',
+                'title' => 'Laporan & Monev',
                 'route' => 'laporan.index',
                 'icon' => 'solar:chart-bold',
                 'order' => 6,
-                'roles' => 'administrator,superadmin,tkksd',
+                'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                 'children' => [
                     [
                         'title' => 'Monitoring Kerjasama',
                         'route' => 'laporan.index',
                         'icon' => 'solar:monitor-camera-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 1
                     ],
                     [
                         'title' => 'Statistik Laporan',
                         'route' => 'laporan.statistik',
                         'icon' => 'solar:pie-chart-2-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 2
                     ],
                     [
                         'title' => 'Monev Kerjasama',
                         'route' => 'monev.index',
                         'icon' => 'solar:clipboard-check-linear',
-                        'roles' => 'administrator,superadmin,tkksd',
+                        'roles' => 'administrator,superadmin,kabag_kerjasama,tkksd',
                         'order' => 3
                     ],
                 ]
@@ -121,18 +132,39 @@ class MenusSeeder extends Seeder
                 'roles' => 'administrator,superadmin',
                 'children' => [
                     [
-                        'title' => 'Kategori',
+                        'title' => 'Kategori Kerjasama',
                         'route' => 'master.kategori.index',
                         'icon' => 'solar:tag-linear',
                         'roles' => 'administrator,superadmin',
                         'order' => 1
                     ],
                     [
-                        'title' => 'Pemohon',
+                        'title' => 'Master OPD',
+                        'route' => 'master.opd.index',
+                        'icon' => 'solar:buildings-2-linear',
+                        'roles' => 'administrator,superadmin',
+                        'order' => 2
+                    ],
+                    [
+                        'title' => 'Data Pemohon',
                         'route' => 'master.pemohon.index',
                         'icon' => 'solar:users-group-rounded-linear',
                         'roles' => 'administrator,superadmin',
-                        'order' => 2
+                        'order' => 3
+                    ],
+                    [
+                        'title' => 'Mitra Kerja Sama',
+                        'route' => 'master.mitra.index',
+                        'icon' => 'solar:hand-shake-linear',
+                        'roles' => 'administrator,superadmin',
+                        'order' => 4
+                    ],
+                    [
+                        'title' => 'Galeri TKKSD',
+                        'route' => 'master.galeri-tkksd.index',
+                        'icon' => 'solar:gallery-wide-linear',
+                        'roles' => 'administrator,superadmin',
+                        'order' => 5
                     ],
                 ]
             ],
@@ -193,9 +225,6 @@ class MenusSeeder extends Seeder
             $children = $menuData['children'];
             unset($menuData['children']);
 
-            // Use updateOrCreate to avoid duplicates
-            // Identify by title + route? or just title? Route might be null.
-            // Let's use title as unique identifier for top level
             $parent = Menu::updateOrCreate(
                 ['title' => $menuData['title']],
                 $menuData

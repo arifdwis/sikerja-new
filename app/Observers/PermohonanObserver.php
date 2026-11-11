@@ -16,8 +16,7 @@ class PermohonanObserver
 
     /**
      * Anti-duplicate guard: jangan kirim notif dengan kombinasi (permohonan_id + status_baru)
-     * yang sama dua kali dalam satu request lifecycle. Mencegah double WA saat status &
-     * jangka_waktu berubah bersamaan.
+     * yang sama dua kali dalam satu request lifecycle.
      */
     private static array $notifiedThisRequest = [];
 
@@ -33,7 +32,6 @@ class PermohonanObserver
     {
         Log::info('PermohonanObserver: created event fired', ['id' => $permohonan->id]);
 
-        // 1. Catat histori awal
         PermohonanHistori::create([
             'id_permohonan' => $permohonan->id,
             'id_operator'   => auth()->id() ?? $permohonan->id_pemohon_0,
@@ -46,9 +44,9 @@ class PermohonanObserver
             return;
         }
 
-        // 2. Notifikasi sistem ke admin / TKKSD (admin = whitelist via scope)
+        // Notifikasi sistem ke admin / Kabag / TKKSD
         $admins = User::adminNotificationRecipients()->get();
-        $tkksdUsers = User::whereHas('roles', fn($q) => $q->where('slug', 'tkksd'))->get();
+        $tkksdUsers = User::whereHas('roles', fn($q) => $q->whereIn('slug', ['tkksd', 'kabag_kerjasama']))->get();
         $recipients = $admins->merge($tkksdUsers)->unique('id');
 
         foreach ($recipients as $admin) {
@@ -56,13 +54,13 @@ class PermohonanObserver
                 'id_user'  => $admin->id,
                 'category' => 'permohonan',
                 'title'    => 'Permohonan Baru Masuk',
-                'message'  => "Permohonan baru dari {$permohonan->nama_instansi} menunggu validasi awal.",
+                'message'  => "Permohonan baru dari {$permohonan->nama_instansi} menunggu verifikasi administrasi.",
                 'data'     => ['uuid' => $permohonan->uuid],
                 'is_read'  => false,
             ]);
         }
 
-        // 3. WA grup admin — pakai template formal
+        // WA grup admin
         $oleh = auth()->user()?->name ?? ($permohonan->pemohon?->name ?? 'Pemohon');
         $this->waService->sendToGroup(NotificationTemplate::permohonanBaruDariPemohon($permohonan, $oleh));
     }
@@ -72,7 +70,6 @@ class PermohonanObserver
      */
     public function updated(Permohonan $permohonan): void
     {
-        // Log perubahan jangka waktu (Req 5.5, 5.6) — Admin edit pasca-pembahasan
         $this->handleJangkaWaktuChange($permohonan);
 
         if ($permohonan->isDirty('status')) {
@@ -81,11 +78,10 @@ class PermohonanObserver
             $user = auth()->user();
 
             $deskripsi = $this->getDeskripsiForStatus($newStatus);
-            if (in_array($newStatus, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, 99])) {
+            if (in_array($newStatus, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, Permohonan::STATUS_REVISI, 99])) {
                 $deskripsi .= ': ' . ($permohonan->alasan_tolak ?? 'Tidak ada alasan spesifik.');
             }
 
-            // 1. Histori
             PermohonanHistori::create([
                 'id_permohonan' => $permohonan->id,
                 'id_operator'   => $user?->id,
@@ -93,13 +89,12 @@ class PermohonanObserver
                 'deskripsi'     => $deskripsi,
             ]);
 
-            // 2. Notifikasi pemohon (system + WA) sesuai tahapan
             $this->notifyPemohonForStatus($permohonan, $newStatus);
         }
     }
 
     /**
-     * Build dan kirim notifikasi pemohon sesuai tahapan baru.
+     * Build dan kirim notifikasi pemohon & pejabat terkait sesuai tahapan baru.
      */
     private function notifyPemohonForStatus(Permohonan $permohonan, int $newStatus): void
     {
@@ -108,7 +103,6 @@ class PermohonanObserver
             return;
         }
 
-        // Anti-duplicate per request lifecycle
         $key = "{$permohonan->id}_{$newStatus}";
         if (in_array($key, self::$notifiedThisRequest, true)) {
             return;
@@ -120,6 +114,17 @@ class PermohonanObserver
         $namaPemohon = $pemohonProfile?->name ?: ($pemohonUser?->name ?: 'Pemohon');
 
         $payload = match ($newStatus) {
+            Permohonan::STATUS_VERIFIKASI_ADMIN     => NotificationTemplate::statusUpdate(
+                $namaPemohon,
+                $permohonan,
+                'Lolos Verifikasi Staf — Menunggu Validasi Kabag Kerja Sama',
+                'Berkas administrasi Anda telah diverifikasi lengkap oleh staf dan diteruskan ke Kepala Bagian Kerja Sama untuk validasi dan disposisi.'
+            ),
+            Permohonan::STATUS_REVISI               => NotificationTemplate::permohonanDitolak(
+                $namaPemohon,
+                $permohonan,
+                $permohonan->alasan_tolak ?? 'Mohon lengkapi berkas atau perbaiki data sesuai catatan verifikator.'
+            ),
             Permohonan::STATUS_PEMBAHASAN           => NotificationTemplate::permohonanDiterima($namaPemohon, $permohonan),
             Permohonan::STATUS_PENJADWALAN          => NotificationTemplate::pembahasanSelesai($namaPemohon, $permohonan),
             Permohonan::STATUS_PELAKSANAAN          => NotificationTemplate::pelaksanaanDimulai($namaPemohon, $permohonan),
@@ -132,7 +137,7 @@ class PermohonanObserver
             ),
         };
 
-        // Sistem
+        // Sistem ke Pemohon
         Notifikasi::create([
             'id_user'  => $pemohonId,
             'category' => 'permohonan',
@@ -142,28 +147,72 @@ class PermohonanObserver
             'is_read'  => false,
         ]);
 
-        // Notifikasi pemohon (email)
+        // WA/Email ke Pemohon
         $targetRecipient = $pemohonUser ?: ($permohonan->email ?: $pemohonProfile);
         if ($targetRecipient) {
             $this->waService->sendMessage($targetRecipient, $payload['wa']);
         }
 
-        // Internal grup admin (rekap update status)
+        // Jika status = 10 (Menunggu Validasi Kabag), kirim notifikasi khusus ke akun Kabag Kerja Sama
+        if ($newStatus === Permohonan::STATUS_VERIFIKASI_ADMIN) {
+            $this->notifyKabagKerjasama($permohonan);
+        }
+
+        // Internal grup admin
         $this->waService->sendToGroup(
             NotificationTemplate::internalGroup(
                 'Pembaruan Status Permohonan',
                 $permohonan,
                 "Status permohonan kerja sama berubah menjadi *" . ($permohonan->status_label['label'] ?? '-') . "*.",
                 auth()->user()?->name,
-                in_array($newStatus, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT], true)
+                in_array($newStatus, [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, Permohonan::STATUS_REVISI], true)
                     ? $permohonan->alasan_tolak
                     : null
             )
         );
 
-        // Jika status dicabut, informasikan juga ke TKKSD Lokus OPD terkait.
         if ($newStatus === Permohonan::STATUS_DICABUT) {
             $this->notifyTkksdLokusPencabutan($permohonan);
+        }
+    }
+
+    /**
+     * Notifikasi khusus ke Kepala Bagian Kerja Sama saat berkas lolos verifikasi staf (Status 10).
+     */
+    private function notifyKabagKerjasama(Permohonan $permohonan): void
+    {
+        $kabagUsers = User::whereHas('roles', fn($q) => $q->where('slug', 'kabag_kerjasama'))->get();
+        if ($kabagUsers->isEmpty()) {
+            return;
+        }
+
+        $title = 'Menunggu Validasi & Disposisi Kabag';
+        $message = "Permohonan \"{$permohonan->label}\" dari {$permohonan->nama_instansi} telah diverifikasi staf dan menunggu validasi/disposisi Kepala Bagian Kerja Sama.";
+
+        foreach ($kabagUsers as $kabag) {
+            Notifikasi::create([
+                'id_user'       => $kabag->id,
+                'id_permohonan' => $permohonan->id,
+                'from_user_id'  => auth()->id(),
+                'category'      => 'permohonan',
+                'type'          => 'validasi_kabag',
+                'title'         => $title,
+                'message'       => $message,
+                'data'          => ['uuid' => $permohonan->uuid],
+                'is_read'       => false,
+            ]);
+
+            try {
+                $waMsg = NotificationTemplate::internalGroup(
+                    $title,
+                    $permohonan,
+                    $message,
+                    auth()->user()?->name ?? 'Staf Bagian Kerja Sama'
+                );
+                $this->waService->sendMessage($kabag, $waMsg);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal kirim WA ke Kabag: ' . $e->getMessage());
+            }
         }
     }
 
@@ -216,7 +265,6 @@ class PermohonanObserver
             return;
         }
 
-        // Hanya log jika permohonan sudah melewati pembahasan
         $oldStatus = (int) $permohonan->getOriginal('status');
         if ($oldStatus < Permohonan::STATUS_PENJADWALAN) {
             return;
@@ -273,22 +321,24 @@ class PermohonanObserver
         }
     }
 
-    /**
-     * Get deskripsi for history based on status
-     */
     private function getDeskripsiForStatus($status): string
     {
         return match ((int) $status) {
-            Permohonan::STATUS_PERMOHONAN           => 'Permohonan dikembalikan / revisi.',
-            Permohonan::STATUS_PEMBAHASAN           => 'Permohonan divalidasi dan masuk pembahasan.',
+            Permohonan::STATUS_PERMOHONAN           => 'Permohonan diajukan / menunggu verifikasi administrasi.',
+            Permohonan::STATUS_VERIFIKASI_ADMIN     => 'Berkas diverifikasi staf dan diteruskan ke Kepala Bagian Kerja Sama.',
+            Permohonan::STATUS_REVISI               => 'Permohonan dikembalikan ke pemohon untuk perbaikan/revisi.',
+            Permohonan::STATUS_TERVERIFIKASI        => 'Permohonan disetujui Kepala Bagian Kerja Sama.',
+            Permohonan::STATUS_PEMBAHASAN           => 'Permohonan divalidasi dan masuk pembahasan TKKSD.',
             Permohonan::STATUS_PENJADWALAN          => 'Pembahasan selesai. Pemohon dipersilakan mengajukan jadwal penandatanganan.',
-            Permohonan::STATUS_JADWAL_DISETUJUI     => 'Jadwal penandatanganan disetujui. Admin akan menyiapkan PKS final.',
-            Permohonan::STATUS_MENUNGGU_TANDATANGAN => 'PKS final telah disiapkan admin. Menunggu hari penandatanganan.',
+            Permohonan::STATUS_JADWAL_DISETUJUI     => 'Jadwal penandatanganan disetujui. Admin akan menyiapkan naskah final.',
+            Permohonan::STATUS_MENUNGGU_TANDATANGAN => 'Naskah final telah disiapkan admin. Menunggu penandatanganan.',
             Permohonan::STATUS_PASCA_TANDATANGAN    => 'Dokumen tertandatangani diunggah. Menunggu validasi admin.',
             Permohonan::STATUS_PELAKSANAAN          => 'Dokumen disetujui. Kerja sama memasuki tahap pelaksanaan.',
+            Permohonan::STATUS_EVALUASI             => 'Kerja sama memasuki masa evaluasi akhir (H-90 hari).',
+            Permohonan::STATUS_PERPANJANGAN         => 'Usulan perpanjangan kerja sama diajukan.',
             Permohonan::STATUS_SELESAI              => 'Kerja sama telah selesai.',
             Permohonan::STATUS_DICABUT              => 'Kerja sama dicabut pada tahap pelaksanaan.',
-            Permohonan::STATUS_DITOLAK              => 'Permohonan dikembalikan untuk direvisi',
+            Permohonan::STATUS_DITOLAK              => 'Permohonan ditolak.',
             default                                 => 'Status permohonan diperbarui.',
         };
     }

@@ -6,7 +6,6 @@ use App\Models\Permohonan;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 use App\Models\Kategori;
@@ -16,11 +15,24 @@ use App\Models\KerjasamaManual;
 
 class LaporanController extends Controller
 {
+    /**
+     * Status yang dianggap sebagai kerja sama sah / berjalan / selesai untuk pelaporan.
+     */
+    private function activeAndCompletedStatuses(): array
+    {
+        return [
+            Permohonan::STATUS_PASCA_TANDATANGAN,
+            Permohonan::STATUS_PELAKSANAAN,
+            Permohonan::STATUS_EVALUASI,
+            Permohonan::STATUS_PERPANJANGAN,
+            Permohonan::STATUS_SELESAI,
+        ];
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
 
-        // Filter Data Pre-fetch: Gabungkan tahun dari Permohonan dan KerjasamaManual
         $tahunListSistem = Permohonan::whereNotNull('tanggal_mulai')
             ->selectRaw('DISTINCT YEAR(tanggal_mulai) as year')
             ->pluck('year');
@@ -35,14 +47,13 @@ class LaporanController extends Controller
             ->values()
             ->toArray();
 
-        // Ensure current year is in list if empty
         if (empty($availableYears)) {
             $availableYears = [(int) date('Y')];
         }
 
         $kategoris = Kategori::select('id', 'label')->orderBy('label')->get();
 
-        // Query Permohonan Selesai
+        // Query Permohonan Aktif (Pelaksanaan) & Selesai
         $queryPermohonan = Permohonan::select([
             'id',
             'uuid',
@@ -51,11 +62,12 @@ class LaporanController extends Controller
             'id_kategori',
             'tanggal_mulai',
             'tanggal_berakhir',
+            'status',
         ])
             ->with(['kategori:id,label'])
             ->whereNotNull('tanggal_mulai')
             ->whereNotNull('tanggal_berakhir')
-            ->where('status', Permohonan::STATUS_SELESAI);
+            ->whereIn('status', $this->activeAndCompletedStatuses());
 
         // Query Kerjasama Manual
         $queryManual = KerjasamaManual::select([
@@ -72,8 +84,7 @@ class LaporanController extends Controller
             ->whereNotNull('tanggal_mulai')
             ->whereNotNull('tanggal_berakhir');
 
-        // If pemohon, strict ownership
-        if ($user->hasRole('pemohon')) {
+        if ($user->isPurePemohon()) {
             $queryPermohonan->where('id_pemohon_0', $user->id);
 
             if ($user->id_opd) {
@@ -86,7 +97,6 @@ class LaporanController extends Controller
             }
         }
 
-        // Apply filters
         if ($request->filled('search')) {
             $search = $request->search;
             $queryPermohonan->where(function ($q) use ($search) {
@@ -125,16 +135,15 @@ class LaporanController extends Controller
             $daysRemaining = (int) $now->diffInDays($end, false);
             $totalDuration = (int) $start->diffInDays($end);
 
-            // Determine status based on time
             $statusMonev = 'Berlangsung';
-            $alertLevel = 'success'; // Green
+            $alertLevel = 'success';
 
             if ($daysRemaining < 0) {
                 $statusMonev = 'Berakhir';
-                $alertLevel = 'danger'; // Red
+                $alertLevel = 'danger';
             } elseif ($daysRemaining <= 90) {
                 $statusMonev = 'Segera Berakhir';
-                $alertLevel = 'warning'; // Yellow/Orange
+                $alertLevel = 'warning';
             }
 
             $elapsedDays = (int) $start->diffInDays($now, false);
@@ -166,7 +175,6 @@ class LaporanController extends Controller
 
         $data = $dataSistem->concat($dataManual);
 
-        // Group by Status for Tabs
         $grouped = [
             'berlangsung' => $data->where('status_monev', 'Berlangsung')->sortBy('sisa_hari')->values(),
             'segera_berakhir' => $data->where('status_monev', 'Segera Berakhir')->sortBy('sisa_hari')->values(),
@@ -189,14 +197,11 @@ class LaporanController extends Controller
 
     public function statistik(Request $request)
     {
-        // Build a unified collection: Permohonan (semua yang punya periode kerjasama) + KerjasamaManual.
-        // Logika "kerjasama valid": punya tanggal_mulai DAN tanggal_berakhir (artinya sudah disepakati & ditandatangani),
-        // tidak peduli stuck di status alur sistem berapa pun. Plus tabel kerjasama_manual untuk data sistem lama.
-        // Tetap include yang tanggalnya belum ada juga, supaya pengguna lihat permohonan migrasi sistem lama.
         $tahunFilter = $request->input('tahun');
 
         $permohonanRows = Permohonan::query()
-            ->whereNotIn('status', [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT])
+            ->where('is_draft', false)
+            ->whereNotIn('status', [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, Permohonan::STATUS_DRAFT])
             ->select([
                 'id', 'uuid', 'label', 'nama_instansi', 'id_kategori',
                 'id_pemohon_0', 'tanggal_mulai', 'tanggal_berakhir', 'created_at', 'status',
@@ -204,20 +209,20 @@ class LaporanController extends Controller
             ->with(['kategori:id,label', 'opds:id,nama,singkatan'])
             ->get()
             ->map(fn($p) => [
-                'source'         => 'sistem',
-                'id'             => $p->id,
-                'label'          => $p->label,
-                'mitra'          => $p->nama_instansi,
-                'id_kategori'    => $p->id_kategori,
-                'kategori_label' => $p->kategori?->label,
-                'tanggal_mulai'  => optional($p->tanggal_mulai)->toDateString(),
+                'source'           => 'sistem',
+                'id'               => $p->id,
+                'label'            => $p->label,
+                'mitra'            => $p->nama_instansi,
+                'id_kategori'      => $p->id_kategori,
+                'kategori_label'   => $p->kategori?->label,
+                'tanggal_mulai'    => optional($p->tanggal_mulai)->toDateString(),
                 'tanggal_berakhir' => optional($p->tanggal_berakhir)->toDateString(),
-                'created_at'     => optional($p->created_at)->toDateString(),
-                'opds'           => $p->opds->map(fn($o) => $o->singkatan ?: $o->nama)->all(),
-                'id_pemohon_0'   => $p->id_pemohon_0,
+                'created_at'       => optional($p->created_at)->toDateString(),
+                'opds'             => $p->opds->map(fn($o) => $o->singkatan ?: $o->nama)->all(),
+                'id_pemohon_0'     => $p->id_pemohon_0,
             ]);
 
-        $manualRows = \App\Models\KerjasamaManual::query()
+        $manualRows = KerjasamaManual::query()
             ->select([
                 'id', 'uuid', 'label', 'nama_instansi', 'id_kategori',
                 'tanggal_mulai', 'tanggal_berakhir', 'created_at',
@@ -225,22 +230,21 @@ class LaporanController extends Controller
             ->with(['kategori:id,label', 'opds:id,nama,singkatan'])
             ->get()
             ->map(fn($m) => [
-                'source'         => 'manual',
-                'id'             => $m->id,
-                'label'          => $m->label,
-                'mitra'          => $m->nama_instansi,
-                'id_kategori'    => $m->id_kategori,
-                'kategori_label' => $m->kategori?->label,
-                'tanggal_mulai'  => optional($m->tanggal_mulai)->toDateString(),
+                'source'           => 'manual',
+                'id'               => $m->id,
+                'label'            => $m->label,
+                'mitra'            => $m->nama_instansi,
+                'id_kategori'      => $m->id_kategori,
+                'kategori_label'   => $m->kategori?->label,
+                'tanggal_mulai'    => optional($m->tanggal_mulai)->toDateString(),
                 'tanggal_berakhir' => optional($m->tanggal_berakhir)->toDateString(),
-                'created_at'     => optional($m->created_at)->toDateString(),
-                'opds'           => $m->opds->map(fn($o) => $o->singkatan ?: $o->nama)->all(),
-                'id_pemohon_0'   => null,
+                'created_at'       => optional($m->created_at)->toDateString(),
+                'opds'             => $m->opds->map(fn($o) => $o->singkatan ?: $o->nama)->all(),
+                'id_pemohon_0'     => null,
             ]);
 
         $all = $permohonanRows->concat($manualRows);
 
-        // Helper: tahun acuan = tanggal_mulai bila ada, fallback ke created_at
         $resolveYear = function ($row) {
             $date = $row['tanggal_mulai'] ?: $row['created_at'];
             return $date ? (int) substr($date, 0, 4) : null;
@@ -252,7 +256,6 @@ class LaporanController extends Controller
 
         $now = Carbon::now()->startOfDay();
 
-        // 1) Akumulatif per tahun (aktif vs selesai vs tanpa-jangka-waktu)
         $akumulatifData = $all
             ->groupBy(fn($r) => $resolveYear($r) ?? 'Tanpa Tahun')
             ->map(function ($rows, $tahun) use ($now) {
@@ -271,7 +274,6 @@ class LaporanController extends Controller
             ->sortKeysDesc()
             ->values();
 
-        // 2) Rekap mitra (Top 20) — hitung dari kedua sumber
         $rekapMitraData = $all
             ->groupBy(fn($r) => $r['mitra'] ?: 'Tidak Diketahui')
             ->map(fn($rows, $mitra) => [
@@ -288,7 +290,6 @@ class LaporanController extends Controller
                 return $item;
             });
 
-        // 3) Persentase OPD — gunakan opds (multi) yang sudah di-flatten
         $totalAll = $all->count();
         $opdCounter = [];
         foreach ($all as $row) {
@@ -309,7 +310,6 @@ class LaporanController extends Controller
             ->sortByDesc('realisasi')
             ->values();
 
-        // 4) Persentase Bidang — group berdasarkan kategori_label
         $persentaseBidangData = $all
             ->groupBy(fn($r) => $r['kategori_label'] ?: 'Tanpa Kategori')
             ->map(fn($rows, $kategori) => [
@@ -322,7 +322,6 @@ class LaporanController extends Controller
             ->sortByDesc('jumlah')
             ->values();
 
-        // 5) Ringkasan global (untuk KPI cards di atas tabs)
         $summary = [
             'total'        => $totalAll,
             'sistem'       => $all->where('source', 'sistem')->count(),
@@ -333,11 +332,10 @@ class LaporanController extends Controller
             'mitra_unik'   => $all->pluck('mitra')->filter()->unique()->count(),
         ];
 
-        // Daftar tahun yang tersedia (gabungan)
-        $tahunListSistem = Permohonan::whereNotIn('status', [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT])
+        $tahunListSistem = Permohonan::whereNotIn('status', [Permohonan::STATUS_DITOLAK, Permohonan::STATUS_DICABUT, Permohonan::STATUS_DRAFT])
             ->selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')
             ->pluck('y');
-        $tahunListManual = \App\Models\KerjasamaManual::selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')->pluck('y');
+        $tahunListManual = KerjasamaManual::selectRaw('DISTINCT YEAR(COALESCE(tanggal_mulai, created_at)) as y')->pluck('y');
         $availableYears = $tahunListSistem->concat($tahunListManual)->filter()->unique()->sortDesc()->values();
 
         return Inertia::render('Backend/Laporan/Statistik', [
@@ -354,7 +352,7 @@ class LaporanController extends Controller
     public function akumulatif(Request $request)
     {
         $query = Permohonan::query()
-            ->where('status', Permohonan::STATUS_SELESAI) // Only count valid/signed agreements
+            ->whereIn('status', $this->activeAndCompletedStatuses())
             ->selectRaw('YEAR(tanggal_mulai) as tahun')
             ->selectRaw('COUNT(*) as total_kerjasama')
             ->selectRaw('SUM(CASE WHEN tanggal_berakhir >= CURDATE() THEN 1 ELSE 0 END) as aktif')
@@ -368,15 +366,14 @@ class LaporanController extends Controller
 
         return Inertia::render('Backend/Laporan/Akumulatif', [
             'data' => $query->get(),
-            'filters' => $request->all(),
+            'filters' => $request->only(['tahun']),
         ]);
     }
 
     public function rekapMitra(Request $request)
     {
-        // Top 20 Mitra by count
         $query = Permohonan::query()
-            ->where('status', Permohonan::STATUS_SELESAI)
+            ->whereIn('status', $this->activeAndCompletedStatuses())
             ->select('nama_instansi as mitra')
             ->selectRaw('COUNT(*) as total_kerjasama')
             ->groupBy('nama_instansi')
@@ -386,24 +383,22 @@ class LaporanController extends Controller
         return Inertia::render('Backend/Laporan/RekapMitra', [
             'data' => $query->get()->map(function ($item, $index) {
                 $item->id = $index + 1;
-                $item->jenis = '-'; // Placeholder as data not explicitly available
+                $item->jenis = '-';
                 return $item;
             }),
-            'filters' => $request->all(),
+            'filters' => $request->only(['tahun']),
         ]);
     }
 
     public function persentaseOpd(Request $request)
     {
-        // Aggregate by Pemohon (OPD)
-        // Need to join with Pemohon/User table to get name
-        // Assuming Pemohon model has 'name' or User has 'name'
-
-        $total = Permohonan::where('status', Permohonan::STATUS_SELESAI)->count();
-        if ($total == 0)
+        $statuses = $this->activeAndCompletedStatuses();
+        $total = Permohonan::whereIn('status', $statuses)->count();
+        if ($total == 0) {
             $total = 1;
+        }
 
-        $opdCounts = Permohonan::where('status', Permohonan::STATUS_SELESAI)
+        $opdCounts = Permohonan::whereIn('status', $statuses)
             ->select('id_pemohon_0', DB::raw('count(*) as total'))
             ->groupBy('id_pemohon_0')
             ->get();
@@ -439,19 +434,21 @@ class LaporanController extends Controller
 
         return Inertia::render('Backend/Laporan/PersentaseOpd', [
             'data' => $data->values(),
-            'filters' => $request->all(),
+            'filters' => $request->only(['tahun']),
         ]);
     }
 
     public function persentaseBidang(Request $request)
     {
-        $total = Permohonan::where('status', Permohonan::STATUS_SELESAI)->count();
-        if ($total == 0)
+        $statuses = $this->activeAndCompletedStatuses();
+        $total = Permohonan::whereIn('status', $statuses)->count();
+        if ($total == 0) {
             $total = 1;
+        }
 
         $data = Kategori::withCount([
-            'permohonans' => function ($q) {
-                $q->where('status', Permohonan::STATUS_SELESAI);
+            'permohonans' => function ($q) use ($statuses) {
+                $q->whereIn('status', $statuses);
             }
         ])
             ->get()
@@ -467,7 +464,7 @@ class LaporanController extends Controller
 
         return Inertia::render('Backend/Laporan/PersentaseBidang', [
             'data' => $data,
-            'filters' => $request->all(),
+            'filters' => $request->only(['tahun']),
         ]);
     }
 
@@ -519,7 +516,7 @@ class LaporanController extends Controller
     public function cetakSemua()
     {
         $itemsPermohonan = Permohonan::with(['kategori', 'pemohon', 'operator', 'kota', 'provinsi'])
-            ->where('status', Permohonan::STATUS_SELESAI)
+            ->whereIn('status', $this->activeAndCompletedStatuses())
             ->whereNotNull('tanggal_mulai')
             ->whereNotNull('tanggal_berakhir')
             ->get()

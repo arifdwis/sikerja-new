@@ -3,6 +3,9 @@ import { computed, watch } from 'vue';
 import { Icon } from '@iconify/vue';
 import MultiSelect from 'primevue/multiselect';
 import { computeJangkaWaktu } from '@/utils/jangkaWaktu';
+import { useToast } from 'vue-toastification';
+
+const toast = useToast();
 
 const props = defineProps({
     form: Object,
@@ -10,6 +13,10 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    existingFiles: {
+        type: Array,
+        default: () => []
+    }
 });
 
 const opdOptions = computed(() => (props.opds || []).map(o => ({
@@ -34,135 +41,208 @@ watch([
 ], () => {
     props.form.jangka_waktu = jangkaWaktuAuto.value;
 }, { immediate: true });
+
+const docFields = [
+    { key: 'surat_permohonan', label: 'Surat Permohonan Kerjasama', format: 'PDF', accept: '.pdf,application/pdf', required: true },
+    { key: 'proposal_kak', label: 'Proposal / Kerangka Acuan Kerja (KAK)', format: 'PDF', accept: '.pdf,application/pdf', required: true },
+    { key: 'draft_mou', label: 'Draft Kesepakatan Bersama (KB) / PKS', format: 'DOC / DOCX', accept: '.doc,.docx', required: true },
+    { key: 'dokumen_legalitas', label: 'Dokumen Legalitas Instansi (Akta/SK/NPWP)', format: 'PDF / ZIP', accept: '.pdf,.zip', required: false },
+    { key: 'dokumen_pendukung', label: 'Dokumen Pendukung Lainnya', format: 'PDF / ZIP', accept: '.pdf,.zip', required: false },
+];
+
+const getExistingDoc = (key) => {
+    return (props.existingFiles || []).find(f => f.kategori_dokumen === key);
+};
+
+const onFileChange = (event, doc) => {
+    const file = event.target?.files?.[0] || null;
+    if (!file) {
+        props.form[doc.key] = null;
+        return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+        toast.error(`Ukuran berkas ${file.name} melebihi batas 15 MB.`);
+        event.target.value = '';
+        return;
+    }
+    props.form[doc.key] = file;
+};
 </script>
 
 <template>
-    <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 border border-gray-100 dark:border-gray-700">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-            <Icon icon="solar:document-text-bold" class="w-5 h-5 mr-2 text-orange-500" />
-            Detail Kerjasama (Permendagri No.22 Tahun 2020 Pasal 7)
-        </h3>
-        
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Latar Belakang <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(300 Kata)</span>
-                </label>
-                <textarea v-model="form.latar_belakang" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan latar belakang pengajuan kerjasama..."></textarea>
-            </div>
+    <div class="space-y-6">
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 border border-gray-100 dark:border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <Icon icon="solar:document-text-bold" class="w-5 h-5 mr-2 text-orange-500" />
+                Detail Kerjasama (Permendagri No.22 Tahun 2020 & Perwali Samarinda No.7/2020)
+            </h3>
             
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Maksud dan Tujuan <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(500 Kata)</span>
-                </label>
-                <textarea v-model="form.maksud_tujuan" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan maksud dan tujuan kerjasama..."></textarea>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Lokasi Kerja Sama Daerah <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(100 Kata)</span>
-                </label>
-                <textarea v-model="form.lokasi_kerjasama" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan lokasi kerjasama..."></textarea>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Ruang Lingkup <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(500 Kata)</span>
-                </label>
-                <textarea v-model="form.ruang_lingkup" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan ruang lingkup kerjasama..."></textarea>
-            </div>
-
-            <!-- OPD Terkait (Req 12) -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    OPD Terkait <span class="text-red-500">*</span>
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    Pilih satu atau lebih OPD yang terlibat dalam kerjasama ini
-                </p>
-
-                <MultiSelect
-                    v-model="form.opd_ids"
-                    :options="opdOptions"
-                    option-label="label"
-                    option-value="id"
-                    placeholder="Pilih OPD terkait..."
-                    display="chip"
-                    filter
-                    :max-selected-labels="3"
-                    class="w-full"
-                />
-
-                <p v-if="form.errors?.opd_ids" class="text-red-500 text-sm mt-1">{{ form.errors.opd_ids }}</p>
-            </div>
-
-            <!-- Tanggal Mulai & Tanggal Berakhir (input langsung) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Tanggal Mulai <span class="text-red-500">*</span>
+                        Latar Belakang <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(300 Kata)</span>
                     </label>
-                    <input v-model="form.tanggal_mulai" type="date" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                    <textarea v-model="form.latar_belakang" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan latar belakang pengajuan kerjasama..."></textarea>
+                    <p v-if="form.errors?.latar_belakang" class="text-red-500 text-xs mt-1">{{ form.errors.latar_belakang }}</p>
                 </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Tanggal Berakhir <span class="text-red-500">*</span>
+                        Maksud dan Tujuan <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(500 Kata)</span>
                     </label>
-                    <input
-                        v-model="form.tanggal_berakhir"
-                        type="date"
-                        :min="form.tanggal_mulai || undefined"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': hasInvalidEndDate }"
+                    <textarea v-model="form.maksud_tujuan" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan maksud dan tujuan kerjasama..."></textarea>
+                    <p v-if="form.errors?.maksud_tujuan" class="text-red-500 text-xs mt-1">{{ form.errors.maksud_tujuan }}</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Lokasi Kerja Sama Daerah <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(100 Kata)</span>
+                    </label>
+                    <textarea v-model="form.lokasi_kerjasama" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan lokasi kerjasama..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Ruang Lingkup <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(500 Kata)</span>
+                    </label>
+                    <textarea v-model="form.ruang_lingkup" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan ruang lingkup kerjasama..."></textarea>
+                    <p v-if="form.errors?.ruang_lingkup" class="text-red-500 text-xs mt-1">{{ form.errors.ruang_lingkup }}</p>
+                </div>
+
+                <!-- OPD Terkait (Req 12) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        OPD Terkait <span class="text-red-500">*</span>
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Pilih satu atau lebih OPD yang terlibat dalam kerjasama ini
+                    </p>
+
+                    <MultiSelect
+                        v-model="form.opd_ids"
+                        :options="opdOptions"
+                        option-label="label"
+                        option-value="id"
+                        placeholder="Pilih OPD terkait..."
+                        display="chip"
+                        filter
+                        :max-selected-labels="3"
+                        class="w-full"
                     />
-                    <p v-if="hasInvalidEndDate" class="mt-1 text-sm text-red-500">
-                        Tanggal berakhir tidak boleh lebih awal dari tanggal mulai.
-                    </p>
-                    <p v-else-if="form.errors?.tanggal_berakhir" class="mt-1 text-sm text-red-500">
-                        {{ form.errors.tanggal_berakhir }}
-                    </p>
-                </div>
-            </div>
 
-            <!-- Jangka Waktu (otomatis terhitung dari tanggal mulai & berakhir) -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Jangka Waktu
-                    <span class="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
-                        <Icon icon="solar:magic-wand-bold" class="inline w-3 h-3" />
-                        Otomatis dari tanggal mulai & berakhir
-                    </span>
-                </label>
-                <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-blue-50/50 dark:bg-gray-700/40 text-sm">
-                    <Icon icon="solar:clock-circle-bold-duotone" class="w-5 h-5 text-blue-600" />
-                    <span v-if="jangkaWaktuAuto" class="font-semibold text-gray-800 dark:text-white">
-                        {{ jangkaWaktuAuto }}
-                    </span>
-                    <span v-else class="italic text-gray-500 dark:text-gray-400">
-                        Pilih tanggal mulai dan tanggal berakhir terlebih dahulu
-                    </span>
+                    <p v-if="form.errors?.opd_ids" class="text-red-500 text-sm mt-1">{{ form.errors.opd_ids }}</p>
+                </div>
+
+                <!-- Tanggal Mulai & Tanggal Berakhir -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Tanggal Mulai <span class="text-red-500">*</span>
+                        </label>
+                        <input v-model="form.tanggal_mulai" type="date" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Tanggal Berakhir <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            v-model="form.tanggal_berakhir"
+                            type="date"
+                            :min="form.tanggal_mulai || undefined"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': hasInvalidEndDate }"
+                        />
+                        <p v-if="hasInvalidEndDate" class="mt-1 text-sm text-red-500">
+                            Tanggal berakhir tidak boleh lebih awal dari tanggal mulai.
+                        </p>
+                        <p v-else-if="form.errors?.tanggal_berakhir" class="mt-1 text-sm text-red-500">
+                            {{ form.errors.tanggal_berakhir }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Jangka Waktu -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Jangka Waktu
+                        <span class="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
+                            <Icon icon="solar:magic-wand-bold" class="inline w-3 h-3" />
+                            Otomatis dari tanggal mulai & berakhir
+                        </span>
+                    </label>
+                    <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-blue-50/50 dark:bg-gray-700/40 text-sm">
+                        <Icon icon="solar:clock-circle-bold-duotone" class="w-5 h-5 text-blue-600" />
+                        <span v-if="jangkaWaktuAuto" class="font-semibold text-gray-800 dark:text-white">
+                            {{ jangkaWaktuAuto }}
+                        </span>
+                        <span v-else class="italic text-gray-500 dark:text-gray-400">
+                            Pilih tanggal mulai dan tanggal berakhir terlebih dahulu
+                        </span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Manfaat <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(500 Kata)</span>
+                    </label>
+                    <textarea v-model="form.manfaat" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan manfaat kerjasama..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Analisis Dampak Sosial dan Lingkungan <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(1000 Kata)</span>
+                    </label>
+                    <textarea v-model="form.analisis_dampak" rows="5" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Analisis dampak sosial dan lingkungan sesuai bidang yang dikerjasamakan..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Pembiayaan <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(150 Kata)</span>
+                    </label>
+                    <textarea v-model="form.pembiayaan" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan skema pembiayaan..."></textarea>
                 </div>
             </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Manfaat <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(500 Kata)</span>
-                </label>
-                <textarea v-model="form.manfaat" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan manfaat kerjasama..."></textarea>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Analisis Dampak Sosial dan Lingkungan <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(1000 Kata)</span>
-                </label>
-                <textarea v-model="form.analisis_dampak" rows="5" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Analisis dampak sosial dan lingkungan sesuai bidang yang dikerjasamakan..."></textarea>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Pembiayaan <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(150 Kata)</span>
-                </label>
-                <textarea v-model="form.pembiayaan" rows="3" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" placeholder="Masukan skema pembiayaan..."></textarea>
+        </div>
+
+        <!-- Lampiran Dokumen Pengajuan Awal -->
+        <div class="bg-blue-50/50 dark:bg-gray-800 rounded-xl p-6 border border-blue-200 dark:border-gray-700">
+            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                <Icon icon="solar:cloud-upload-bold-duotone" class="w-5 h-5 text-blue-600" />
+                Unggah Dokumen Kelengkapan Awal
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Lampirkan berkas persyaratan di bawah ini agar dapat langsung diperiksa oleh Staf & Kepala Bagian Kerja Sama (Anda juga dapat menyusulkannya melalui tombol <strong>Upload Berkas Awal</strong> di kartu permohonan).
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                    v-for="doc in docFields"
+                    :key="doc.key"
+                    class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700/50 p-4 space-y-2"
+                >
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                            {{ doc.label }}
+                            <span v-if="doc.required" class="text-blue-600 font-bold ml-1">(Utama)</span>
+                        </label>
+                        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-gray-600 text-[10px] font-bold text-slate-600 dark:text-gray-200">
+                            {{ doc.format }}
+                        </span>
+                    </div>
+
+                    <p v-if="getExistingDoc(doc.key)" class="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <Icon icon="solar:check-circle-bold" class="w-3.5 h-3.5 shrink-0" />
+                        <span class="truncate">Terlampir: {{ getExistingDoc(doc.key).file_name || getExistingDoc(doc.key).label }}</span>
+                    </p>
+
+                    <input
+                        type="file"
+                        :accept="doc.accept"
+                        @change="(e) => onFileChange(e, doc)"
+                        class="block w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p v-if="form.errors?.[doc.key]" class="text-red-500 text-xs">{{ form.errors[doc.key] }}</p>
+                </div>
             </div>
         </div>
     </div>
